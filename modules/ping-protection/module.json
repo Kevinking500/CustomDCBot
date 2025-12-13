@@ -11,11 +11,11 @@
   "models-dir": "/models",
   "config-example-files": [
     "configs/configuration.js",
-    "configs/actions.json",
+    "configs/moderation.json",
     "configs/storage.json"
   ],
   "tags": [
-    "community"
+    "moderation"
   ],
   "humanReadableName": {
     "en": "Ping-Protection",
