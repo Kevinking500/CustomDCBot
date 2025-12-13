@@ -1,6 +1,7 @@
 /**
- * Logic for the Ping Protection module
+ * Logic and functions for the Ping Protection module
  * @module ping-protection
+ * @author itskevinnn
  */
 const { Op } = require('sequelize');
 const { embedType } = require('../../src/functions/helpers');
