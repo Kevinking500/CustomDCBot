@@ -1,5 +1,5 @@
 /**
- * Logic and functions for the Ping Protection module
+ * Logic for the Ping Protection module
  * @module ping-protection
  * @author itskevinnn
  */
@@ -51,12 +51,12 @@ async function sendPingWarning(client, message, target, moduleConfig) {
     if (!warningMsg) return;
 
     const targetName = target.name || target.tag || target.username || 'Unknown';
-
     const targetMention = target.toString();
 
     const placeholders = {
-        '%target_name%': targetName,
-        '%target_mention%': targetMention
+        '%target-name%': targetName,
+        '%target-mention%': targetMention,
+        '%target-id%': target.id
     };
 
     const replyOptions = embedType(warningMsg, placeholders);
@@ -97,13 +97,14 @@ async function fetchModHistory(client, userId, limit = 10) {
 }
 
 /**
- * Executes a punishment and logs it.
+ * Executes a punishment and optionally logs it.
  * @param {Client} client 
  * @param {GuildMember} member 
  * @param {Object} actionConfig 
  * @param {string} reason 
+ * @param {Object} storageConfig 
  */
-async function executeAction(client, member, actionConfig, reason) {
+async function executeAction(client, member, actionConfig, reason, storageConfig) {
     const ModLog = client.models['ping-protection']['ModerationLog'];
 
     try {
@@ -112,23 +113,27 @@ async function executeAction(client, member, actionConfig, reason) {
             
             await member.timeout(durationMs, reason);
             
-            await ModLog.create({
-                userId: member.id,
-                actionType: 'MUTE',
-                actionDuration: durationMs,
-                reason: reason
-            });
+            if (storageConfig && storageConfig.enableModLogHistory) {
+                await ModLog.create({
+                    userId: member.id,
+                    actionType: 'MUTE',
+                    actionDuration: durationMs,
+                    reason: reason
+                });
+            }
             client.logger.info(`[ping-protection] Muted ${member.user.tag} for ${actionConfig.muteDuration} mins. Reason: ${reason}`);
 
         } else if (actionConfig.type === 'KICK') {
             await member.kick(reason);
 
-            await ModLog.create({
-                userId: member.id,
-                actionType: 'KICK',
-                actionDuration: null,
-                reason: reason
-            });
+            if (storageConfig && storageConfig.enableModLogHistory) {
+                await ModLog.create({
+                    userId: member.id,
+                    actionType: 'KICK',
+                    actionDuration: null,
+                    reason: reason
+                });
+            }
             client.logger.info(`[ping-protection] Kicked ${member.user.tag}. Reason: ${reason}`);
         }
     } catch (error) {
