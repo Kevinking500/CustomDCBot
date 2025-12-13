@@ -75,7 +75,7 @@
         "de": "Wenn aktiviert, sind Antworten (mit Mention) an geschützte Benutzer erlaubt." 
       },
       "type": "boolean",
-      "default": { "en": true }
+      "default": { "en": false }
     },
     {
       "name": "pingWarningMessage",

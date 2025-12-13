@@ -11,6 +11,32 @@
   "configElements": true,
   "content": [
     {
+      "name": "enableModeration",
+      "humanName": { 
+        "en": "Enable Moderation Actions", 
+        "de": "Bestrafungsaktionen aktivieren" 
+    },
+      "description": { 
+        "en": "If enabled, members who ping protected users/roles repeatedly will be punished.", 
+        "de": "Wenn aktiviert, werden Mitglieder, die geschützte Benutzer/Rollen wiederholt pingen, bestraft." 
+    },
+      "type": "boolean",
+      "default": { "en": false }
+    },
+    {
+      "name": "advancedConfiguration",
+      "humanName": { 
+        "en": "Use Advanced Configuration", 
+        "de": "Erweiterte Konfiguration verwenden" 
+    },
+      "description": { 
+        "en": "If enabled, the advanced configuration below will be used and the basic configuration will be ignored.", 
+        "de": "Wenn aktiviert, wird die untenstehende erweiterte Konfiguration verwendet und die Basis-Konfiguration ignoriert." 
+    },
+      "type": "boolean",
+      "default": { "en": false }
+    },
+    {
       "name": "pingsCountBasic",
       "humanName": { 
         "en": "Pings to trigger moderation", 
@@ -21,7 +47,11 @@
         "de": "Anzahl Pings für Bestrafung (Nutzt 'Ping-Verlauf Speicherzeit')." 
     },
       "type": "integer",
-      "default": { "en": 5 }
+      "default": { "en": 5 },
+      "dependsOn": {
+        "name": "enableModeration",
+        "value": true
+      }
     },
     {
       "name": "pingsCountAdvanced",
@@ -34,7 +64,11 @@
         "de": "Anzahl Pings im unten gewählten Zeitraum." 
     },
       "type": "integer",
-      "default": { "en": 5 }
+      "default": { "en": 5 },
+      "dependsOn": {
+        "name": "advancedConfiguration",
+        "value": true
+      }
     },
     {
       "name": "timeframeWeeks",
@@ -47,7 +81,11 @@
         "de": "In wie vielen Wochen müssen diese Pings passieren?" 
     },
       "type": "integer",
-      "default": { "en": 1 }
+      "default": { "en": 1 },
+      "dependsOn": {
+        "name": "advancedConfiguration",
+        "value": true
+      }
     },
     {
       "name": "actionType",
@@ -60,20 +98,28 @@
     },
       "type": "select",
       "content": ["MUTE", "KICK"],
-      "default": { "en": "MUTE" }
+      "default": { "en": "MUTE" },
+      "dependsOn": {
+        "name": "enableModeration",
+        "value": true
+      }
     },
     {
       "name": "muteDuration",
       "humanName": { 
-        "en": "Mute Duration (Only if Action is MUTE)", 
-        "de": "Mute-Dauer (Nur bei MUTE Aktion)" 
+        "en": "Mute Duration", 
+        "de": "Mute-Dauer" 
     },
       "description": { 
         "en": "How long to mute the user? (in minutes)", 
         "de": "Wie lange soll der User gemutet werden? (in Minuten)" 
     },
       "type": "integer",
-      "default": { "en": 60 }
+      "default": { "en": 60 },
+      "dependsOn": {
+        "name": "actionType",
+        "value": "MUTE"
+      }
     }
   ]
 }
