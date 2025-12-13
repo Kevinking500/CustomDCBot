@@ -4,7 +4,8 @@
  * @author itskevinnn
  */
 const { Op } = require('sequelize');
-const { embedType } = require('../../src/functions/helpers');
+const { embedType, formatDiscordUserName } = require('../../src/functions/helpers');
+const { localize } = require('../../src/functions/localize');
 
 /**
  * Adds a ping record to the database.
@@ -121,7 +122,12 @@ async function executeAction(client, member, actionConfig, reason, storageConfig
                     reason: reason
                 });
             }
-            client.logger.info(`[ping-protection] Muted ${member.user.tag} for ${actionConfig.muteDuration} mins. Reason: ${reason}`);
+            
+            client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-action-mute', {
+                u: member.user.tag,
+                t: actionConfig.muteDuration,
+                r: reason
+            }));
 
         } else if (actionConfig.type === 'KICK') {
             await member.kick(reason);
@@ -134,7 +140,11 @@ async function executeAction(client, member, actionConfig, reason, storageConfig
                     reason: reason
                 });
             }
-            client.logger.info(`[ping-protection] Kicked ${member.user.tag}. Reason: ${reason}`);
+            
+            client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-action-kick', {
+                u: member.user.tag,
+                r: reason
+            }));
         }
     } catch (error) {
         client.logger.error(`[ping-protection] Failed to execute ${actionConfig.type} on ${member.user.tag}: ${error.message}`);
@@ -151,7 +161,7 @@ async function deleteAllUserData(client, userId) {
     await client.models['ping-protection']['ModerationLog'].destroy({ where: { userId: userId } });
     await client.models['ping-protection']['LeaverData'].destroy({ where: { userId: userId } });
     
-    client.logger.info(`[ping-protection] Manually deleted all data for user ${userId}`);
+    client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-manual-delete', { u: userId }));
 }
 
 /**
@@ -183,6 +193,53 @@ async function markUserAsRejoined(client, userId) {
     });
 }
 
+/**
+ * Enforces retention policies
+ */
+async function enforceRetention(client) {
+    const storageConfig = client.configurations['ping-protection']['storage'];
+    if (!storageConfig) return;
+
+    if (storageConfig.enablePingHistory) {
+        const historyWeeks = storageConfig.pingHistoryRetention || 12; 
+        const historyCutoff = new Date();
+        historyCutoff.setDate(historyCutoff.getDate() - (historyWeeks * 7));
+
+        await client.models['ping-protection']['PingHistory'].destroy({
+            where: { timestamp: { [Op.lt]: historyCutoff } }
+        });
+    }
+
+    if (storageConfig.enableModLogHistory) {
+        const modMonths = storageConfig.modLogRetention || 6;
+        const modCutoff = new Date();
+        modCutoff.setMonth(modCutoff.getMonth() - modMonths);
+
+        await client.models['ping-protection']['ModerationLog'].destroy({
+            where: { timestamp: { [Op.lt]: modCutoff } }
+        });
+    }
+
+    if (storageConfig.enableLeaverDataRetention) {
+        const leaverDays = storageConfig.leaverRetention || 1;
+        const leaverCutoff = new Date();
+        leaverCutoff.setDate(leaverCutoff.getDate() - leaverDays);
+
+        const leaversToDelete = await client.models['ping-protection']['LeaverData'].findAll({
+            where: { leftAt: { [Op.lt]: leaverCutoff } }
+        });
+
+        for (const leaver of leaversToDelete) {
+            const userId = leaver.userId;
+            await client.models['ping-protection']['PingHistory'].destroy({ where: { userId } });
+            await client.models['ping-protection']['ModerationLog'].destroy({ where: { userId } });
+            await leaver.destroy();
+            
+            client.logger.debug('[ping-protection] ' + localize('ping-protection', 'log-cleanup-finished', { u: userId }));
+        }
+    }
+}
+
 module.exports = {
     addPing,
     getPingCountInWindow,
@@ -193,5 +250,6 @@ module.exports = {
     deleteAllUserData,
     getLeaverStatus,
     markUserAsLeft,
-    markUserAsRejoined
+    markUserAsRejoined,
+    enforceRetention
 };
