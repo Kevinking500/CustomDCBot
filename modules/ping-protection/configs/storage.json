@@ -1,0 +1,43 @@
+{
+  "filename": "storage.json",
+  "humanName": { "en": "Data Storage", "de": "Datenspeicherung" },
+  "description": {
+    "en": "Configure how long moderation logs and leaver data are kept.",
+    "de": "Konfiguriere, wie lange Mod-Logs und Leaver-Daten gespeichert werden."
+  },
+  "content": [
+    {
+      "name": "pingHistoryRetention",
+      "humanName": { 
+        "en": "Ping History Retention", 
+        "de": "Ping-Verlauf Speicherzeit" 
+    },
+      "description": {
+        "en": "Decides on how long to keep ping logs. Minimum is 12 weeks (3 months) with a maximum of 24 weeks (6 months). This is the length factor of the 'Basic' punishment timeframe.",
+        "de": "Entscheidet, wie lange Ping-Logs gespeichert werden. Minimum 12 Wochen, Maximum 24 Wochen. Dies ist der Faktor für den 'Basis'-Bestrafungszeitraum."
+      },
+      "type": "integer",
+      "default": { "en": 12 }
+    },
+    {
+      "name": "modLogRetention",
+      "humanName": { "en": "Moderation Log Retention (Months)", "de": "Mod-Log Speicherzeit (Monate)" },
+      "description": {
+        "en": "How long to keep records of punishments (6-12 Months).",
+        "de": "Wie lange Bestrafungsprotokolle gespeichert werden (6-12 Monate)."
+      },
+      "type": "integer",
+      "default": { "en": 6 }
+    },
+    {
+      "name": "leaverRetention",
+      "humanName": { "en": "Leaver Data Retention (Days)", "de": "Leaver-Daten Speicherzeit (Tage)" },
+      "description": {
+        "en": "How long to keep data after a user leaves (1-3 Days).",
+        "de": "Wie lange Daten gespeichert bleiben, nachdem ein User den Server verlässt."
+      },
+      "type": "integer",
+      "default": { "en": 1 }
+    }
+  ]
+}

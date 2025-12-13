@@ -3,13 +3,14 @@ const { DataTypes, Model } = require('sequelize');
 module.exports = class PingHistory extends Model {
     static init(sequelize) {
         return super.init({
-            
             userId: {
                 type: DataTypes.STRING,
                 allowNull: false
             },
-            // Timestasmp of the ping event for date comparisons
-            // This is explicitly defined to track when the ping occurred
+            messageUrl: {
+                type: DataTypes.STRING,
+                allowNull: false
+            },
             timestamp: {
                 type: DataTypes.DATE,
                 defaultValue: DataTypes.NOW

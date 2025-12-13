@@ -1,0 +1,79 @@
+{
+  "filename": "moderation.json",
+  "humanName": { 
+    "en": "Moderation Actions", 
+    "de": "Bestrafungsaktionen" 
+},
+  "description": {
+    "en": "Define triggers for punishments.",
+    "de": "Definiere Auslöser für Bestrafungen."
+  },
+  "configElements": true,
+  "content": [
+    {
+      "name": "pingsCountBasic",
+      "humanName": { 
+        "en": "Pings to trigger moderation", 
+        "de": "Pings für Bestrafung" 
+    },
+      "description": { 
+        "en": "The amount of pings required to trigger a moderation action (Uses 'Ping History Retention' timeframe).", 
+        "de": "Anzahl Pings für Bestrafung (Nutzt 'Ping-Verlauf Speicherzeit')." 
+    },
+      "type": "integer",
+      "default": { "en": 5 }
+    },
+    {
+      "name": "pingsCountAdvanced",
+      "humanName": { 
+        "en": "Pings to trigger (Advanced)", 
+        "de": "Pings für Bestrafung (Erweitert)" 
+    },
+      "description": { 
+        "en": "The amount of pings required in the custom timeframe below.", 
+        "de": "Anzahl Pings im unten gewählten Zeitraum." 
+    },
+      "type": "integer",
+      "default": { "en": 5 }
+    },
+    {
+      "name": "timeframeWeeks",
+      "humanName": { 
+        "en": "Timeframe (Weeks)", 
+        "de": "Zeitraum (Wochen)" 
+    },
+      "description": { 
+        "en": "In how many weeks must these pings occur?", 
+        "de": "In wie vielen Wochen müssen diese Pings passieren?" 
+    },
+      "type": "integer",
+      "default": { "en": 1 }
+    },
+    {
+      "name": "actionType",
+      "humanName": { 
+        "en": "Action", 
+        "de": "Aktion" },
+      "description": { 
+        "en": "What punishment should be applied?", 
+        "de": "Welche Strafe soll verhängt werden?" 
+    },
+      "type": "select",
+      "content": ["MUTE", "KICK"],
+      "default": { "en": "MUTE" }
+    },
+    {
+      "name": "muteDuration",
+      "humanName": { 
+        "en": "Mute Duration (Only if Action is MUTE)", 
+        "de": "Mute-Dauer (Nur bei MUTE Aktion)" 
+    },
+      "description": { 
+        "en": "How long to mute the user? (in minutes)", 
+        "de": "Wie lange soll der User gemutet werden? (in Minuten)" 
+    },
+      "type": "integer",
+      "default": { "en": 60 }
+    }
+  ]
+}
