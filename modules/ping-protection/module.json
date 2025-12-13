@@ -8,6 +8,12 @@
   "openSourceURL": "https://github.com/Kevinking500/CustomDCBot/tree/main/modules/ping-protection",
   "commands-dir": "/commands",
   "events-dir": "/events",
+  "models-dir": "/models",
+  "config-example-files": [
+    "configs/configuration.js",
+    "configs/actions.json",
+    "configs/storage.json"
+  ],
   "tags": [
     "community"
   ],

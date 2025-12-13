@@ -1,21 +1,19 @@
 const { DataTypes, Model } = require('sequelize');
 
-module.exports = class PingHistory extends Model {
+module.exports = class LeaverData extends Model {
     static init(sequelize) {
         return super.init({
-            
             userId: {
                 type: DataTypes.STRING,
-                allowNull: false
+                primaryKey: true
             },
-            // Timestasmp of the ping event for date comparisons
-            // This is explicitly defined to track when the ping occurred
-            timestamp: {
+            // Timestamp of when the user left, used for cooldown calculations
+            leftAt: {
                 type: DataTypes.DATE,
                 defaultValue: DataTypes.NOW
             }
         }, {
-            tableName: 'ping_protection_history',
+            tableName: 'ping_protection_leaver_data',
             timestamps: true,
             sequelize
         });
@@ -23,6 +21,6 @@ module.exports = class PingHistory extends Model {
 };
 
 module.exports.config = {
-    name: 'PingHistory',
+    name: 'LeaverData',
     module: 'ping-protection'
 };
