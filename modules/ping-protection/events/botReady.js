@@ -1,6 +1,6 @@
 const { enforceRetention } = require('../ping-protection');
 const schedule = require('node-schedule');
-const { localize } = require('../../src/functions/localize');
+const { localize } = require('../../../src/functions/localize');
 
 module.exports.run = async function (client) {
     try {
@@ -8,15 +8,12 @@ module.exports.run = async function (client) {
         await client.models['ping-protection']['ModerationLog'].sync();
         await client.models['ping-protection']['LeaverData'].sync();
         
-        client.logger.debug('[ping-protection] ' + localize('ping-protection', 'log-db-synced'));
     } catch (e) {
-        client.logger.error('[ping-protection] Failed to sync database models: ' + e);
     }
 
-    // Run Retention Checks
     await enforceRetention(client);
 
-    // Schedule Retention Job (03:00 daily via cronjob)
+    // Schedules daily retention at 03:00 local bot time with cronjob
     const job = schedule.scheduleJob('0 3 * * *', async () => {
         await enforceRetention(client);
     });

@@ -4,7 +4,7 @@ const {
     executeAction, 
     sendPingWarning 
 } = require('../ping-protection');
-const { localize } = require('../../src/functions/localize');
+const { localize } = require('../../../src/functions/localize');
 
 module.exports.run = async function (client, message) {
     if (!client.botReadyAt) return;
@@ -12,7 +12,7 @@ module.exports.run = async function (client, message) {
     if (message.author.bot) return;
     if (message.guild.id !== client.config.guildID) return;
 
-    const config = client.configurations['ping-protection']['config'];
+    const config = client.configurations['ping-protection']['configuration'];
     const storageConfig = client.configurations['ping-protection']['storage'];
     const moderationRules = client.configurations['ping-protection']['moderation'];
     

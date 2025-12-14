@@ -8,23 +8,14 @@
   "content": [
     {
       "name": "enablePingHistory",
-      "humanName": { 
-        "en": "Enable Ping History", 
-        "de": "Ping-Verlauf aktivieren"
-    },
-      "description": { 
-        "en": "If enabled, the bot will keep a history of pings to enforce moderation actions.", 
-        "de": "Wenn aktiviert, speichert der Bot einen Ping-Verlauf, um Bestrafungsaktionen durchzusetzen." 
-    },
+      "humanName": { "en": "Enable Ping History", "de": "Ping-Verlauf aktivieren" },
+      "description": { "en": "If enabled, the bot will keep a history of pings to enforce moderation actions.", "de": "Wenn aktiviert, speichert der Bot einen Ping-Verlauf, um Bestrafungsaktionen durchzusetzen." },
       "type": "boolean",
       "default": { "en": true }
     },
     {
       "name": "pingHistoryRetention",
-      "humanName": { 
-        "en": "Ping History Retention", 
-        "de": "Ping-Verlauf Speicherzeit" 
-    },
+      "humanName": { "en": "Ping History Retention", "de": "Ping-Verlauf Speicherzeit" },
       "description": {
         "en": "Decides on how long to keep ping logs. Minimum is 4 weeks (1 month) with a maximum of 24 weeks (6 months). This is the length factor of the 'Basic' punishment timeframe.",
         "de": "Entscheidet, wie lange Ping-Logs gespeichert werden. Minimum 1 Woche, Maximum 24 Wochen. Dies ist der Faktor für den 'Basis'-Bestrafungszeitraum."
@@ -32,21 +23,12 @@
       "type": "select",
       "content": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
       "default": { "en": 12 },
-      "dependsOn": {
-        "name": "enablePingHistory",
-        "value": true
-      }
+      "dependsOn": "enablePingHistory"
     },
     {
       "name": "enableModLogHistory",
-      "humanName": { 
-        "en": "Enable Moderation Log History", 
-        "de": "Mod-Log Verlauf aktivieren"
-    },
-      "description": { 
-        "en": "If enabled, the bot will keep a history of moderation actions taken by the ping-protection module.", 
-        "de": "Wenn aktiviert, speichert der Bot einen Verlauf der Bestrafungsaktionen des Ping-Schutz Moduls." 
-    },
+      "humanName": { "en": "Enable Moderation Log History", "de": "Mod-Log Verlauf aktivieren" },
+      "description": { "en": "If enabled, the bot will keep a history of moderation actions taken by the ping-protection module.", "de": "Wenn aktiviert, speichert der Bot einen Verlauf der Bestrafungsaktionen des Ping-Schutz Moduls." },
       "type": "boolean",
       "default": { "en": false }
     },
@@ -60,21 +42,12 @@
       "type": "select",
       "content": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
       "default": { "en": 6 },
-      "dependsOn": {
-        "name": "enableModLogHistory",
-        "value": true
-      }
+      "dependsOn": "enableModLogHistory"
     },
     {
       "name": "enableLeaverDataRetention",
-      "humanName": { 
-        "en": "Keep user logs after they leave", 
-        "de": "Benutzerprotokolle nach Verlassen speichern"
-    },
-      "description": { 
-        "en": "If enabled, the bot will keep a history of the user after they leave.", 
-        "de": "Wenn aktiviert, speichert der Bot einen Verlauf des Benutzers, nachdem er den Server verlassen hat." 
-    },
+      "humanName": { "en": "Keep user logs after they leave", "de": "Benutzerprotokolle nach Verlassen speichern" },
+      "description": { "en": "If enabled, the bot will keep a history of the user after they leave.", "de": "Wenn aktiviert, speichert der Bot einen Verlauf des Benutzers, nachdem er den Server verlassen hat." },
       "type": "boolean",
       "default": { "en": true }
     },
@@ -87,7 +60,8 @@
       },
       "type": "select",
       "content": [1, 2, 3, 4, 5, 6, 7],
-      "default": { "en": 1 }
+      "default": { "en": 1 },
+      "dependsOn": "enableLeaverDataRetention"
     }
   ]
 }
