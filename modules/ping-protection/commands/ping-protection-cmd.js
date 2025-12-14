@@ -9,17 +9,15 @@ const {
 const { localize } = require('../../../src/functions/localize');
 const { MessageEmbed, MessageActionRow, MessageButton } = require('discord.js');
 
-// 1. Command Configuration (for SCNX internal loader)
-// We embed the entire command structure (groups/options) inside the 'config' object.
+// Command configuration
 module.exports.config = {
     name: 'ping-protection',
     description: localize('ping-protection', 'cmd-desc-module'), 
     usage: '/ping-protection',
     type: 'slash',
     
-    // The entire Discord API command structure goes here, mirroring the 'options' array from before.
     options: [
-        // --- GROUP: USER ---
+        // Group: user
         {
             type: 'SUB_COMMAND_GROUP',
             name: 'user',
@@ -60,7 +58,7 @@ module.exports.config = {
                 }
             ]
         },
-        // --- GROUP: LIST ---
+        // Group: list
         {
             type: 'SUB_COMMAND_GROUP',
             name: 'list',
@@ -86,29 +84,19 @@ module.exports.config = {
     ]
 };
 
-// 2. Execution Function - Must be named 'run' for SCNX
+// Execution function
 module.exports.run = async function (interaction) {
     if (!interaction.guild) return;
     
-    // FIX: Get subcommand group and subcommand without crashing if they don't exist
     const group = interaction.options.getSubcommandGroup(false);
     const subCmd = interaction.options.getSubcommand(false);
     
-    // FIX: Correct the config file name key
     const config = interaction.client.configurations['ping-protection']['configuration'];
-
-    // FINAL FALLBACK: If command structure is missing, inform the user (better than silence)
-    if (!config || !group || !subCmd) {
-        return interaction.reply({
-            content: "⚠️ Command Structure Error (Synching issue). Please ensure the module is enabled and try reloading your Discord client (CTRL+R).",
-            ephemeral: true
-        });
-    }
 
     const isAdmin = interaction.member.permissions.has('ADMINISTRATOR') || 
                     (interaction.client.config.admins || []).includes(interaction.user.id);
 
-    // GROUP: USER
+    // Group: user
     if (group === 'user') {
         const user = interaction.options.getUser('user');
 
@@ -198,7 +186,7 @@ module.exports.run = async function (interaction) {
         }
     }
 
-    // GROUP: LIST
+    // Group: list
     else if (group === 'list') {
         let contentList = [];
         let title = "";

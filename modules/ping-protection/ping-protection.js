@@ -8,7 +8,7 @@ const { embedType, formatDiscordUserName } = require('../../src/functions/helper
 const { localize } = require('../../src/functions/localize');
 
 /**
- * Adds a ping record to the database.
+ * Adds a ping record to the database
  * @param {Client} client
  * @param {Message} message 
  */
@@ -20,7 +20,7 @@ async function addPing(client, message) {
 }
 
 /**
- * Counts pings within a specific timeframe (in weeks).
+ * Counts pings within a specific timeframe
  * @param {Client} client 
  * @param {string} userId 
  * @param {number} weeks 
@@ -41,7 +41,7 @@ async function getPingCountInWindow(client, userId, weeks) {
 }
 
 /**
- * Sends the warning message to the user who pinged.
+ * Sends the warning message
  * @param {Client} client
  * @param {Message} message 
  * @param {Role|User} target 
@@ -68,7 +68,7 @@ async function sendPingWarning(client, message, target, moduleConfig) {
 }
 
 /**
- * Fetches the last X pings.
+ * Fetches the last X pings
  * @param {Client} client 
  * @param {string} userId 
  * @param {number} limit 
@@ -83,7 +83,7 @@ async function fetchPingHistory(client, userId, limit = 10) {
 }
 
 /**
- * Fetches the moderation log history.
+ * Fetches the moderation log history
  * @param {Client} client 
  * @param {string} userId 
  * @param {number} limit 
@@ -98,7 +98,7 @@ async function fetchModHistory(client, userId, limit = 10) {
 }
 
 /**
- * Executes a punishment and optionally logs it.
+ * Executes a punishment and logs it if configured
  * @param {Client} client 
  * @param {GuildMember} member 
  * @param {Object} actionConfig 
@@ -152,7 +152,7 @@ async function executeAction(client, member, actionConfig, reason, storageConfig
 }
 
 /**
- * Deletes ALL database information for a user.
+ * Deletes ALL database information from a user
  * @param {Client} client 
  * @param {string} userId 
  */
@@ -165,7 +165,7 @@ async function deleteAllUserData(client, userId) {
 }
 
 /**
- * Checks if a user is currently marked as left.
+ * Checks if a user is currently marked as left
  * @param {Client} client 
  * @param {string} userId 
  * @returns {Promise<Object|null>}
@@ -175,7 +175,7 @@ async function getLeaverStatus(client, userId) {
 }
 
 /**
- * Marks user as left.
+ * Marks user as left
  */
 async function markUserAsLeft(client, userId) {
     await client.models['ping-protection']['LeaverData'].upsert({
@@ -185,7 +185,7 @@ async function markUserAsLeft(client, userId) {
 }
 
 /**
- * Handles rejoin.
+ * Handles rejoin
  */
 async function markUserAsRejoined(client, userId) {
     await client.models['ping-protection']['LeaverData'].destroy({
