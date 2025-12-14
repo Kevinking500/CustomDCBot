@@ -3,26 +3,28 @@ const { DataTypes, Model } = require('sequelize');
 module.exports = class ModerationLog extends Model {
     static init(sequelize) {
         return super.init({
-            userId: {
+            id: { 
+                type: DataTypes.INTEGER,
+                primaryKey: true,
+                autoIncrement: true,
+                allowNull: false
+            },
+            victimID: {
                 type: DataTypes.STRING,
                 allowNull: false
             },
-            actionType: {
+            type: {
                 type: DataTypes.STRING,
                 allowNull: false
+            },
+            reason: { 
+                type: DataTypes.STRING,
+                allowNull: true
             },
             actionDuration: {
                 type: DataTypes.INTEGER,
                 allowNull: true
             },
-            reason: {
-                type: DataTypes.TEXT,
-                allowNull: false
-            },
-            timestamp: {
-                type: DataTypes.DATE,
-                defaultValue: DataTypes.NOW
-            }
         }, {
             tableName: 'ping_protection_mod_log',
             timestamps: true,
@@ -32,6 +34,6 @@ module.exports = class ModerationLog extends Model {
 };
 
 module.exports.config = {
-    name: 'ModerationLog',
-    module: 'ping-protection'
+    'name': 'ModerationLog',
+    'module': 'ping-protection'
 };

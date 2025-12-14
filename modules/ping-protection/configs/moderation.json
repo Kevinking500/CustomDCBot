@@ -22,7 +22,8 @@
       "humanName": { "en": "Use Advanced Configuration", "de": "Erweiterte Konfiguration verwenden" },
       "description": { "en": "If enabled, the advanced configuration below will be used and the basic configuration will be ignored.", "de": "Wenn aktiviert, wird die untenstehende erweiterte Konfiguration verwendet und die Basis-Konfiguration ignoriert." },
       "type": "boolean",
-      "default": { "en": false }
+      "default": { "en": false },
+      "dependsOn": "enableModeration"
     },
     {
       "name": "pingsCountBasic",

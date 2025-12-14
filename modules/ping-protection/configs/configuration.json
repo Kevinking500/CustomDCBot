@@ -78,11 +78,13 @@
         "en": {
           "title": "You are not allowed to ping %target-name%!",
           "description": "You are not allowed to ping %target-mention% due to your role. You can view which roles/members you are not allowed to ping by using the `/ping protection list roles` or `/ping protection list members`.\n\nIf you were replying, make sure to turn off the mention in the reply.",
+          "image": "https://c.tenor.com/zRR5cYKSIV0AAAAd/tenor.gif",
           "color": "RED"
         },
         "de": {
           "title": "Du darfst %target-name% nicht pingen!",
           "description": "Du darfst %target-mention% aufgrund deiner Rolle nicht pingen. Du kannst sehen, welche Rollen/Mitglieder du nicht pingen darfst, indem du `/ping protection list roles` oder `/ping protection list members` benutzt.\n\nFalls du geantwortet hast, stelle sicher, dass die Erwähnung in der Antwort deaktiviert ist.",
+          "image": "https://c.tenor.com/zRR5cYKSIV0AAAAd/tenor.gif",
           "color": "RED"
         }
       }

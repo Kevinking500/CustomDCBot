@@ -6,6 +6,7 @@ const {
 } = require('../ping-protection');
 const { localize } = require('../../../src/functions/localize');
 
+// Messages handler
 module.exports.run = async function (client, message) {
     if (!client.botReadyAt) return;
     if (!message.guild) return;
@@ -16,80 +17,84 @@ module.exports.run = async function (client, message) {
     const storageConfig = client.configurations['ping-protection']['storage'];
     const moderationRules = client.configurations['ping-protection']['moderation'];
     
-    if (!config) return;
+    if (!config || !moderationRules || !Array.isArray(moderationRules) || moderationRules.length === 0) return;
 
-    // Checks ignored channels
+    const rule1 = moderationRules[0]; 
+
+    // Checks ignored channels and roles
     if (config.ignoredChannels.includes(message.channel.id)) return;
+    if (message.member.roles.cache.some(role => config.ignoredRoles.includes(role.id))) return;
 
-    // Checks whitelisted roles
-    const hasIgnoredRole = message.member.roles.cache.some(role => 
-        config.ignoredRoles.includes(role.id)
-    );
-    if (hasIgnoredRole) return;
-
-    // Reply logic
-    if (message.type === 'REPLY' && config.allowReplyPings) {
-    }
-
-    // Detect pings
-    const pingedProtectedRole = message.mentions.roles.some(role => 
-        config.protectedRoles.includes(role.id)
-    );
-    
-    const pingedProtectedUser = message.mentions.users.some(user => 
-        config.protectedUsers.includes(user.id)
-    );
-
+    // Detects pings
+    const pingedProtectedRole = message.mentions.roles.some(role => config.protectedRoles.includes(role.id));
+    const pingedProtectedUser = message.mentions.users.some(user => config.protectedUsers.includes(user.id));
     if (!pingedProtectedRole && !pingedProtectedUser) return;
+    
+    let pingCount = 0;
+    const pingerId = message.author.id;
+    const targetUser = message.mentions.users.find(u => config.protectedUsers.includes(u.id));
+    const targetRole = message.mentions.roles.find(r => config.protectedRoles.includes(r.id));
+    const target = targetUser || targetRole;
+    
+    let requiredCount = 0; 
+    let generatedReason = "";
+    let timeframeWeeks = 12;
 
-    // Log pings if enabled
-    if (storageConfig && storageConfig.enablePingHistory) {
-        await addPing(client, message);
-    }
+    try {
+        if (storageConfig && storageConfig.enablePingHistory) {
+            await addPing(client, message, target);
+        }
 
-    // Send warning
-    const target = message.mentions.users.find(u => config.protectedUsers.includes(u.id)) 
-                || message.mentions.roles.find(r => config.protectedRoles.includes(r.id));
-                
-    await sendPingWarning(client, message, target, config);
-
-    // Moderation logic
-    if (!moderationRules || !Array.isArray(moderationRules)) return;
-
-    for (const rule of moderationRules) {
-        if (!rule.enableModeration) continue;
-
-        let triggerHit = false;
-        let generatedReason = "";
-
-        if (rule.advancedConfiguration) {
-            // Advanced configuration
-            const count = await getPingCountInWindow(client, message.author.id, rule.timeframeWeeks);
-            
-            if (count >= rule.pingsCountAdvanced) {
-                triggerHit = true;
-                generatedReason = localize('ping-protection', 'reason-advanced', {
-                    c: count, 
-                    w: rule.timeframeWeeks
-                });
-            }
+        if (rule1.advancedConfiguration) {
+            timeframeWeeks = rule1.timeframeWeeks;
         } else {
-            // Basic configuration
-            const globalWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12;
-            const count = await getPingCountInWindow(client, message.author.id, globalWeeks);
+            timeframeWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
+        }
 
-            if (count >= rule.pingsCountBasic) {
-                triggerHit = true;
-                generatedReason = localize('ping-protection', 'reason-basic', {
-                    c: count, 
-                    w: globalWeeks
-                });
+        pingCount = await getPingCountInWindow(client, pingerId, timeframeWeeks);
+
+    } catch (e) {
+        client.logger.error(`[ping-protection] Database interaction FAILED for ${message.author.tag}: ${e}`);
+    }
+    
+    await sendPingWarning(client, message, target, config);
+    
+    if (!rule1.enableModeration) return;
+    
+    if (rule1.advancedConfiguration) {
+        requiredCount = rule1.pingsCountAdvanced;
+        generatedReason = localize('ping-protection', 'reason-advanced', { c: pingCount, w: rule1.timeframeWeeks });
+    } else {
+        requiredCount = rule1.pingsCountBasic;
+        generatedReason = localize('ping-protection', 'reason-basic', { c: pingCount, w: timeframeWeeks });
+    }
+    
+    // Logs the ping status
+    client.logger.info(`[ping-protection] User ${message.author.tag} pinged ${target.id}. Count: ${pingCount}/${requiredCount}`);
+
+    if (pingCount >= requiredCount) {
+
+        const { Op } = require('sequelize');
+        const oneMinuteAgo = new Date(new Date() - 60000);
+        const recentLog = await client.models['ping-protection']['ModerationLog'].findOne({
+            where: {
+                victimID: message.author.id,
+                createdAt: { [Op.gt]: oneMinuteAgo }
+            }
+        });
+
+        if (recentLog) return; 
+
+        let memberToPunish = message.member;
+        if (!memberToPunish) {
+            try {
+                memberToPunish = await message.guild.members.fetch(message.author.id);
+            } catch (fetchError) {
+                client.logger.error(`[ping-protection] Failed to fetch member ${message.author.tag} for punishment.`);
+                return;
             }
         }
-
-        if (triggerHit) {
-            await executeAction(client, message.member, rule, generatedReason, storageConfig);
-            break;
-        }
+        
+        await executeAction(client, memberToPunish, rule1, generatedReason, storageConfig);
     }
 };

@@ -11,9 +11,13 @@ module.exports = class PingHistory extends Model {
                 type: DataTypes.STRING,
                 allowNull: false
             },
-            timestamp: {
-                type: DataTypes.DATE,
-                defaultValue: DataTypes.NOW
+            targetId: {
+                type: DataTypes.STRING,
+                allowNull: true
+            },
+            isRole: {
+                type: DataTypes.BOOLEAN,
+                defaultValue: false
             }
         }, {
             tableName: 'ping_protection_history',

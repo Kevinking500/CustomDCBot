@@ -7,25 +7,18 @@ const { Op } = require('sequelize');
 const { embedType, formatDiscordUserName } = require('../../src/functions/helpers');
 const { localize } = require('../../src/functions/localize');
 
-/**
- * Adds a ping record to the database
- * @param {Client} client
- * @param {Message} message 
- */
-async function addPing(client, message) {
+// Adds a ping entry to the database
+async function addPing(client, message, target) {
+    const isRole = !target.username;
     await client.models['ping-protection']['PingHistory'].create({
         userId: message.author.id,
-        messageUrl: message.url
+        messageUrl: message.url,
+        targetId: target.id,
+        isRole: isRole
     });
 }
 
-/**
- * Counts pings within a specific timeframe
- * @param {Client} client 
- * @param {string} userId 
- * @param {number} weeks 
- * @returns {Promise<number>}
- */
+// Gets the number of pings in the specified timeframe
 async function getPingCountInWindow(client, userId, weeks) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - (weeks * 7));
@@ -33,20 +26,11 @@ async function getPingCountInWindow(client, userId, weeks) {
     return await client.models['ping-protection']['PingHistory'].count({
         where: {
             userId: userId,
-            timestamp: {
-                [Op.gt]: cutoffDate
-            }
+            createdAt: { [Op.gt]: cutoffDate }
         }
     });
 }
-
-/**
- * Sends the warning message
- * @param {Client} client
- * @param {Message} message 
- * @param {Role|User} target 
- * @param {Object} moduleConfig 
- */
+// Sends the ping warning message
 async function sendPingWarning(client, message, target, moduleConfig) {
     const warningMsg = moduleConfig.pingWarningMessage;
     if (!warningMsg) return;
@@ -61,122 +45,116 @@ async function sendPingWarning(client, message, target, moduleConfig) {
     };
 
     const replyOptions = embedType(warningMsg, placeholders);
-
     await message.reply(replyOptions).catch((e) => {
-        client.logger.debug(`[ping-protection] Failed to send warning to ${message.author.tag}: ${e.message}`);
+        client.logger.debug(`[ping-protection] Failed to send warning: ${e.message}`);
     });
 }
 
-/**
- * Fetches the last X pings
- * @param {Client} client 
- * @param {string} userId 
- * @param {number} limit 
- * @returns {Promise<Array>}
- */
-async function fetchPingHistory(client, userId, limit = 10) {
-    return await client.models['ping-protection']['PingHistory'].findAll({
+ // Fetches ping history
+async function fetchPingHistory(client, userId, page = 1, limit = 8) { 
+    const offset = (page - 1) * limit;
+    
+    const { count, rows } = await client.models['ping-protection']['PingHistory'].findAndCountAll({ 
         where: { userId: userId },
-        order: [['timestamp', 'DESC']],
-        limit: limit
+        order: [['createdAt', 'DESC']], 
+        limit: limit,
+        offset: offset
     });
+    
+    return { total: count, history: rows };
 }
 
-/**
- * Fetches the moderation log history
- * @param {Client} client 
- * @param {string} userId 
- * @param {number} limit 
- * @returns {Promise<Array>}
- */
+// Fetches moderation action history
 async function fetchModHistory(client, userId, limit = 10) {
-    return await client.models['ping-protection']['ModerationLog'].findAll({
-        where: { userId: userId },
-        order: [['timestamp', 'DESC']],
-        limit: limit
-    });
-}
-
-/**
- * Executes a punishment and logs it if configured
- * @param {Client} client 
- * @param {GuildMember} member 
- * @param {Object} actionConfig 
- * @param {string} reason 
- * @param {Object} storageConfig 
- */
-async function executeAction(client, member, actionConfig, reason, storageConfig) {
-    const ModLog = client.models['ping-protection']['ModerationLog'];
+    if (!client.models['ping-protection'] || !client.models['ping-protection']['ModerationLog']) return [];
 
     try {
-        if (actionConfig.type === 'MUTE') {
-            const durationMs = (actionConfig.muteDuration || 60) * 60 * 1000;
-            
-            await member.timeout(durationMs, reason);
-            
-            if (storageConfig && storageConfig.enableModLogHistory) {
-                await ModLog.create({
-                    userId: member.id,
-                    actionType: 'MUTE',
-                    actionDuration: durationMs,
-                    reason: reason
-                });
-            }
-            
-            client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-action-mute', {
-                u: member.user.tag,
-                t: actionConfig.muteDuration,
-                r: reason
-            }));
-
-        } else if (actionConfig.type === 'KICK') {
-            await member.kick(reason);
-
-            if (storageConfig && storageConfig.enableModLogHistory) {
-                await ModLog.create({
-                    userId: member.id,
-                    actionType: 'KICK',
-                    actionDuration: null,
-                    reason: reason
-                });
-            }
-            
-            client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-action-kick', {
-                u: member.user.tag,
-                r: reason
-            }));
-        }
-    } catch (error) {
-        client.logger.error(`[ping-protection] Failed to execute ${actionConfig.type} on ${member.user.tag}: ${error.message}`);
+        return await client.models['ping-protection']['ModerationLog'].findAll({
+            where: { victimID: userId },
+            order: [['createdAt', 'DESC']],
+            limit: limit
+        });
+    } catch (e) {
+        client.logger.error(`[MOD-FETCH-ERROR] Failed to query ModerationLog: ${e.message}`);
+        return [];
     }
 }
 
-/**
- * Deletes ALL database information from a user
- * @param {Client} client 
- * @param {string} userId 
- */
+// Executes the configured moderation action
+async function executeAction(client, member, rule, reason, storageConfig) {
+    const actionType = rule.actionType; 
+    
+    if (!member) return false;
+    
+    const botMember = await member.guild.members.fetch(client.user.id);
+    if (botMember.roles.highest.position <= member.roles.highest.position) {
+        client.logger.warn(`[ping-protection] Hierarchy Failure: Cannot moderate ${member.user.tag}.`);
+        return false;
+    }
+
+    if (actionType === 'MUTE') {
+        const durationMs = rule.muteDuration * 60000;
+        
+        if (storageConfig.enableModLogHistory) {
+            try {
+                await client.models['ping-protection']['ModerationLog'].create({
+                    victimID: member.id,
+                    type: 'MUTE',
+                    actionDuration: rule.muteDuration, 
+                    reason: reason
+                });
+            } catch (dbError) {
+                client.logger.error(`[ping-protection] DB Insert Failed: ${dbError.message}`);
+            }
+        }
+        
+        try {
+            await member.timeout(durationMs, reason);
+            client.logger.info(`[MODERATION] Muted ${member.user.tag} for ${rule.muteDuration}m.`);
+            return true;
+        } catch (error) {
+            client.logger.error(`[ping-protection] Mute failed: ${error.message}`);
+            return false;
+        }
+
+    } else if (actionType === 'KICK') {
+        
+        if (storageConfig.enableModLogHistory) {
+            try {
+                await client.models['ping-protection']['ModerationLog'].create({
+                    victimID: member.id, 
+                    type: 'KICK',
+                    reason: reason
+                });
+            } catch (dbError) {
+                client.logger.error(`[ping-protection] DB Insert Failed: ${dbError.message}`);
+            }
+        }
+        
+        try {
+            await member.kick(reason);
+            client.logger.info(`[MODERATION] Kicked ${member.user.tag}.`);
+            return true;
+        } catch (error) {
+            client.logger.error(`[ping-protection] Kick failed: ${error.message}`);
+            return false;
+        }
+    }
+    return false;
+}
+// Handles deletion of all data from a user
 async function deleteAllUserData(client, userId) {
     await client.models['ping-protection']['PingHistory'].destroy({ where: { userId: userId } });
-    await client.models['ping-protection']['ModerationLog'].destroy({ where: { userId: userId } });
+    await client.models['ping-protection']['ModerationLog'].destroy({ where: { victimID: userId } });
     await client.models['ping-protection']['LeaverData'].destroy({ where: { userId: userId } });
     
     client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-manual-delete', { u: userId }));
 }
 
-/**
- * Checks if a user is currently marked as left
- * @param {Client} client 
- * @param {string} userId 
- * @returns {Promise<Object|null>}
- */
 async function getLeaverStatus(client, userId) {
     return await client.models['ping-protection']['LeaverData'].findByPk(userId);
 }
 
-/**
- * Marks user as left
- */
 async function markUserAsLeft(client, userId) {
     await client.models['ping-protection']['LeaverData'].upsert({
         userId: userId,
@@ -184,18 +162,12 @@ async function markUserAsLeft(client, userId) {
     });
 }
 
-/**
- * Handles rejoin
- */
 async function markUserAsRejoined(client, userId) {
     await client.models['ping-protection']['LeaverData'].destroy({
         where: { userId: userId }
     });
 }
-
-/**
- * Enforces retention policies
- */
+// Enforces data retention policies
 async function enforceRetention(client) {
     const storageConfig = client.configurations['ping-protection']['storage'];
     if (!storageConfig) return;
@@ -206,7 +178,7 @@ async function enforceRetention(client) {
         historyCutoff.setDate(historyCutoff.getDate() - (historyWeeks * 7));
 
         await client.models['ping-protection']['PingHistory'].destroy({
-            where: { timestamp: { [Op.lt]: historyCutoff } }
+            where: { createdAt: { [Op.lt]: historyCutoff } }
         });
     }
 
@@ -216,7 +188,7 @@ async function enforceRetention(client) {
         modCutoff.setMonth(modCutoff.getMonth() - modMonths);
 
         await client.models['ping-protection']['ModerationLog'].destroy({
-            where: { timestamp: { [Op.lt]: modCutoff } }
+            where: { createdAt: { [Op.lt]: modCutoff } }
         });
     }
 
@@ -232,10 +204,8 @@ async function enforceRetention(client) {
         for (const leaver of leaversToDelete) {
             const userId = leaver.userId;
             await client.models['ping-protection']['PingHistory'].destroy({ where: { userId } });
-            await client.models['ping-protection']['ModerationLog'].destroy({ where: { userId } });
+            await client.models['ping-protection']['ModerationLog'].destroy({ where: { userId: userId } }); 
             await leaver.destroy();
-            
-            client.logger.debug('[ping-protection] ' + localize('ping-protection', 'log-cleanup-finished', { u: userId }));
         }
     }
 }

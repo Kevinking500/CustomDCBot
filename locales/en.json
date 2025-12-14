@@ -1022,7 +1022,8 @@
     "log-cleanup-finished": "History Cleanup: Deleted data for expired leaver %u",
     "log-action-mute": "Muted %u for %t mins. Reason: %r",
     "log-action-kick": "Kicked %u. Reason: %r",
-    "log-manual-delete": "All data for %u (%i) has been deleted successfully.",
+    "log-manual-delete": "All data for <@%u> (%u) has been deleted successfully.",
+    "log-manual-delete-logs": "All data for user with ID %u has been deleted successfully.",
     "reason-basic": "User reached %c pings in the last %w weeks (Basic Configuration).",
     "reason-advanced": "User reached %c pings in the last %w weeks (Advanced Configuration).",
     "cmd-desc-module": "Manage the ping protection system",
@@ -1043,7 +1044,7 @@
     "actions-retention-note": "REMEMBER! MODERATION ACTIONS ARE KEPT IN STORAGE FOR 3 - 12 MONTHS!",
     "no-permission": "You do not have permission to use this.",
     "panel-title": "User Panel: %u",
-    "panel-description": "Manage data for %u (%i). Use the buttons below.",
+    "panel-description": "Manage and view data for %u (%i). View a quick recap of their ping and moderation history, or delete all data stored for this user (Risky).",
     "btn-history": "Ping history",
     "btn-actions": "Actions history",
     "btn-delete": "Delete all data (Risky)",
@@ -1054,6 +1055,8 @@
     "modal-title": "Confirm data deletion for this user",
     "modal-label": "Confirm data deletion by typing this phrase:",
     "modal-phrase": "I understand that all data will be deleted for this user and that this action is irreversible.",
-    "modal-failed": "The phrase you entered is incorrect. Data deletion cancelled."
+    "modal-failed": "The phrase you entered is incorrect. Data deletion cancelled.",
+    "field-quick-history": "Quick History View (Last %w weeks)",
+    "field-quick-desc": "Pings history amount: %p\nModeration actions amount: %m"
   }
 }

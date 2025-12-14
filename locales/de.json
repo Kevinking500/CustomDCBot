@@ -987,7 +987,8 @@
     "log-cleanup-finished": "Datenschutz-Bereinigung: Daten für abgelaufenen Leaver %u gelöscht",
     "log-action-mute": "%u für %t Min gemutet. Grund: %r",
     "log-action-kick": "%u gekickt. Grund: %r",
-    "log-manual-delete": "Alle Daten für %u (%i) wurden erfolgreich gelöscht.",
+    "log-manual-delete": "Alle Daten für <@%u> (%u) wurden erfolgreich gelöscht.",
+    "log-manual-delete-logs": "Alle Daten für Benutzer mit der ID %u wurden erfolgreich gelöscht.",
     "reason-basic": "Benutzer hat %c Pings in den letzten %w Wochen erreicht (Basis-Limit).",
     "reason-advanced": "Benutzer hat %c daily Pings in den letzten %w Wochen erreicht (Erweitertes Limit).",
     "cmd-desc-module": "Verwalte das Ping-Schutz-System",
@@ -1008,7 +1009,7 @@
     "actions-retention-note": "ACHTUNG! MODERATIONSAKTIONEN WERDEN FÜR 3 - 12 MONATE GESPEICHERT!",
     "no-permission": "Du hast keine Berechtigung, dies zu nutzen.",
     "panel-title": "Benutzer-Panel: %u",
-    "panel-description": "Verwalte Daten für %u (%i). Benutze die Buttons unten.",
+    "panel-description": "Daten für %u (%i) verwalten und anzeigen. Sehen Sie sich eine kurze Zusammenfassung ihres Ping- und Moderationsverlaufs an oder löschen Sie alle für diesen Benutzer gespeicherten Daten (Risky).",
     "btn-history": "Ping-Verlauf",
     "btn-actions": "Aktions-Verlauf",
     "btn-delete": "Alle daten löschen (Riskant)",
@@ -1019,6 +1020,8 @@
     "modal-title": "Bestätigen Sie die Löschung der Daten für diesen Benutzer",
     "modal-label": "Bestätigen Sie das Löschen der Daten, indem Sie diesen Satz eingeben:",
     "modal-phrase": "Ich verstehe, dass alle Daten für diesen Benutzer gelöscht werden und dass diese Aktion unumkehrbar ist.",
-    "modal-failed": "Der von Ihnen eingegebene Satz ist falsch. Datenlöschung abgebrochen."
+    "modal-failed": "Der von Ihnen eingegebene Satz ist falsch. Datenlöschung abgebrochen.",
+    "field-quick-history": "Schnelle Verlaufsansicht (Letzte %w Wochen)",
+    "field-quick-desc": "Betrag des Pings-Verlaufs: %p\nBetrag der Moderationsaktionen: %m"
   }
 }
