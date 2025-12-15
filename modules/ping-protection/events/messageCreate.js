@@ -5,7 +5,6 @@ const {
     sendPingWarning 
 } = require('../ping-protection');
 const { localize } = require('../../../src/functions/localize');
-
 // Messages handler
 module.exports.run = async function (client, message) {
     if (!client.botReadyAt) return;
@@ -21,7 +20,7 @@ module.exports.run = async function (client, message) {
 
     const rule1 = moderationRules[0]; 
 
-    // Checks ignored channels and roles
+    // Checks for ignored channels and roles
     if (config.ignoredChannels.includes(message.channel.id)) return;
     if (message.member.roles.cache.some(role => config.ignoredRoles.includes(role.id))) return;
 
@@ -30,20 +29,29 @@ module.exports.run = async function (client, message) {
     const pingedProtectedUser = message.mentions.users.some(user => config.protectedUsers.includes(user.id));
     if (!pingedProtectedRole && !pingedProtectedUser) return;
     
-    let pingCount = 0;
-    const pingerId = message.author.id;
+    // Identifies target
     const targetUser = message.mentions.users.find(u => config.protectedUsers.includes(u.id));
     const targetRole = message.mentions.roles.find(r => config.protectedRoles.includes(r.id));
     const target = targetUser || targetRole;
+    const targetName = target.tag || target.name || target.id;
     
+    // Checks if ping history logging is enabled
+    if (!storageConfig || !storageConfig.enablePingHistory) {
+        client.logger.info(`[ping-protection] User ${message.author.tag} pinged ${targetName}. Pings history logging is disabled, moderation actions cannot be done.`);
+        
+        await sendPingWarning(client, message, target, config);
+        return; 
+    }
+
+    // Processes the ping
+    let pingCount = 0;
+    const pingerId = message.author.id;
     let requiredCount = 0; 
     let generatedReason = "";
     let timeframeWeeks = 12;
 
     try {
-        if (storageConfig && storageConfig.enablePingHistory) {
-            await addPing(client, message, target);
-        }
+        await addPing(client, message, target);
 
         if (rule1.advancedConfiguration) {
             timeframeWeeks = rule1.timeframeWeeks;
@@ -54,9 +62,10 @@ module.exports.run = async function (client, message) {
         pingCount = await getPingCountInWindow(client, pingerId, timeframeWeeks);
 
     } catch (e) {
-        client.logger.error(`[ping-protection] Database interaction FAILED for ${message.author.tag}: ${e}`);
+        client.logger.error(`[ping-protection] Database interaction failed for ${message.author.tag}: ${e}`);
     }
     
+    // Sends warning message
     await sendPingWarning(client, message, target, config);
     
     if (!rule1.enableModeration) return;
@@ -69,21 +78,25 @@ module.exports.run = async function (client, message) {
         generatedReason = localize('ping-protection', 'reason-basic', { c: pingCount, w: timeframeWeeks });
     }
     
-    // Logs the ping status
-    client.logger.info(`[ping-protection] User ${message.author.tag} pinged ${target.id}. Count: ${pingCount}/${requiredCount}`);
+    client.logger.info(`[ping-protection] User ${message.author.tag} pinged ${targetName}. Count: ${pingCount}/${requiredCount}`);
 
     if (pingCount >= requiredCount) {
 
+        // Checks for recent moderation to prevent spam actions
         const { Op } = require('sequelize');
         const oneMinuteAgo = new Date(new Date() - 60000);
-        const recentLog = await client.models['ping-protection']['ModerationLog'].findOne({
-            where: {
-                victimID: message.author.id,
-                createdAt: { [Op.gt]: oneMinuteAgo }
-            }
-        });
+        
+        try {
+            const recentLog = await client.models['ping-protection']['ModerationLog'].findOne({
+                where: {
+                    victimID: message.author.id,
+                    createdAt: { [Op.gt]: oneMinuteAgo }
+                }
+            });
 
-        if (recentLog) return; 
+            if (recentLog) return; 
+        } catch (e) {
+        }
 
         let memberToPunish = message.member;
         if (!memberToPunish) {
