@@ -1003,7 +1003,7 @@
     "no-data-found": "Keine Logs gefunden für diesen Benutzer.",
     "embed-actions-title": "Moderations-Verlauf: %u",
     "label-reason": "Grund",
-    "actions-retention-note": "Denken Sie daran: Moderationsmaßnahmen werden je nach Konfiguration 3 - 12 Monate lang beibehalten.",
+    "actions-retention-note": "Denken Sie daran: Moderationsmaßnahmen werden je nach Konfiguration 1 - 12 Monate lang beibehalten.",
     "no-permission": "Sie verfügen nicht über ausreichende Berechtigungen, um diesen Befehl zu verwenden.",
     "panel-title": "Benutzer-Panel: %u",
     "panel-description": "Daten für %u (%i) verwalten und anzeigen. Sehen Sie sich eine kurze Zusammenfassung ihres Ping- und Moderationsverlaufs an oder löschen Sie alle für diesen Benutzer gespeicherten Daten (Risky).",

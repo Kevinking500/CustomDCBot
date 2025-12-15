@@ -36,11 +36,11 @@
       "name": "modLogRetention",
       "humanName": { "en": "Moderation Log Retention (Months)", "de": "Mod-Log Speicherzeit (Monate)" },
       "description": {
-        "en": "How long to keep records of punishments (3-12 Months).",
-        "de": "Wie lange Bestrafungsprotokolle gespeichert werden (3-12 Monate)."
+        "en": "How long to keep records of punishments (1-12 Months).",
+        "de": "Wie lange Bestrafungsprotokolle gespeichert werden (1-12 Monate)."
       },
       "type": "select",
-      "content": [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "content": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
       "default": { "en": 6 },
       "dependsOn": "enableModLogHistory"
     },

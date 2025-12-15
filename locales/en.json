@@ -1038,7 +1038,7 @@
     "no-data-found": "No logs found for this user.",
     "embed-actions-title": "Moderation history of %u",
     "label-reason": "Reason",
-    "actions-retention-note": "Remember: Moderation actions are retained for 3 - 12 months based on the configuration.",
+    "actions-retention-note": "Remember: Moderation actions are retained for 1 - 12 months based on the configuration.",
     "no-permission": "You don't have sufficient permissions to use this command.",
     "panel-title": "User Panel: %u",
     "panel-description": "Manage and view data for %u (%i). View a quick recap of their ping and moderation history, or delete all data stored for this user (Risky).",
