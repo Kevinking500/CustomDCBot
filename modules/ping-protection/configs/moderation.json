@@ -30,7 +30,7 @@
       "humanName": { "en": "Pings to trigger moderation", "de": "Pings für Bestrafung" },
       "description": { "en": "The amount of pings required to trigger a moderation action (Uses 'Ping History Retention' timeframe).", "de": "Anzahl Pings für Bestrafung (Nutzt 'Ping-Verlauf Speicherzeit')." },
       "type": "integer",
-      "default": { "en": 5 },
+      "default": { "en": 10 },
       "dependsOn": "enableModeration"
     },
     {
