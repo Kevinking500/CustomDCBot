@@ -3,6 +3,15 @@
   "humanName": {
     "en": "General Configuration"
   },
+  "commandsWarnings": {
+    "normal": [
+    "/ping-protection user history",
+    "/ping-protection user actions-history",
+    "/ping-protection list roles",
+    "/ping-protection list users",
+    "/ping-protection list whitelisted"
+    ]
+  },
   "description": {
     "en": "Configure protected users/roles, whitelisted roles/members, ignored channels and the notification message."
   },
