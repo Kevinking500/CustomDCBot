@@ -63,22 +63,34 @@ async function getLeaverStatus(client, userId) {
 }
 
 // Action logic
-
 async function sendPingWarning(client, message, target, moduleConfig) {
     const warningMsg = moduleConfig.pingWarningMessage;
     if (!warningMsg) return;
 
     const targetName = target.name || target.tag || target.username || 'Unknown';
     const targetMention = target.toString();
-
+    
     const placeholders = {
         '%target-name%': targetName,
         '%target-mention%': targetMention,
-        '%target-id%': target.id
+        '%target-id%': target.id,
+        '%user-id%': message.author.id
     };
 
-    const replyOptions = embedType(warningMsg, placeholders);
-    await message.reply(replyOptions).catch(() => {});
+    let replyOptions = embedType(warningMsg, placeholders);
+
+    if (!!moduleConfig.enableAutomod && !!moduleConfig.includeOriginalContent && message.content) {
+        const contentHeader = `\n\n**Original message content:**\n${message.content}`;
+        if (replyOptions.embeds && replyOptions.embeds.length > 0) {
+            replyOptions.embeds[0].description = (replyOptions.embeds[0].description || "") + contentHeader;
+        } else {
+            replyOptions.content = (replyOptions.content || "") + contentHeader;
+        }
+    }
+
+    return message.reply(replyOptions).catch(async () => {
+        return message.channel.send(replyOptions).catch(() => {});
+    });
 }
 
 async function executeAction(client, member, rule, reason, storageConfig) {

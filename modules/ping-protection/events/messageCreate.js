@@ -5,6 +5,7 @@ const {
     sendPingWarning 
 } = require('../ping-protection');
 const { localize } = require('../../../src/functions/localize');
+
 // Handles messages
 module.exports.run = async function (client, message) {
     if (!client.botReadyAt) return;
@@ -18,46 +19,48 @@ module.exports.run = async function (client, message) {
     
     if (!config) return;
 
+    // Checks for ignored channels and roles
     if (config.ignoredChannels.includes(message.channel.id)) return;
     if (message.member.roles.cache.some(role => config.ignoredRoles.includes(role.id))) return;
 
     const pingedProtectedRole = message.mentions.roles.some(role => config.protectedRoles.includes(role.id));
     const pingedProtectedUser = message.mentions.users.some(user => config.protectedUsers.includes(user.id));
+    
     if (!pingedProtectedRole && !pingedProtectedUser) return;
     
     const targetUser = message.mentions.users.find(u => config.protectedUsers.includes(u.id));
     const targetRole = message.mentions.roles.find(r => config.protectedRoles.includes(r.id));
     const target = targetUser || targetRole;
     
-    if (!storageConfig || !storageConfig.enablePingHistory) {      
-        await sendPingWarning(client, message, target, config);
-        return; 
-    }
-
+// Processes the ping
     let pingCount = 0;
     const pingerId = message.author.id;
     let timeframeWeeks = 12;
-    let rule1 = null; 
-    
-    if (moderationRules && Array.isArray(moderationRules) && moderationRules.length > 0) {
-        rule1 = moderationRules[0];
+    let rule1 = (moderationRules && Array.isArray(moderationRules) && moderationRules.length > 0) ? moderationRules[0] : null;
+
+    if (!!storageConfig && !!storageConfig.enablePingHistory) {      
+        try {
+            await addPing(client, message, target);
+
+            if (rule1 && !!rule1.advancedConfiguration) {
+                timeframeWeeks = rule1.timeframeWeeks;
+            } else {
+                timeframeWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
+            }
+
+            pingCount = await getPingCountInWindow(client, pingerId, timeframeWeeks);
+        } catch (e) {
+        }
     }
 
-    try {
-        await addPing(client, message, target);
-
-        if (rule1 && !!rule1.advancedConfiguration) {
-            timeframeWeeks = rule1.timeframeWeeks;
-        } else {
-            timeframeWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
-        }
-
-        pingCount = await getPingCountInWindow(client, pingerId, timeframeWeeks);
-
-    } catch (e) {}
-    
     await sendPingWarning(client, message, target, config);
+
+    if (!!config.enableAutomod) {
+        await message.delete().catch(() => {
+        });
+    }
     
+    // Moderation action logic
     if (!rule1 || !rule1.enableModeration) return;
     
     let requiredCount = 0;
@@ -71,6 +74,7 @@ module.exports.run = async function (client, message) {
         generatedReason = localize('ping-protection', 'reason-basic', { c: pingCount, w: timeframeWeeks });
     }
 
+    // Checks for recent punishments to prevent duplicate actions
     if (pingCount >= requiredCount) {
         const { Op } = require('sequelize');
         const oneMinuteAgo = new Date(new Date() - 60000);
@@ -94,7 +98,7 @@ module.exports.run = async function (client, message) {
                 return;
             }
         }
-        
+
         await executeAction(client, memberToPunish, rule1, generatedReason, storageConfig);
     }
 };

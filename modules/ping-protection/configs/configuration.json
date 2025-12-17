@@ -86,6 +86,31 @@
       }
     },
     {
+      "name": "enableAutomod",
+      "humanName": { 
+        "en": "Enable automod (Deletes original message)" 
+      },
+      "description": { 
+        "en": "If enabled, the bot will automatically delete the original message which pinged a protected user/role." 
+      },
+      "type": "boolean",
+      "default": { "en": true }
+    },
+    {
+      "name": "includeOriginalContent",
+      "humanName": { 
+        "en": "Allow original message content parameter" 
+      },
+      "description": { 
+        "en": "If enabled, you can use the %message-content% parameter in your warning message to show the original message content." 
+      },
+      "type": "boolean",
+      "default": { 
+        "en": true 
+      },
+      "dependsOn": "enableAutomod"
+    },
+    {
       "name": "pingWarningMessage",
       "humanName": { 
         "en": "Warning Message"
@@ -98,21 +123,27 @@
       "params": [
         {
           "name": "target-name",
-          "description": { "en": "Name of the pinged user/role", "de": "Name des gepingten Benutzers/der Rolle" }
+          "description": { 
+            "en": "Name of the pinged user/role" 
+          }
         },
         {
           "name": "target-mention",
-          "description": { "en": "Mention of the pinged user/role", "de": "Erwähnung des gepingten Benutzers/der Rolle" }
+          "description": { 
+            "en": "Mention of the pinged user/role" 
+          }
         },
         {
           "name": "target-id",
-          "description": { "en": "ID of the pinged user/role", "de": "ID des gepingten Benutzers/der Rolle" }
+          "description": { 
+            "en": "ID of the pinged user/role"
+          }
         }
       ],
       "default": {
         "en": {
           "title": "You are not allowed to ping %target-name%!",
-          "description": "You are not allowed to ping %target-mention% due to your role. You can view which roles/members you are not allowed to ping by using the `/ping protection list roles` or `/ping protection list members`.\n\nIf you were replying, make sure to turn off the mention in the reply.",
+          "description": "<@%user-id%>, You are not allowed to ping %target-mention% due to your role. You can view which roles/members you are not allowed to ping by using the `/ping protection list roles` or `/ping protection list members`.\n\nIf you were replying, make sure to turn off the mention in the reply.",
           "image": "https://c.tenor.com/zRR5cYKSIV0AAAAd/tenor.gif",
           "color": "RED"
         }
