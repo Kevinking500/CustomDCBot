@@ -1,6 +1,6 @@
 const { DataTypes, Model } = require('sequelize');
 
-module.exports = class ModerationLog extends Model {
+module.exports = class PingProtectionModerationLog extends Model {
     static init(sequelize) {
         return super.init({
             id: { 

@@ -1054,6 +1054,9 @@
     "modal-phrase": "I understand that all data of this user will be deleted and that this action cannot be undone.",
     "modal-failed": "The phrase you entered is incorrect. Data deletion cancelled.",
     "field-quick-history": "Quick history view (Last %w weeks)",
-    "field-quick-desc": "Pings history amount: %p\nModeration actions amount: %m"
+    "field-quick-desc": "Pings history amount: %p\nModeration actions amount: %m",
+    "history-disabled": "History logging has been disabled by a bot-configurator.\nAre you (one of) the bot-configurators? You can enable history logging in the \"storage\" tab in the 'ping-protection' module ^^",
+    "leaver-warning-long": "User left at %d. These logs will stay until automatic deletion.",
+    "leaver-warning-short": "User left at %d."
   }
 }

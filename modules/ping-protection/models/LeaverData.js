@@ -1,6 +1,6 @@
 const { DataTypes, Model } = require('sequelize');
 
-module.exports = class LeaverData extends Model {
+module.exports = class PingProtectionLeaverData extends Model {
     static init(sequelize) {
         return super.init({
             userId: {

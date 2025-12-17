@@ -18,7 +18,6 @@ module.exports.run = async function (client, interaction) {
             return; 
         }
 
-        // Moderation history pagination
         if (interaction.customId.startsWith('ping-protection_mod-page_')) {
             const parts = interaction.customId.split('_');
             const userId = parts[2];
@@ -32,13 +31,11 @@ module.exports.run = async function (client, interaction) {
         // Panel buttons
         const [prefix, action, userId] = interaction.customId.split('_');
         
-        // Checks for permissions
         const isAdmin = interaction.member.permissions.has('ADMINISTRATOR') || 
                         (client.config.admins || []).includes(interaction.user.id);
-        if (action !== 'delete' && !isAdmin && !prefix.includes('page')) {
-             if (['history', 'actions', 'delete'].includes(action)) {
-                 if (!isAdmin) return interaction.reply({ content: localize('ping-protection', 'no-permission'), ephemeral: true });
-             }
+
+        if (['history', 'actions', 'delete'].includes(action)) {
+             if (!isAdmin) return interaction.reply({ content: localize('ping-protection', 'no-permission'), ephemeral: true });
         }
 
         if (action === 'history') {
@@ -52,7 +49,6 @@ module.exports.run = async function (client, interaction) {
             replyOptions.ephemeral = false;
             await interaction.reply(replyOptions);
         }
-        // Handles data deletion button
         else if (action === 'delete') {
             const modal = new Modal()
                 .setCustomId(`ping-protection_confirm-delete_${userId}`)
@@ -72,7 +68,6 @@ module.exports.run = async function (client, interaction) {
         }
     }
 
-    // Modal Handling
     if (interaction.isModalSubmit() && interaction.customId.startsWith('ping-protection_confirm-delete_')) {
         const userId = interaction.customId.split('_')[2];
         const userInput = interaction.fields.getTextInputValue('confirmation_text');
@@ -80,7 +75,7 @@ module.exports.run = async function (client, interaction) {
 
         if (userInput === requiredPhrase) {
             await deleteAllUserData(client, userId);
-            await interaction.reply({ content: `✅ ${localize('ping-protection', 'log-manual-delete', {u: userId})}`, ephemeral: true });
+            await interaction.reply({ content: `✅ ${localize('ping-protection', 'log-manual-delete-logs', {u: userId})}`, ephemeral: true });
         } else {
             await interaction.reply({ content: `❌ ${localize('ping-protection', 'modal-failed')}`, ephemeral: true });
         }

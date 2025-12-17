@@ -1,62 +1,88 @@
 {
   "filename": "configuration.json",
   "humanName": {
-    "en": "General Configuration",
-    "de": "Allgemeine Konfiguration"
+    "en": "General Configuration"
   },
   "description": {
-    "en": "Configure protected users/roles, whitelisted roles/members, ignored channels and the notification message.",
-    "de": "Konfiguriere geschützte Benutzer/Rollen, erlaubte Rollen/Mitglieder, ignorierte Kanäle und die Benachrichtigungsnachricht."
+    "en": "Configure protected users/roles, whitelisted roles/members, ignored channels and the notification message."
   },
   "content": [
     {
       "name": "protectedRoles",
-      "humanName": { "en": "Protected Roles", "de": "Geschützte Rollen" },
-      "description": { "en": "Members with these roles will trigger protection when pinged.", "de": "Mitglieder mit diesen Rollen lösen den Schutz aus." },
+      "humanName": { 
+        "en": "Protected Roles"
+      },
+      "description": { 
+        "en": "Members with these roles will trigger protection when pinged."
+      },
       "type": "array",
       "content": "roleID",
-      "default": { "en": [] }
+      "default": { 
+        "en": [] 
+      }
     },
     {
       "name": "protectedUsers",
-      "humanName": { "en": "Protected Users", "de": "Geschützte Benutzer" },
-      "description": { "en": "Specific users who are protected from pings.", "de": "Spezifische Benutzer, die geschützt sind." },
+      "humanName": { 
+        "en": "Protected Users"
+      },
+      "description": { 
+        "en": "Specific users who are protected from pings."
+      },
       "type": "array",
       "content": "userID",
-      "default": { "en": [] }
+      "default": { 
+        "en": [] 
+      }
     },
     {
       "name": "ignoredRoles",
-      "humanName": { "en": "Whitelisted Roles", "de": "Erlaubte Rollen" },
-      "description": { "en": "Roles allowed to ping protected members or roles.", "de": "Rollen, die pingen dürfen." },
+      "humanName": { 
+        "en": "Whitelisted Roles"
+      },
+      "description": { 
+        "en": "Roles allowed to ping protected members or roles."
+      },
       "type": "array",
       "content": "roleID",
-      "default": { "en": [] }
+      "default": { 
+        "en": [] 
+      }
     },
     {
       "name": "ignoredChannels",
-      "humanName": { "en": "Ignored Channels", "de": "Ignorierte Kanäle" },
-      "description": { "en": "Pings in these channels are ignored.", "de": "Pings hier werden ignoriert." },
+      "humanName": { 
+        "en": "Ignored Channels" 
+      },
+      "description": { 
+        "en": "Pings in these channels are ignored."
+      },
       "type": "array",
       "content": "channelID",
-      "default": { "en": [] }
+      "default": { 
+        "en": [] 
+      }
     },
     {
       "name": "allowReplyPings",
-      "humanName": { "en": "Allow Reply Pings", "de": "Antwort-Pings erlauben" },
+      "humanName": { 
+        "en": "Allow Reply Pings" 
+      },
       "description": { 
-        "en": "If enabled, replying to a protected user (with mention ON) is allowed.", 
-        "de": "Wenn aktiviert, sind Antworten (mit Mention) an geschützte Benutzer erlaubt." 
+        "en": "If enabled, replying to a protected user (with mention ON) is allowed."
       },
       "type": "boolean",
-      "default": { "en": false }
+      "default": { 
+        "en": false 
+      }
     },
     {
       "name": "pingWarningMessage",
-      "humanName": { "en": "Warning Message", "de": "Warnnachricht" },
+      "humanName": { 
+        "en": "Warning Message"
+      },
       "description": {
-        "en": "The message that gets sent to the user when they ping someone.",
-        "de": "Die Nachricht, die an den Benutzer gesendet wird."
+        "en": "The message that gets sent to the user when they ping someone."
       },
       "type": "string",
       "allowEmbed": true,
@@ -78,12 +104,6 @@
         "en": {
           "title": "You are not allowed to ping %target-name%!",
           "description": "You are not allowed to ping %target-mention% due to your role. You can view which roles/members you are not allowed to ping by using the `/ping protection list roles` or `/ping protection list members`.\n\nIf you were replying, make sure to turn off the mention in the reply.",
-          "image": "https://c.tenor.com/zRR5cYKSIV0AAAAd/tenor.gif",
-          "color": "RED"
-        },
-        "de": {
-          "title": "Du darfst %target-name% nicht pingen!",
-          "description": "Du darfst %target-mention% aufgrund deiner Rolle nicht pingen. Du kannst sehen, welche Rollen/Mitglieder du nicht pingen darfst, indem du `/ping protection list roles` oder `/ping protection list members` benutzt.\n\nFalls du geantwortet hast, stelle sicher, dass die Erwähnung in der Antwort deaktiviert ist.",
           "image": "https://c.tenor.com/zRR5cYKSIV0AAAAd/tenor.gif",
           "color": "RED"
         }

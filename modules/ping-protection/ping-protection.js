@@ -4,11 +4,10 @@
  * @author itskevinnn
  */
 const { Op } = require('sequelize');
-const { MessageActionRow, MessageButton } = require('discord.js');
-const { embedType, formatDiscordUserName, formatDate } = require('../../src/functions/helpers');
+const { MessageActionRow, MessageButton, MessageEmbed } = require('discord.js');
+const { embedType, formatDate } = require('../../src/functions/helpers');
 const { localize } = require('../../src/functions/localize');
 
-const DISABLED_MSG = "History logging has been disabled by a bot-configurator.\nAre you (one of) the bot-configurators? You can enable history logging in the \"storage\" tab in the 'ping-protection' module ^^";
 // Core functions and logic
 async function addPing(client, message, target) {
     const isRole = !target.username; 
@@ -55,7 +54,6 @@ async function fetchModHistory(client, userId, page = 1, limit = 8) {
         });
         return { total: count, history: rows };
     } catch (e) {
-        client.logger.error(`[ping-protection] Failed to query ModerationLog: ${e.message}`);
         return { total: 0, history: [] };
     }
 }
@@ -80,9 +78,7 @@ async function sendPingWarning(client, message, target, moduleConfig) {
     };
 
     const replyOptions = embedType(warningMsg, placeholders);
-    await message.reply(replyOptions).catch((e) => {
-        client.logger.debug(`[ping-protection] Failed to send warning: ${e.message}`);
-    });
+    await message.reply(replyOptions).catch(() => {});
 }
 
 async function executeAction(client, member, rule, reason, storageConfig) {
@@ -91,13 +87,11 @@ async function executeAction(client, member, rule, reason, storageConfig) {
     
     const botMember = await member.guild.members.fetch(client.user.id);
     if (botMember.roles.highest.position <= member.roles.highest.position) {
-        client.logger.warn(`[ping-protection] Hierarchy Failure: Cannot moderate ${member.user.tag}.`);
         return false;
     }
 
     // Database logging
     const logDb = async (type, duration = null) => {
-        if (!storageConfig.enableModLogHistory) return;
         try {
             await client.models['ping-protection']['ModerationLog'].create({
                 victimID: member.id,
@@ -105,9 +99,7 @@ async function executeAction(client, member, rule, reason, storageConfig) {
                 actionDuration: duration,
                 reason
             });
-        } catch (dbError) {
-            client.logger.error(`[ping-protection] DB Insert Failed: ${dbError.message}`);
-        }
+        } catch (dbError) {}
     };
 
     if (actionType === 'MUTE') {
@@ -116,32 +108,27 @@ async function executeAction(client, member, rule, reason, storageConfig) {
         
         try {
             await member.timeout(durationMs, reason);
-            client.logger.info(`[ping-protection] Muted ${member.user.tag} for ${rule.muteDuration}m.`);
             return true;
         } catch (error) {
-            client.logger.error(`[ping-protection] Mute failed: ${error.message}`);
             return false;
         }
     } else if (actionType === 'KICK') {
         await logDb('KICK');
         try {
             await member.kick(reason);
-            client.logger.info(`[ping-protection] Kicked ${member.user.tag}.`);
             return true;
         } catch (error) {
-            client.logger.error(`[ping-protection] Kick failed: ${error.message}`);
             return false;
         }
     }
     return false;
 }
 
-// View generations
-
+// Generates history and actions responses
 async function generateHistoryResponse(client, userId, page = 1) {
     const storageConfig = client.configurations['ping-protection']['storage'];
     const limit = 8;
-    const isEnabled = storageConfig.enablePingHistory;
+    const isEnabled = !!storageConfig.enablePingHistory;
 
     let total = 0, history = [], totalPages = 1;
 
@@ -155,29 +142,31 @@ async function generateHistoryResponse(client, userId, page = 1) {
     const user = await client.users.fetch(userId).catch(() => ({ username: 'Unknown User', displayAvatarURL: () => null }));
     const leaverData = await getLeaverStatus(client, userId);
     let description = "";
-
+    
     if (leaverData) {
         const dateStr = formatDate(leaverData.leftAt);
         if (history.length > 0) {
-            description += `⚠️ User left at ${dateStr}. These logs will stay until automatic deletion.\n\n`;
+            description += `⚠️ ${localize('ping-protection', 'leaver-warning-long', { d: dateStr })}\n\n`;
         } else {
-            description += `⚠️ User left at ${dateStr}.\n\n`;
+            description += `⚠️ ${localize('ping-protection', 'leaver-warning-short', { d: dateStr })}\n\n`;
         }
     }
 
     if (!isEnabled) {
-        description += DISABLED_MSG;
+        description += localize('ping-protection', 'history-disabled');
     } else if (history.length === 0) {
         description += localize('ping-protection', 'no-data-found');
     } else {
         const lines = history.map((entry, index) => {
             const timeString = formatDate(entry.createdAt);
             let targetString = "Unknown";
+            
             if (entry.targetId) {
                 targetString = entry.isRole ? `<@&${entry.targetId}>` : `<@${entry.targetId}>`; 
             } else {
-                targetString = "Detected"; 
+                targetString = "Detected";
             }
+            
             return `${(page - 1) * limit + index + 1}. **Pinged ${targetString}** at ${timeString}\n[Jump to Message](${entry.messageUrl})`;
         });
         description += lines.join('\n\n');
@@ -189,23 +178,19 @@ async function generateHistoryResponse(client, userId, page = 1) {
         new MessageButton().setCustomId(`ping-protection_hist-page_${userId}_${page + 1}`).setLabel('Next').setStyle('PRIMARY').setDisabled(page >= totalPages || !isEnabled)
     );
 
-    const replyOptions = embedType({
-        _schema: 'v3',
-        embeds: [{
-            title: localize('ping-protection', 'embed-history-title', { u: user.username }),
-            thumbnailURL: user.displayAvatarURL({ dynamic: true }),
-            description: description,
-            color: 'ORANGE'
-        }]
-    });
-    replyOptions.components = [row];
-    return replyOptions;
+    const embed = new MessageEmbed()
+        .setTitle(localize('ping-protection', 'embed-history-title', { u: user.username }))
+        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+        .setDescription(description)
+        .setColor('ORANGE');
+
+    return { embeds: [embed], components: [row], ephemeral: false };
 }
-// Generates the actions view
+
 async function generateActionsResponse(client, userId, page = 1) {
     const storageConfig = client.configurations['ping-protection']['storage'];
     const limit = 8;
-    const isEnabled = storageConfig.enableModLogHistory;
+    const isEnabled = true; 
 
     let total = 0, history = [], totalPages = 1;
 
@@ -219,15 +204,14 @@ async function generateActionsResponse(client, userId, page = 1) {
     const user = await client.users.fetch(userId).catch(() => ({ username: 'Unknown User', displayAvatarURL: () => null }));
     let description = "";
 
-    if (!isEnabled) {
-        description = DISABLED_MSG;
-    } else if (history.length === 0) {
+    if (history.length === 0) {
         description = localize('ping-protection', 'no-data-found');
     } else {
         const lines = history.map((entry, index) => {
             const duration = entry.actionDuration ? ` (${entry.actionDuration}m)` : '';
             const reasonText = entry.reason || localize('ping-protection', 'no-reason') || 'No reason';
             const timeString = formatDate(entry.createdAt);
+            
             return `${(page - 1) * limit + index + 1}. **${entry.type}${duration}** - ${timeString}\n${localize('ping-protection', 'label-reason')}: ${reasonText}`;
         });
         description = lines.join('\n\n') + `\n\n*${localize('ping-protection', 'actions-retention-note')}*`;
@@ -239,21 +223,16 @@ async function generateActionsResponse(client, userId, page = 1) {
         new MessageButton().setCustomId(`ping-protection_mod-page_${userId}_${page + 1}`).setLabel('Next').setStyle('PRIMARY').setDisabled(page >= totalPages || !isEnabled)
     );
 
-    const replyOptions = embedType({
-        _schema: 'v3',
-        embeds: [{
-            title: localize('ping-protection', 'embed-actions-title', { u: user.username }),
-            thumbnailURL: user.displayAvatarURL({ dynamic: true }),
-            description: description,
-            color: 'RED'
-        }]
-    });
-    replyOptions.components = [row];
-    return replyOptions;
+    const embed = new MessageEmbed()
+        .setTitle(localize('ping-protection', 'embed-actions-title', { u: user.username }))
+        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+        .setDescription(description)
+        .setColor('RED');
+
+    return { embeds: [embed], components: [row], ephemeral: false };
 }
 
 // Manages data deletion
-
 async function deleteAllUserData(client, userId) {
     await client.models['ping-protection']['PingHistory'].destroy({ where: { userId: userId } });
     await client.models['ping-protection']['ModerationLog'].destroy({ where: { victimID: userId } });
@@ -279,7 +258,7 @@ async function enforceRetention(client) {
         await client.models['ping-protection']['PingHistory'].destroy({ where: { createdAt: { [Op.lt]: historyCutoff } } });
     }
 
-    if (storageConfig.enableModLogHistory) {
+    if (storageConfig.modLogRetention) {
         const modCutoff = new Date();
         modCutoff.setMonth(modCutoff.getMonth() - (storageConfig.modLogRetention || 6));
         await client.models['ping-protection']['ModerationLog'].destroy({ where: { createdAt: { [Op.lt]: modCutoff } } });

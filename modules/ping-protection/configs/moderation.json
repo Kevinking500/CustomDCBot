@@ -1,70 +1,110 @@
 {
   "filename": "moderation.json",
-  "humanName": { 
-    "en": "Moderation Actions", 
-    "de": "Bestrafungsaktionen" 
+  "humanName": {
+    "en": "Moderation Actions"
   },
   "description": {
-    "en": "Define triggers for punishments.",
-    "de": "Definiere Auslöser für Bestrafungen."
+    "en": "Define triggers for punishments."
   },
   "configElements": true,
   "content": [
     {
       "name": "enableModeration",
-      "humanName": { "en": "Enable Moderation Actions", "de": "Bestrafungsaktionen aktivieren" },
-      "description": { "en": "If enabled, members who ping protected users/roles repeatedly will be punished.", "de": "Wenn aktiviert, werden Mitglieder, die geschützte Benutzer/Rollen wiederholt pingen, bestraft." },
+      "humanName": {
+        "en": "Enable Moderation Actions"
+      },
+      "description": {
+        "en": "If enabled, members who ping protected users/roles repeatedly will be punished. NOTE: THIS WILL NOT WORK WHEN PINGS HISTORY LOGGING IS DISABLED!"
+      },
       "type": "boolean",
-      "default": { "en": false }
+      "default": {
+        "en": false
+      },
+      "elementToggle": true
     },
     {
       "name": "advancedConfiguration",
-      "humanName": { "en": "Use Advanced Configuration", "de": "Erweiterte Konfiguration verwenden" },
-      "description": { "en": "If enabled, the advanced configuration below will be used and the basic configuration will be ignored.", "de": "Wenn aktiviert, wird die untenstehende erweiterte Konfiguration verwendet und die Basis-Konfiguration ignoriert." },
+      "humanName": {
+        "en": "Use Advanced Configuration"
+      },
+      "description": {
+        "en": "If enabled, the advanced configuration below will be used and the basic configuration will be ignored. This allows you to customize the custom timeframe. In the future, this will allow for almost full customization."
+      },
       "type": "boolean",
-      "default": { "en": false },
-      "dependsOn": "enableModeration"
+      "default": {
+        "en": false
+      }
     },
     {
       "name": "pingsCountBasic",
-      "humanName": { "en": "Pings to trigger moderation", "de": "Pings für Bestrafung" },
-      "description": { "en": "The amount of pings required to trigger a moderation action (Uses 'Ping History Retention' timeframe).", "de": "Anzahl Pings für Bestrafung (Nutzt 'Ping-Verlauf Speicherzeit')." },
+      "humanName": {
+        "en": "Pings to trigger moderation"
+      },
+      "description": {
+        "en": "The amount of pings required to trigger a moderation action (Uses 'Ping History Retention' timeframe)."
+      },
       "type": "integer",
-      "default": { "en": 10 },
-      "dependsOn": "enableModeration"
+      "default": {
+        "en": 10
+      }
     },
     {
       "name": "pingsCountAdvanced",
-      "humanName": { "en": "Pings to trigger (Advanced)", "de": "Pings für Bestrafung (Erweitert)" },
-      "description": { "en": "The amount of pings required in the custom timeframe below.", "de": "Anzahl Pings im unten gewählten Zeitraum." },
+      "humanName": {
+        "en": "Pings to trigger (Advanced)"
+      },
+      "description": {
+        "en": "The amount of pings required in the custom timeframe below."
+      },
       "type": "integer",
-      "default": { "en": 5 },
+      "default": {
+        "en": 5
+      },
       "dependsOn": "advancedConfiguration"
     },
     {
       "name": "timeframeWeeks",
-      "humanName": { "en": "Timeframe (Weeks)", "de": "Zeitraum (Wochen)" },
-      "description": { "en": "In how many weeks must these pings occur?", "de": "In wie vielen Wochen müssen diese Pings passieren?" },
+      "humanName": {
+        "en": "Timeframe (Weeks)"
+      },
+      "description": {
+        "en": "In how many weeks must these pings occur?"
+      },
       "type": "integer",
-      "default": { "en": 1 },
+      "default": {
+        "en": 1
+      },
       "dependsOn": "advancedConfiguration"
     },
     {
       "name": "actionType",
-      "humanName": { "en": "Action", "de": "Aktion" },
-      "description": { "en": "What punishment should be applied?", "de": "Welche Strafe soll verhängt werden?" },
+      "humanName": {
+        "en": "Action"
+      },
+      "description": {
+        "en": "What punishment should be applied?"
+      },
       "type": "select",
-      "content": ["MUTE", "KICK"],
-      "default": { "en": "MUTE" },
-      "dependsOn": "enableModeration"
+      "content": [
+        "MUTE",
+        "KICK"
+      ],
+      "default": {
+        "en": "MUTE"
+      }
     },
     {
       "name": "muteDuration",
-      "humanName": { "en": "Mute Duration (only if action type is MUTE)", "de": "Mute-Dauer (nur wenn Aktionstyp MUTE ist)" },
-      "description": { "en": "How long to mute the user? (in minutes)", "de": "Wie lange soll der User gemutet werden? (in Minuten)" },
+      "humanName": {
+        "en": "Mute Duration (only if action type is MUTE)"
+      },
+      "description": {
+        "en": "How long to mute the user? (in minutes)"
+      },
       "type": "integer",
-      "default": { "en": 60 },
-      "dependsOn": "enableModeration"
+      "default": {
+        "en": 60
+      }
     }
   ]
 }

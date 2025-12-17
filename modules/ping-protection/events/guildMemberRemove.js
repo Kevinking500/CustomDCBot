@@ -6,7 +6,7 @@ const { markUserAsLeft, deleteAllUserData } = require('../ping-protection');
 
 module.exports.run = async function (client, member) {
     if (!client.botReadyAt) return;
-    if (member.guild.id !== client.config.guildID) return;
+    if (member.guild.id !== client.guildID) return;
 
     const storageConfig = client.configurations['ping-protection']['storage'];
 
