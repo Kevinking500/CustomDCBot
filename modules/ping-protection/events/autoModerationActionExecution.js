@@ -9,7 +9,7 @@ const {
 const { localize } = require('../../../src/functions/localize');
 
 module.exports.run = async function (client, execution) {
-    if (execution.ruleTriggerType !== 1) return; 
+    if (execution.ruleTriggerType !== 'KEYWORD') return; 
 
     const config = client.configurations['ping-protection']['configuration'];
     const storageConfig = client.configurations['ping-protection']['storage'];
@@ -20,7 +20,6 @@ module.exports.run = async function (client, execution) {
     const matchedKeyword = execution.matchedKeyword || "";
     const rawId = matchedKeyword.replace(/\*/g, '');
     
-    // Check if ID is in the protected lists
     const isProtected = config.protectedRoles.includes(rawId) || config.protectedUsers.includes(rawId);
     if (!isProtected) return;
 
@@ -46,7 +45,6 @@ module.exports.run = async function (client, execution) {
         }
     }
 
-    // Moderation actions
     if (!rule1 || !rule1.enableModeration) return;
     
     let requiredCount = (rule1.advancedConfiguration) ? rule1.pingsCountAdvanced : rule1.pingsCountBasic;

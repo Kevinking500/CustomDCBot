@@ -136,44 +136,50 @@ async function syncNativeAutoMod(client) {
         const guild = await client.guilds.fetch(client.guildID);
         const rules = await guild.autoModerationRules.fetch();
         const existingRule = rules.find(r => r.name === 'SCNX Ping Protection');
-        const protectedIds = [...(config.protectedRoles || []), ...(config.protectedUsers || [])];
 
+        const protectedIds = [...(config.protectedRoles || []), ...(config.protectedUsers || [])];
+        
         if (protectedIds.length === 0) {
             if (existingRule) await existingRule.delete().catch(() => {});
             return;
         }
 
-        const baseData = {
+        const actions = [{ type: 1 }]; 
+
+        const alertChannelId = getSafeChannelId(config.autoModLogChannel);
+
+        if (alertChannelId) {
+            actions.push({
+                type: 2, 
+                metadata: {
+                    channel: alertChannelId 
+                }
+            });
+        }
+
+        const ruleData = {
             name: 'SCNX Ping Protection',
             eventType: 1, 
             triggerType: 1, 
             triggerMetadata: {
-                keywordFilter: protectedIds.map(id => `*${id}*`)
+                keywordFilter: protectedIds.map(id => `*${id}*`) 
             },
+            actions: actions,
             enabled: true,
             exemptRoles: config.ignoredRoles || [],
             exemptChannels: config.ignoredChannels || []
         };
 
         if (existingRule) {
-            const hasBlockAction = existingRule.actions.some(a => a.type === 1);
-            if (!hasBlockAction) {
-                const newActions = existingRule.actions.map(a => ({ type: a.type, metadata: a.metadata }));
-                newActions.push({ type: 1 });
-                baseData.actions = newActions;
-                client.logger.info('[ping-protection] Adding missing Block Action to rule.');
-            } else {
-                client.logger.info('[ping-protection] Updating keywords only (Preserving Manual Actions).');
-            }
-            await guild.autoModerationRules.edit(existingRule.id, baseData);
+            await guild.autoModerationRules.edit(existingRule.id, ruleData);
+            client.logger.info(`[ping-protection] AutoMod synced. Actions: ${actions.length}`);
         } else {
-            baseData.actions = [{ type: 1 }];
-            await guild.autoModerationRules.create(baseData);
-            client.logger.info('[ping-protection] Created new AutoMod rule (Block Only - Add Alert Manually).');
+            await guild.autoModerationRules.create(ruleData);
+            client.logger.info(`[ping-protection] AutoMod created. Actions: ${actions.length}`);
         }
-
     } catch (e) {
         client.logger.error(`[ping-protection] AutoMod Sync Failed: ${e.message}`);
+        if (e.rawError) client.logger.error(JSON.stringify(e.rawError, null, 2));
     }
 }
 
@@ -201,10 +207,10 @@ async function handleAutoModAlert(client, alertMessage) {
     if (!originalChannelId && alertMessage.components) {
         for (const row of alertMessage.components) {
             for (const component of row.components) {
-                if (component.url && component.url.includes('/channels/')) {
-                    const match = component.url.match(/channels\/\d+\/(\d{17,19})/);
-                    if (match) {
-                        originalChannelId = match[1];
+                if (component.style === 5 && component.url && component.url.includes('/channels/')) {
+                    const parts = component.url.split('/');
+                    if (parts.length >= 2) {
+                        originalChannelId = parts[parts.length - 2];
                         break;
                     }
                 }
@@ -219,11 +225,10 @@ async function handleAutoModAlert(client, alertMessage) {
     }
 
     if (!originalChannelId) {
-        const urlMatch = fullText.match(/channels\/\d+\/(\d{17,19})/);
-        if (urlMatch) originalChannelId = urlMatch[1];
-    }
-
-    if (!originalChannelId) {
+        // DEBUG: Log the components to see what's failing
+        if (alertMessage.components.length > 0) {
+            client.logger.info(`[ping-protection] Debug Components: ${JSON.stringify(alertMessage.components)}`);
+        }
         client.logger.warn('[ping-protection] Repost Failed: Could not extract Channel ID.');
         return;
     }
