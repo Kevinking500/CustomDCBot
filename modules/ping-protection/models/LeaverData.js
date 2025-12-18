@@ -7,7 +7,6 @@ module.exports = class PingProtectionLeaverData extends Model {
                 type: DataTypes.STRING,
                 primaryKey: true
             },
-            // Timestamp of when the user left, used for cooldown calculations
             leftAt: {
                 type: DataTypes.DATE,
                 defaultValue: DataTypes.NOW

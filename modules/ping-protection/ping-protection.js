@@ -8,11 +8,12 @@ const { MessageActionRow, MessageButton, MessageEmbed } = require('discord.js');
 const { embedType, embedTypeV2, formatDate } = require('../../src/functions/helpers');
 const { localize } = require('../../src/functions/localize');
 
-async function addPing(client, message, target) {
+// Data handling
+async function addPing(client, messageObj, target) {
     const isRole = !target.username; 
     await client.models['ping-protection']['PingHistory'].create({
-        userId: message.author.id,
-        messageUrl: message.url || 'Blocked by AutoMod',
+        userId: messageObj.author.id,
+        messageUrl: messageObj.url || 'Blocked by AutoMod',
         targetId: target.id,
         isRole: isRole
     });
@@ -61,6 +62,7 @@ async function getLeaverStatus(client, userId) {
     return await client.models['ping-protection']['LeaverData'].findByPk(userId);
 }
 
+// Makes sure the channel ID from config is valid for Discord
 function getSafeChannelId(configValue) {
     if (!configValue) return null;
     let rawId = null;
@@ -90,70 +92,46 @@ async function sendPingWarning(client, message, target, moduleConfig) {
         return message.channel.send(messageOptions).catch(() => {});
     });
 }
-
-async function sendAutoModRepost(client, channel, author, content, targetId, moduleConfig) {
-    if (!moduleConfig.sendContentAsBot) return null;
-
-    const warningMsg = moduleConfig.pingWarningMessage;
-    const targetMention = `<@${targetId}>`; 
-    
-    const placeholders = {
-        '%target-name%': 'Protected Target',
-        '%target-mention%': targetMention,
-        '%target-id%': targetId,
-        '%user-id%': author.id
-    };
-    
-    let warningOptions = await embedTypeV2(warningMsg, placeholders);
-    let warningText = "";
-
-    if (warningOptions.embeds && warningOptions.embeds.length > 0) {
-        warningText = warningOptions.embeds[0].description || "";
-    } else {
-        warningText = warningOptions.content || "";
-    }
-
-    const embed = new MessageEmbed()
-        .setAuthor({ name: author.tag, iconURL: author.displayAvatarURL({ dynamic: true }) })
-        .setTitle(localize('ping-protection', 'automod-block-title') || "New message with a blocked ping")
-        .setDescription(`${content}\n\n${warningText}`)
-        .setColor('RED')
-        .setFooter({ text: client.strings.footer, iconURL: client.strings.footerImgUrl });
-
-    if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
-
-    return await channel.send({ embeds: [embed] }).catch((err) => {
-        client.logger.error(`[ping-protection] Repost Failed: ${err.message}`);
-        return null;
-    });
-}
-
+// Syncs the native AutoMod rule based on configuration
 async function syncNativeAutoMod(client) {
     const config = client.configurations['ping-protection']['configuration'];
-    if (!config || !config.enableAutomod) return;
-
+    
     try {
         const guild = await client.guilds.fetch(client.guildID);
         const rules = await guild.autoModerationRules.fetch();
         const existingRule = rules.find(r => r.name === 'SCNX Ping Protection');
 
-        const protectedIds = [...(config.protectedRoles || []), ...(config.protectedUsers || [])];
-        
-        if (protectedIds.length === 0) {
-            if (existingRule) await existingRule.delete().catch(() => {});
+        // Logic to disable/delete the rule
+        if (!config || !config.enableAutomod) {
+            if (existingRule) {
+                await existingRule.delete().catch(() => {});
+            }
             return;
         }
 
-        const actions = [{ type: 1 }]; 
+        const protectedIds = [...(config.protectedRoles || []), ...(config.protectedUsers || [])];
+        
+        // Deletest the rule if there are no protected IDs
+        if (protectedIds.length === 0) {
+            if (existingRule) {
+                await existingRule.delete().catch(() => {});
+            }
+            return;
+        }
+        
+        // AutoMod rule data
+        const actions = [];
+        const blockMetadata = {};
+        if (config.autoModBlockMessage) {
+            blockMetadata.customMessage = config.autoModBlockMessage;
+        }
+        actions.push({ type: 1, metadata: blockMetadata });
 
         const alertChannelId = getSafeChannelId(config.autoModLogChannel);
-
         if (alertChannelId) {
             actions.push({
                 type: 2, 
-                metadata: {
-                    channel: alertChannelId 
-                }
+                metadata: { channel: alertChannelId }
             });
         }
 
@@ -172,121 +150,14 @@ async function syncNativeAutoMod(client) {
 
         if (existingRule) {
             await guild.autoModerationRules.edit(existingRule.id, ruleData);
-            client.logger.info(`[ping-protection] AutoMod synced. Actions: ${actions.length}`);
         } else {
             await guild.autoModerationRules.create(ruleData);
-            client.logger.info(`[ping-protection] AutoMod created. Actions: ${actions.length}`);
         }
     } catch (e) {
-        client.logger.error(`[ping-protection] AutoMod Sync Failed: ${e.message}`);
-        if (e.rawError) client.logger.error(JSON.stringify(e.rawError, null, 2));
+        client.logger.error(`[ping-protection] AutoMod Sync/Cleanup Failed: ${e.message}`);
     }
 }
-
-async function handleAutoModAlert(client, alertMessage) {
-    const config = client.configurations['ping-protection']['configuration'];
-    if (!config) return;
-
-    let fullText = alertMessage.content || "";
-    if (alertMessage.embeds.length > 0) {
-        const embed = alertMessage.embeds[0];
-        fullText += " " + (embed.title || "");
-        fullText += " " + (embed.description || "");
-        fullText += " " + (embed.footer ? embed.footer.text : "");
-        if (embed.fields) {
-            embed.fields.forEach(f => fullText += " " + f.value + " " + f.name);
-        }
-    }
-
-    let originalChannelId = null;
-
-    if (alertMessage.mentions.channels.size > 0) {
-        originalChannelId = alertMessage.mentions.channels.first().id;
-    }
-
-    if (!originalChannelId && alertMessage.components) {
-        for (const row of alertMessage.components) {
-            for (const component of row.components) {
-                if (component.style === 5 && component.url && component.url.includes('/channels/')) {
-                    const parts = component.url.split('/');
-                    if (parts.length >= 2) {
-                        originalChannelId = parts[parts.length - 2];
-                        break;
-                    }
-                }
-            }
-            if (originalChannelId) break;
-        }
-    }
-
-    if (!originalChannelId) {
-        const mentionMatch = fullText.match(/<#(\d{17,19})>/);
-        if (mentionMatch) originalChannelId = mentionMatch[1];
-    }
-
-    if (!originalChannelId) {
-        // DEBUG: Log the components to see what's failing
-        if (alertMessage.components.length > 0) {
-            client.logger.info(`[ping-protection] Debug Components: ${JSON.stringify(alertMessage.components)}`);
-        }
-        client.logger.warn('[ping-protection] Repost Failed: Could not extract Channel ID.');
-        return;
-    }
-
-    let userId = null;
-
-    if (alertMessage.mentions.users.size > 0) {
-        const found = alertMessage.mentions.users.find(u => u.id !== client.user.id);
-        if (found) userId = found.id;
-    }
-
-    if (!userId) {
-        const parenMatch = fullText.match(/\((\d{17,19})\)/);
-        if (parenMatch) userId = parenMatch[1];
-    }
-
-    if (!userId) {
-        const mentionMatch = fullText.match(/<@!?(\d{17,19})>/);
-        if (mentionMatch) userId = mentionMatch[1];
-    }
-
-    if (!userId) {
-        client.logger.warn('[ping-protection] Repost Failed: Could not extract User ID.');
-        return;
-    }
-
-    let content = "*[Content Hidden]*";
-    if (alertMessage.embeds.length > 0) {
-        const embed = alertMessage.embeds[0];
-        if (embed.description && embed.description.length > 20) {
-             content = embed.description;
-        }
-        const contentField = embed.fields.find(f => f.name && (f.name.includes('Content') || f.name.includes('Message')));
-        if (contentField) content = contentField.value;
-    }
-
-    let targetId = "Protected User";
-    const keywordMatch = fullText.match(/Keyword:\s*\*?(\d+)\*?/);
-    if (keywordMatch) targetId = keywordMatch[1];
-
-    const author = await client.users.fetch(userId).catch(() => null);
-    const originalChannel = await client.channels.fetch(originalChannelId).catch(() => null);
-
-    if (author && originalChannel) {
-        const reposted = await sendAutoModRepost(client, originalChannel, author, content, targetId, config);
-        
-        const storageConfig = client.configurations['ping-protection']['storage'];
-        if (!!storageConfig && !!storageConfig.enablePingHistory) {
-            const logUrl = reposted ? reposted.url : 'Blocked by AutoMod';
-            const mockMessage = { author: { id: userId }, url: logUrl };
-            const mockTarget = { id: targetId }; 
-            await addPing(client, mockMessage, mockTarget);
-        }
-    } else {
-        client.logger.error(`[ping-protection] Resolution Failed: Author: ${!!author}, Channel: ${!!originalChannel}`);
-    }
-}
-
+// Generates history response
 async function generateHistoryResponse(client, userId, page = 1) {
     const storageConfig = client.configurations['ping-protection']['storage'];
     const limit = 8;
@@ -340,7 +211,7 @@ async function generateHistoryResponse(client, userId, page = 1) {
 
     return { embeds: [embed], components: [row] };
 }
-
+// Generates actions response
 async function generateActionsResponse(client, userId, page = 1) {
     const moderationConfig = client.configurations['ping-protection']['moderation'];
     const limit = 8;
@@ -390,7 +261,7 @@ async function generateActionsResponse(client, userId, page = 1) {
 
     return { embeds: [embed], components: [row] };
 }
-
+// Handles data deletion
 async function deleteAllUserData(client, userId) {
     await client.models['ping-protection']['PingHistory'].destroy({ where: { userId: userId } });
     await client.models['ping-protection']['ModerationLog'].destroy({ where: { victimID: userId } });
@@ -426,6 +297,7 @@ async function enforceRetention(client) {
         }
     }
 }
+
 async function executeAction(client, member, rule, reason, storageConfig) {
     const actionType = rule.actionType; 
     if (!member) return false;
@@ -453,7 +325,6 @@ module.exports = {
     addPing,
     getPingCountInWindow,
     sendPingWarning,
-    sendAutoModRepost,
     syncNativeAutoMod,
     fetchPingHistory,
     fetchModHistory,
@@ -465,6 +336,5 @@ module.exports = {
     enforceRetention,
     generateHistoryResponse,
     generateActionsResponse,
-    handleAutoModAlert,
     getSafeChannelId
 };

@@ -2,11 +2,10 @@ const {
     addPing, 
     getPingCountInWindow, 
     executeAction, 
-    sendPingWarning,
-    handleAutoModAlert
+    sendPingWarning
 } = require('../ping-protection');
 const { localize } = require('../../../src/functions/localize');
-
+// Handles messages
 module.exports.run = async function (client, message) {
     if (!client.botReadyAt) return;
     if (!message.guild) return;
@@ -17,12 +16,7 @@ module.exports.run = async function (client, message) {
     const moderationRules = client.configurations['ping-protection']['moderation'];
     
     if (!config) return;
-    
-    if ((message.system || message.author.system) && message.embeds.length > 0) {
-        await handleAutoModAlert(client, message);
-        return; 
-    }
-    
+
     if (message.author.bot) return;
 
     if (config.ignoredChannels.includes(message.channel.id)) return;
@@ -52,9 +46,9 @@ module.exports.run = async function (client, message) {
             pingCount = await getPingCountInWindow(client, pingerId, timeframeWeeks);
         } catch (e) {}
     }
-
+    // Send warning if enabled and moderation actions
     await sendPingWarning(client, message, target, config);
-
+    
     if (!rule1 || !rule1.enableModeration) return;
     
     let requiredCount = 0;

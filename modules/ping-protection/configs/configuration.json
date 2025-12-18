@@ -114,16 +114,16 @@
       "dependsOn": "enableAutomod"
     },
     {
-      "name": "sendContentAsBot",
+      "name": "autoModBlockMessage",
       "humanName": { 
-        "en": "Repost blocked content" 
-      },
+        "en": "AutoMod custom message for message block" },
       "description": { 
-        "en": "If enabled, the bot will repost the blocked message content in the original channel without the ping." 
+        "en": "Custom text shown to the user when blocked (Max 150 characters)." 
       },
-      "type": "boolean",
+      "type": "string",
+      "maxLength": 150,
       "default": { 
-        "en": true 
+        "en": "Protected User Ping: Your message was blocked but the content was sent to the log channel." 
       },
       "dependsOn": "enableAutomod"
     },

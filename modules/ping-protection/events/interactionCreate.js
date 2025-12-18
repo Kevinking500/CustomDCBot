@@ -75,7 +75,7 @@ module.exports.run = async function (client, interaction) {
 
         if (userInput === requiredPhrase) {
             await deleteAllUserData(client, userId);
-            await interaction.reply({ content: `✅ ${localize('ping-protection', 'log-manual-delete-logs', {u: userId})}`, ephemeral: true });
+            await interaction.reply({ content: `✅ ${localize('ping-protection', 'log-manual-delete', {u: userId})}`, ephemeral: true });
         } else {
             await interaction.reply({ content: `❌ ${localize('ping-protection', 'modal-failed')}`, ephemeral: true });
         }

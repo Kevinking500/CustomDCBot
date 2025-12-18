@@ -1,13 +1,10 @@
-/**
- * Event: autoModerationActionExecution
- */
 const { 
     addPing, 
     getPingCountInWindow, 
     executeAction 
 } = require('../ping-protection');
 const { localize } = require('../../../src/functions/localize');
-
+// Handles auto mod actions
 module.exports.run = async function (client, execution) {
     if (execution.ruleTriggerType !== 'KEYWORD') return; 
 
@@ -41,7 +38,6 @@ module.exports.run = async function (client, execution) {
             }
             pingCount = await getPingCountInWindow(client, execution.userId, timeframeWeeks);
         } catch (e) {
-            client.logger.error(`[ping-protection] DB Log Failed: ${e.message}`);
         }
     }
 
