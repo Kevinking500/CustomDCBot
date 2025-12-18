@@ -1,12 +1,15 @@
-const { enforceRetention } = require('../ping-protection');
+const { enforceRetention, syncNativeAutoMod } = require('../ping-protection');
 const schedule = require('node-schedule');
 
 module.exports.run = async function (client) {
     await enforceRetention(client);
+    await syncNativeAutoMod(client);
+    client.logger.info('[ping-protection] Native AutoMod rule synced.');
 
-    // Schedules daily retention at 03:00 local bot time with cronjob
+    // Daily job
     const job = schedule.scheduleJob('0 3 * * *', async () => {
         await enforceRetention(client);
+        await syncNativeAutoMod(client);
     });
     client.jobs.push(job);
 };

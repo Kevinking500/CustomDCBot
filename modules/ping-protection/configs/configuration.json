@@ -88,21 +88,38 @@
     {
       "name": "enableAutomod",
       "humanName": { 
-        "en": "Enable automod (Deletes original message)" 
+        "en": "Enable automod" 
       },
       "description": { 
-        "en": "If enabled, the bot will automatically delete the original message which pinged a protected user/role." 
+        "en": "If enabled, the bot will utilise Discord's native AutoMod to block the message with a ping of a protected user/role." 
       },
       "type": "boolean",
-      "default": { "en": true }
+      "default": { 
+        "en": true 
+      }
     },
     {
-      "name": "includeOriginalContent",
+      "name": "autoModLogChannel",
       "humanName": { 
-        "en": "Allow original message content parameter" 
+        "en": "AutoMod Log Channel" 
       },
       "description": { 
-        "en": "If enabled, you can use the %message-content% parameter in your warning message to show the original message content." 
+        "en": "Channel where AutoMod alerts are sent." 
+      },
+      "type": "array",
+      "content": "channelID",
+      "default": { 
+        "en": [] 
+      },
+      "dependsOn": "enableAutomod"
+    },
+    {
+      "name": "sendContentAsBot",
+      "humanName": { 
+        "en": "Repost blocked content" 
+      },
+      "description": { 
+        "en": "If enabled, the bot will repost the blocked message content in the original channel without the ping." 
       },
       "type": "boolean",
       "default": { 

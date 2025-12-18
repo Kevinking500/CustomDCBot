@@ -1057,6 +1057,7 @@
     "field-quick-desc": "Pings history amount: %p\nModeration actions amount: %m",
     "history-disabled": "History logging has been disabled by a bot-configurator.\nAre you (one of) the bot-configurators? You can enable history logging in the \"storage\" tab in the 'ping-protection' module ^^",
     "leaver-warning-long": "User left at %d. These logs will stay until automatic deletion.",
-    "leaver-warning-short": "User left at %d."
+    "leaver-warning-short": "User left at %d.",
+    "warning-mod-disabled": "⚠️ **Moderation Actions are disabled!**\nYou can enable them in the dashboard under 'Moderation' to start logging punishments automatically."
   }
 }

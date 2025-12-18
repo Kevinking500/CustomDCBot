@@ -125,9 +125,15 @@ async function listHandler(interaction, type) {
   if (contentList.length === 0) contentList = [localize('ping-protection', 'list-empty')];
 
   const embed = new MessageEmbed()
-    .setTitle(title)
-    .setDescription(contentList.join('\n'))
-    .setColor('GREEN');
+        .setTitle(title)
+        .setDescription(contentList.join('\n'))
+        .setColor('GREEN')
+        .setFooter({ 
+            text: interaction.client.strings.footer, 
+            iconURL: interaction.client.strings.footerImgUrl 
+        });
 
-  await interaction.reply({ embeds: [embed], ephemeral: false });
+    if (!interaction.client.strings.disableFooterTimestamp) embed.setTimestamp();
+
+    await interaction.reply({ embeds: [embed], ephemeral: false });
 }
