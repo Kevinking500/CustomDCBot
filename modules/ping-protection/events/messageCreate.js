@@ -22,14 +22,35 @@ module.exports.run = async function (client, message) {
     if (config.ignoredChannels.includes(message.channel.id)) return;
     if (message.member.roles.cache.some(role => config.ignoredRoles.includes(role.id))) return;
 
+    // Check for protected pings
     const pingedProtectedRole = message.mentions.roles.some(role => config.protectedRoles.includes(role.id));
-    const pingedProtectedUser = message.mentions.users.some(user => config.protectedUsers.includes(user.id));
+    let protectedMentions = message.mentions.users.filter(user => config.protectedUsers.includes(user.id));
+    // Handles reply pings
+    if (config.allowReplyPings && message.type === 'REPLY' && message.mentions.repliedUser) {
+        const repliedId = message.mentions.repliedUser.id;
+        
+        if (protectedMentions.has(repliedId)) {
+            const manualMentionRegex = new RegExp(`<@!?${repliedId}>`);
+            const isManualPing = manualMentionRegex.test(message.content);
+
+            if (!isManualPing) {
+                protectedMentions.delete(repliedId);
+            }
+        }
+    }
+    // Determines if any protected entities were pinged
+    const pingedProtectedUser = protectedMentions.size > 0;
+
     if (!pingedProtectedRole && !pingedProtectedUser) return;
     
-    const targetUser = message.mentions.users.find(u => config.protectedUsers.includes(u.id));
-    const targetRole = message.mentions.roles.find(r => config.protectedRoles.includes(r.id));
-    const target = targetUser || targetRole;
+    let target = null;
+    if (pingedProtectedUser) {
+        target = protectedMentions.first();
+    } else if (pingedProtectedRole) {
+        target = message.mentions.roles.find(r => config.protectedRoles.includes(r.id));
+    }
 
+    if (!target) return; 
     let pingCount = 0;
     const pingerId = message.author.id;
     let timeframeWeeks = 12;
