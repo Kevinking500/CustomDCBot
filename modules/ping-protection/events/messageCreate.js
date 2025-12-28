@@ -5,6 +5,10 @@ const {
     sendPingWarning
 } = require('../ping-protection');
 const { localize } = require('../../../src/functions/localize');
+// Tracks the last meme to prevent many duplicates
+const lastMemeMap = new Map();
+// Tracks ping counts for the grind message
+const selfPingCountMap = new Map();
 // Handles messages
 module.exports.run = async function (client, message) {
     if (!client.botReadyAt) return;
@@ -51,6 +55,48 @@ module.exports.run = async function (client, message) {
     }
 
     if (!target) return; 
+
+    // Funny easter egg when they ping themselves
+    if (target.id === message.author.id) {
+        const secretChance = 0.01; // Secret for a reason.. (1% chance)
+        const standardMemes = [
+            '[Why are you the way that you are?](<https://www.youtube.com/watch?v=NY9UZI1OUMI>) - You just pinged yourself..',
+            '🔑 [Congratulations, you played yourself.](<https://www.youtube.com/watch?v=Lr7CKWxqhtw>)',
+            '🕷️ [Is this you?](<https://i.kym-cdn.com/entries/icons/original/000/023/397/C-658VsXoAo3ovC.jpg>) - You just pinged yourself.'
+        ];
+        const secretMeme = '🎵 [Never gonna give you up, never gonna let you down...](<https://www.youtube.com/watch?v=dQw4w9WgXcQ>) You just Rick Rolled yourself. Also congrats you unlocked the secret easter egg that only has a 1% chance of appearing!!1!1!!';
+        const currentCount = (selfPingCountMap.get(message.author.id) || 0) + 1;
+        selfPingCountMap.set(message.author.id, currentCount);
+
+        setTimeout(() => {
+            selfPingCountMap.delete(message.author.id);
+        }, 300000);
+
+        const roll = Math.random();
+        let content = '';
+
+        if (roll < secretChance) {
+            content = secretMeme;
+            lastMemeMap.set(message.author.id, -1);
+            selfPingCountMap.delete(message.author.id); // Reset on secret unlock
+        } else if (currentCount === 5) {
+            content = 'Why are you even pinging yourself 5 times in a row? Anyways continue some more to possibly get the secret meme\n-# (good luck grinding, only a 1% chance of getting it and during testing I had it once after 83 pings)';
+        } else {
+            const lastIndex = lastMemeMap.get(message.author.id);
+
+            let possibleMemes = standardMemes.map((_, index) => index);
+            if (lastIndex !== undefined && lastIndex !== -1 && standardMemes.length > 1) {
+                possibleMemes = possibleMemes.filter(i => i !== lastIndex);
+            }
+
+            const randomIndex = possibleMemes[Math.floor(Math.random() * possibleMemes.length)];
+            content = standardMemes[randomIndex];
+            lastMemeMap.set(message.author.id, randomIndex);
+        }
+        await message.reply({ content: content }).catch(() => {});
+        return; 
+    }
+
     let pingCount = 0;
     const pingerId = message.author.id;
     let timeframeWeeks = 12;
