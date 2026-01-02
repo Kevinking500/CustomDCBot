@@ -19,9 +19,9 @@ async function addPing(client, messageObj, target) {
     });
 }
 
-async function getPingCountInWindow(client, userId, weeks) {
+async function getPingCountInWindow(client, userId, days) {
     const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - (weeks * 7));
+    cutoffDate.setDate(cutoffDate.getDate() - days);
 
     return await client.models['ping-protection']['PingHistory'].count({
         where: {
@@ -154,7 +154,7 @@ async function syncNativeAutoMod(client) {
             await guild.autoModerationRules.create(ruleData);
         }
     } catch (e) {
-        client.logger.error(`[ping-protection] AutoMod Sync/Cleanup Failed: ${e.message}`);
+        client.logger.error(`[ping-protection] AutoMod Sync/Cleanup Failed: ${error.message}`);
     }
 }
 // Generates history response
@@ -279,7 +279,8 @@ async function enforceRetention(client) {
     if (!storageConfig) return;
     if (storageConfig.enablePingHistory) {
         const historyCutoff = new Date();
-        historyCutoff.setDate(historyCutoff.getDate() - ((storageConfig.pingHistoryRetention || 12) * 7));
+        const retentionWeeks = storageConfig.pingHistoryRetention || 12;
+        historyCutoff.setDate(historyCutoff.getDate() - (retentionWeeks * 7))        
         await client.models['ping-protection']['PingHistory'].destroy({ where: { createdAt: { [Op.lt]: historyCutoff } } });
     }
     if (storageConfig.modLogRetention) {
@@ -300,9 +301,15 @@ async function enforceRetention(client) {
 
 async function executeAction(client, member, rule, reason, storageConfig) {
     const actionType = rule.actionType; 
-    if (!member) return false;
+    if (!member) {
+        client.logger.debug('[Ping Protection] ' + localize('ping-protection', 'not-a-member'));
+        return false;
+    }
     const botMember = await member.guild.members.fetch(client.user.id);
-    if (botMember.roles.highest.position <= member.roles.highest.position) return false;
+    if (botMember.roles.highest.position <= member.roles.highest.position) {
+        client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'punish-role-error', {tag: member.user.tag}));
+        return false;
+    }
     const logDb = async (type, duration = null) => {
         try {
             await client.models['ping-protection']['ModerationLog'].create({
@@ -313,10 +320,24 @@ async function executeAction(client, member, rule, reason, storageConfig) {
     if (actionType === 'MUTE') {
         const durationMs = rule.muteDuration * 60000;
         await logDb('MUTE', rule.muteDuration);
-        try { await member.timeout(durationMs, reason); return true; } catch (error) { return false; }
+        try { 
+            await member.timeout(durationMs, reason); 
+            client.logger.info('[Ping Protection] ' + localize('ping-protection', 'log-mute-success', {tag: member.user.tag, dur: rule.muteDuration}));
+            return true; 
+        } catch (error) { 
+            client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'log-mute-error', {tag: member.user.tag, e: error.message}));
+            return false; 
+        }
     } else if (actionType === 'KICK') {
         await logDb('KICK');
-        try { await member.kick(reason); return true; } catch (error) { return false; }
+        try { 
+            await member.kick(reason); 
+            client.logger.info('[Ping Protection] ' + localize('ping-protection', 'log-kick-success', {tag: member.user.tag}));
+            return true; 
+        } catch (error) { 
+            client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'log-kick-error', {tag: member.user.tag, e: error.message}));
+            return false; 
+        }
     }
     return false;
 }

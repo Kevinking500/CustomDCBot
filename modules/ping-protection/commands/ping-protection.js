@@ -6,6 +6,7 @@ const {
 } = require('../ping-protection');
 const { localize } = require('../../../src/functions/localize');
 const { MessageActionRow, MessageButton, MessageEmbed } = require('discord.js');
+
 // Command definition
 module.exports.config = {
   name: 'ping-protection',
@@ -28,8 +29,7 @@ module.exports.config = {
       name: 'list',
       description: localize('ping-protection', 'cmd-desc-group-list'),
       options: [
-        { type: 'SUB_COMMAND', name: 'users', description: localize('ping-protection', 'cmd-desc-list-users') },
-        { type: 'SUB_COMMAND', name: 'roles', description: localize('ping-protection', 'cmd-desc-list-roles') },
+        { type: 'SUB_COMMAND', name: 'protected', description: localize('ping-protection', 'cmd-desc-list-protected') },
         { type: 'SUB_COMMAND', name: 'whitelisted', description: localize('ping-protection', 'cmd-desc-list-wl') }
       ]
     }
@@ -67,9 +67,10 @@ module.exports.subcommands = {
       const user = interaction.options.getUser('user');
       const pingerId = user.id;
       const storageConfig = interaction.client.configurations['ping-protection']['storage'];
-      const timeframeWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
+      const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12;
+      const timeframeDays = retentionWeeks * 7;
       
-      const pingCount = await getPingCountInWindow(interaction.client, pingerId, timeframeWeeks);
+      const pingCount = await getPingCountInWindow(interaction.client, pingerId, timeframeDays);
       const modData = await fetchModHistory(interaction.client, pingerId, 1, 1000); 
 
       const row = new MessageActionRow().addComponents(
@@ -84,7 +85,7 @@ module.exports.subcommands = {
         .setColor('BLUE')
         .setThumbnail(user.displayAvatarURL({ dynamic: true }))
         .addFields([{
-          name: localize('ping-protection', 'field-quick-history', {w: timeframeWeeks}),
+          name: localize('ping-protection', 'field-quick-history', { w: retentionWeeks }),
           value: localize('ping-protection', 'field-quick-desc', { p: pingCount, m: modData.total }),
           inline: false
         }]);
@@ -93,11 +94,8 @@ module.exports.subcommands = {
     }
   },
   'list': {
-    'users': async function (interaction) {
-      await listHandler(interaction, 'users');
-    },
-    'roles': async function (interaction) {
-      await listHandler(interaction, 'roles');
+    'protected': async function (interaction) {
+      await listHandler(interaction, 'protected');
     },
     'whitelisted': async function (interaction) {
       await listHandler(interaction, 'whitelisted');
@@ -108,32 +106,39 @@ module.exports.subcommands = {
 // Handles list subcommands
 async function listHandler(interaction, type) {
   const config = interaction.client.configurations['ping-protection']['configuration'];
-  let contentList = [];
-  let title = "";
+  const embed = new MessageEmbed()
+    .setColor('GREEN')
+    .setFooter({ 
+        text: interaction.client.strings.footer, 
+        iconURL: interaction.client.strings.footerImgUrl 
+    });
 
-  if (type === 'roles') {
-    title = localize('ping-protection', 'list-roles-title');
-    contentList = config.protectedRoles.map(id => `<@&${id}>`);
-  } else if (type === 'users') {
-    title = localize('ping-protection', 'list-members-title');
-    contentList = config.protectedUsers.map(id => `<@${id}>`);
+  if (!interaction.client.strings.disableFooterTimestamp) embed.setTimestamp();
+
+  if (type === 'protected') {
+    embed.setTitle(localize('ping-protection', 'list-protected-title'));
+    embed.setDescription(localize('ping-protection', 'list-protected-desc'));
+
+    const usersList = config.protectedUsers.length > 0 ? config.protectedUsers.map(id => `<@${id}>`).join('\n') : localize('ping-protection', 'list-none');
+    const rolesList = config.protectedRoles.length > 0 ? config.protectedRoles.map(id => `<@&${id}>`).join('\n') : localize('ping-protection', 'list-none');
+
+    embed.addFields([
+      { name: localize('ping-protection', 'field-prot-users'), value: usersList, inline: true },
+      { name: localize('ping-protection', 'field-prot-roles'), value: rolesList, inline: true }
+    ]);
+
   } else if (type === 'whitelisted') {
-    title = localize('ping-protection', 'list-whitelist-title');
-    contentList = config.ignoredRoles.map(id => `<@&${id}>`);
+    embed.setTitle(localize('ping-protection', 'list-whitelist-title'));
+    embed.setDescription(localize('ping-protection', 'list-whitelist-desc'));
+
+    const rolesList = config.ignoredRoles.length > 0 ? config.ignoredRoles.map(id => `<@&${id}>`).join('\n') : localize('ping-protection', 'list-none');
+    const channelsList = config.ignoredChannels.length > 0 ? config.ignoredChannels.map(id => `<#${id}>`).join('\n') : localize('ping-protection', 'list-none');
+
+    embed.addFields([
+      { name: localize('ping-protection', 'field-wl-roles'), value: rolesList, inline: true },
+      { name: localize('ping-protection', 'field-wl-channels'), value: channelsList, inline: true }
+    ]);
   }
 
-  if (contentList.length === 0) contentList = [localize('ping-protection', 'list-empty')];
-
-  const embed = new MessageEmbed()
-        .setTitle(title)
-        .setDescription(contentList.join('\n'))
-        .setColor('GREEN')
-        .setFooter({ 
-            text: interaction.client.strings.footer, 
-            iconURL: interaction.client.strings.footerImgUrl 
-        });
-
-    if (!interaction.client.strings.disableFooterTimestamp) embed.setTimestamp();
-
-    await interaction.reply({ embeds: [embed], ephemeral: false });
+  await interaction.reply({ embeds: [embed], ephemeral: false });
 }

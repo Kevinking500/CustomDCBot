@@ -99,20 +99,22 @@ module.exports.run = async function (client, message) {
 
     let pingCount = 0;
     const pingerId = message.author.id;
-    let timeframeWeeks = 12;
+    let timeframeDays = 84;
     let rule1 = (moderationRules && Array.isArray(moderationRules) && moderationRules.length > 0) ? moderationRules[0] : null;
 
     if (!!storageConfig && !!storageConfig.enablePingHistory) {      
         try {
             await addPing(client, message, target);
-            if (rule1 && !!rule1.advancedConfiguration) {
-                timeframeWeeks = rule1.timeframeWeeks;
+            if (rule1 && !!rule1.useCustomTimeframe) {
+                timeframeDays = rule1.timeframeDays;
             } else {
-                timeframeWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
+                const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
+                timeframeDays = retentionWeeks * 7;
             }
-            pingCount = await getPingCountInWindow(client, pingerId, timeframeWeeks);
+            pingCount = await getPingCountInWindow(client, pingerId, timeframeDays);
         } catch (e) {}
     }
+
     // Send warning if enabled and moderation actions
     await sendPingWarning(client, message, target, config);
     
@@ -121,12 +123,13 @@ module.exports.run = async function (client, message) {
     let requiredCount = 0;
     let generatedReason = "";
 
-    if (!!rule1.advancedConfiguration) {
+    if (!!rule1.useCustomTimeframe) {
         requiredCount = rule1.pingsCountAdvanced;
-        generatedReason = localize('ping-protection', 'reason-advanced', { c: pingCount, w: rule1.timeframeWeeks });
+        generatedReason = localize('ping-protection', 'reason-advanced', { c: pingCount, d: rule1.timeframeDays });
     } else {
         requiredCount = rule1.pingsCountBasic;
-        generatedReason = localize('ping-protection', 'reason-basic', { c: pingCount, w: timeframeWeeks });
+        const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
+        generatedReason = localize('ping-protection', 'reason-basic', { c: pingCount, w: retentionWeeks });
     }
 
     if (pingCount >= requiredCount) {
