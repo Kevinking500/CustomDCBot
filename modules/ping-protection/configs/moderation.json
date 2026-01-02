@@ -23,12 +23,12 @@
       "elementToggle": true
     },
     {
-      "name": "advancedConfiguration",
+      "name": "useCustomTimeframe",
       "humanName": {
-        "en": "Use Advanced Configuration"
+        "en": "Use a custom timeframe"
       },
       "description": {
-        "en": "If enabled, the advanced configuration below will be used and the basic configuration will be ignored. This allows you to customize the custom timeframe. In the future, this will allow for almost full customization."
+        "en": "If enabled, you can choose your own custom timeframe and the basic configuration will be ignored."
       },
       "type": "boolean",
       "default": {
@@ -60,21 +60,21 @@
       "default": {
         "en": 5
       },
-      "dependsOn": "advancedConfiguration"
+      "dependsOn": "useCustomTimeframe"
     },
     {
-      "name": "timeframeWeeks",
+      "name": "timeframeDays",
       "humanName": {
-        "en": "Timeframe (Weeks)"
+        "en": "Timeframe (Days)"
       },
       "description": {
-        "en": "In how many weeks must these pings occur?"
+        "en": "In how many days must these pings occur?"
       },
       "type": "integer",
       "default": {
-        "en": 1
+        "en": 7
       },
-      "dependsOn": "advancedConfiguration"
+      "dependsOn": "useCustomTimeframe"
     },
     {
       "name": "actionType",
