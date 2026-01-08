@@ -37,6 +37,19 @@
       "dependsOn": "enablePingHistory"
     },
     {
+      "name": "DeleteAllPingHistoryAfterTimeframe",
+      "humanName": {
+        "en": "Delete all the pings in history after the timeframe?"
+      },
+      "description": {
+        "en": "If enabled, the bot will delete ALL the pings history of an user after the timeframe instead of only the ping(s) exceeding the timeframe in the history."
+      },
+      "type": "boolean",
+      "default": {
+        "en": false
+      }
+    },
+    {
       "name": "modLogRetention",
       "humanName": {
         "en": "Moderation Log Retention (Months)"

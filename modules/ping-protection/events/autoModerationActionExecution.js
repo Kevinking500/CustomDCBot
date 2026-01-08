@@ -14,6 +14,7 @@ module.exports.run = async function (client, execution) {
     const moderationRules = client.configurations['ping-protection']['moderation'];
     
     if (!config) return;
+    if (config.ignoredUsers && config.ignoredUsers.includes(execution.userId)) return;
 
     const matchedKeyword = execution.matchedKeyword || "";
     const rawId = matchedKeyword.replace(/\*/g, '');
@@ -33,7 +34,7 @@ module.exports.run = async function (client, execution) {
         try {
             await addPing(client, mockMessage, mockTarget);
             if (rule1 && !!rule1.useCustomTimeframe) {
-                timeframeDays = rule1.timeframeDays;
+                timeframeDays = rule1.timeframeDays || 7;
             } else {
                 const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
                 timeframeDays = retentionWeeks * 7;

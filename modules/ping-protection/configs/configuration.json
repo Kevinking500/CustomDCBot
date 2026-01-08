@@ -61,7 +61,7 @@
     {
       "name": "ignoredChannels",
       "humanName": { 
-        "en": "Ignored Channels" 
+        "en": "Whitelisted Channels" 
       },
       "description": { 
         "en": "Pings in these channels are ignored."
@@ -73,12 +73,39 @@
       }
     },
     {
+      "name": "ignoredUsers",
+      "humanName": { 
+        "en": "Whitelisted Users" 
+      },
+      "description": { 
+        "en": "Pings from these users are ignored."
+      },
+      "type": "array",
+      "content": "userID",
+      "default": { 
+        "en": [] 
+      }
+    },
+    {
       "name": "allowReplyPings",
       "humanName": { 
         "en": "Allow Reply Pings" 
       },
       "description": { 
         "en": "If enabled, replying to a protected user (with mention ON) is allowed."
+      },
+      "type": "boolean",
+      "default": { 
+        "en": false 
+      }
+    },
+    {
+      "name": "allowSelfPing",
+      "humanName": { 
+        "en": "Allow protected users to ping themselves" 
+      },
+      "description": { 
+        "en": "If enabled, a protected user is able to ping themselves without getting the chance to be embarrassed."
       },
       "type": "boolean",
       "default": { 
