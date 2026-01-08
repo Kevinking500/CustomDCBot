@@ -280,8 +280,26 @@ async function enforceRetention(client) {
     if (storageConfig.enablePingHistory) {
         const historyCutoff = new Date();
         const retentionWeeks = storageConfig.pingHistoryRetention || 12;
-        historyCutoff.setDate(historyCutoff.getDate() - (retentionWeeks * 7))        
-        await client.models['ping-protection']['PingHistory'].destroy({ where: { createdAt: { [Op.lt]: historyCutoff } } });
+        historyCutoff.setDate(historyCutoff.getDate() - (retentionWeeks * 7));
+        if (storageConfig.DeleteAllPingHistoryAfterTimeframe) {
+            const usersWithExpiredData = await client.models['ping-protection']['PingHistory'].findAll({
+                where: { createdAt: { [Op.lt]: historyCutoff } },
+                attributes: ['userId'],
+                group: ['userId']
+            });
+
+            const userIdsToWipe = usersWithExpiredData.map(entry => entry.userId);
+            if (userIdsToWipe.length > 0) {
+                await client.models['ping-protection']['PingHistory'].destroy({
+                    where: { userId: userIdsToWipe }
+                });
+            }
+        } 
+        else {
+            await client.models['ping-protection']['PingHistory'].destroy({ 
+                where: { createdAt: { [Op.lt]: historyCutoff } } 
+            });
+        }
     }
     if (storageConfig.modLogRetention) {
         const modCutoff = new Date();
