@@ -58,7 +58,7 @@ module.exports.run = async function (client, message) {
     if (!target) return; 
 
     // Funny easter egg when they ping themselves
-    if (target.id === message.author.id && !config.allowSelfPing) {
+    if (target.id === message.author.id && config.allowSelfPing) {
         const secretChance = 0.01; // Secret for a reason.. (1% chance)
         const standardMemes = [
             '[Why are you the way that you are?](<https://www.youtube.com/watch?v=NY9UZI1OUMI>) - You just pinged yourself..',
