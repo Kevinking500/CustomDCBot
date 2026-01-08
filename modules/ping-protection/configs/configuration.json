@@ -109,7 +109,7 @@
       },
       "type": "boolean",
       "default": { 
-        "en": false 
+        "en": true 
       }
     },
     {
