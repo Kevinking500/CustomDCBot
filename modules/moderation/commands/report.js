@@ -1,5 +1,9 @@
 const {localize} = require('../../../src/functions/localize');
-const {embedType, messageLogToStringToPaste} = require('../../../src/functions/helpers');
+const {
+    embedType,
+    messageLogToStringToPaste,
+    parseEmbedColor
+} = require('../../../src/functions/helpers');
 const {MessageEmbed} = require('discord.js');
 
 module.exports.run = async function (interaction) {
@@ -44,7 +48,7 @@ module.exports.run = async function (interaction) {
                 .addField(localize('moderation', 'report-reason'), interaction.options.getString('reason'))
                 .addField(localize('moderation', 'report-user'), interaction.user.toString() + ` \`${interaction.user.id}\``)
                 .addFields(fields)
-                .setColor('RED')
+                .setColor(parseEmbedColor('RED'))
                 .setImage(proof ? (proof.proxyURL || proof.url) : null)
                 .setFooter({text: interaction.client.strings.footer, iconURL: interaction.client.strings.footerImgUrl})
                 .setAuthor({name: interaction.client.user.username, iconURL: interaction.client.user.avatarURL()})

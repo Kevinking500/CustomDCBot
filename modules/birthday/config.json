@@ -56,7 +56,7 @@
       "name": "birthday_message",
       "allowGeneratedImage": true,
       "humanName": {
-        "en": "Giveaway-Message",
+        "en": "Birthday Message",
         "de": "Geburtstags-Nachricht"
       },
       "default": {
@@ -104,7 +104,7 @@
       "name": "birthday_message_with_age",
       "allowGeneratedImage": true,
       "humanName": {
-        "en": "Giveaway-Message with age",
+        "en": "Birthday message with age",
         "de": "Geburtstags-Nachricht mit Alter"
       },
       "default": {
@@ -201,7 +201,7 @@
           "color": "GREEN",
           "thumbnail": " ",
           "image": " ",
-          "description": "Here you can find every birthday - add yours with !birthday <Day> <Month> [Year]"
+          "description": "Here you can find every birthday - add yours with /birthday set <Day> <Month> [Year]"
         },
         "de": {
           "title": "Geburtstage",

@@ -3,7 +3,14 @@
  * @module Birthdays
  * @author Simon Csaba <mail@scderox.de>
  */
-const {embedType, disableModule, truncate, embedTypeV2, formatDiscordUserName} = require('../../src/functions/helpers');
+const {
+    embedType,
+    disableModule,
+    truncate,
+    embedTypeV2,
+    formatDiscordUserName,
+    parseEmbedColor
+} = require('../../src/functions/helpers');
 const {MessageEmbed} = require('discord.js');
 const {AgeFromDate} = require('age-calculator');
 const {localize} = require('../../src/functions/localize');
@@ -25,10 +32,9 @@ generateBirthdayEmbed = async function (client, notifyUsers = false) {
         return;
     }
     const messages = (await channel.messages.fetch()).filter(msg => msg.author.id === client.user.id);
-    await channel.guild.members.fetch({force: true});
 
     if (notifyUsers && !moduleConf.notificationChannelOverwriteID) {
-        for (const m of messages.filter(msg => msg.id !== messages.last().id)) {
+        for (const m of messages.filter(msg => msg.id !== messages.last().id).values()) {
             if (m.deletable) await m.delete(); // Removing old messages
         }
     }
@@ -37,7 +43,7 @@ generateBirthdayEmbed = async function (client, notifyUsers = false) {
         new MessageEmbed()
             .setTitle(moduleConf['birthdayEmbed']['title'])
             .setDescription(moduleConf['birthdayEmbed']['description'])
-            .setColor(moduleConf['birthdayEmbed']['color'])
+            .setColor(parseEmbedColor(moduleConf['birthdayEmbed']['color']))
             .setAuthor({name: client.user.username, iconURL: client.user.avatarURL()})
             .setFooter({text: client.strings.footer, iconURL: client.strings.footerImgUrl})
             .addFields([
@@ -126,7 +132,7 @@ generateBirthdayEmbed = async function (client, notifyUsers = false) {
         if (!birthdayUsers) return;
 
         if (moduleConf['birthday_role']) {
-            const guildMembers = await channel.guild.members.fetch();
+            const guildMembers = client.guild.members.cache;
             for (const member of guildMembers.values()) {
                 if (!member) return;
                 if (member.roles.cache.has(moduleConf['birthday_role'])) {
@@ -188,7 +194,7 @@ async function getUserStringForMonth(client, channel, month) {
                 await user.destroy();
                 continue;
             }
-            dateString = `[${dateString}](https://sc-network.net/age?age=${age} "${localize('birthdays', 'age-hover', {a: age})}")`;
+            dateString = `[${dateString}](https://scnx.xyz/${client.locale === 'de' ? 'de/' : ''}custom-bot/age-calculator?age=${age} "${localize('birthdays', 'age-hover', {a: age})}")`;
         }
         if (channel.guild.members.cache.get(user.id)) string = string + `${dateString}: ${client.configurations['birthday']['config'].useTags ? formatDiscordUserName(channel.guild.members.cache.get(user.id).user) : channel.guild.members.cache.get(user.id).user.toString()}\n`;
     }

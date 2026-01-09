@@ -17,13 +17,14 @@ module.exports.subcommands = {
             ephemeral: true,
             content: '⚠️️ ' + localize('birthdays', 'no-birthday-set')
         });
+        const date = new Date(interaction.birthday.year, interaction.birthday.month - 1, interaction.birthday.day);
         interaction.reply({
             ephemeral: true,
             content: localize('birthdays', 'birthday-status', {
                 dd: interaction.birthday.day,
                 mm: interaction.birthday.month,
                 yyyy: (interaction.birthday.year ? `.${interaction.birthday.year}` : ''),
-                age: interaction.birthday.year ? ', ' + (localize('birthdays', 'your-age', {age: new AgeFromDateString(`${interaction.birthday.year}-${interaction.birthday.month - 1}-${interaction.birthday.day}`).age})) : ''
+                age: interaction.birthday.year ? ', ' + (localize('birthdays', 'your-age', {age: new AgeFromDate(date).age})) : ''
             })
         });
 

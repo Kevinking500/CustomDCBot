@@ -36,15 +36,15 @@
     {
       "name": "timeframe",
       "humanName": {
-        "de": "Zeitfenster",
-        "en": "Timeframe"
+        "de": "Zeitfenster (in Stunden)",
+        "en": "Timeframe (in hours)"
       },
       "default": {
         "en": 3
       },
       "description": {
         "en": "Timeframe in hours in which the limits can not be overstepped",
-        "de": "Zeitfenster in Stunden, in welchem die Limits nicht übertragen werden dürfen"
+        "de": "Zeitfenster in Stunden, in welchem die Limits nicht überschritten werden dürfen"
       },
       "type": "integer"
     },

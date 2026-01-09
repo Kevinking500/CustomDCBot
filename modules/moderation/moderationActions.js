@@ -50,7 +50,7 @@ async function moderationAction(client, type, user, victim, reason, additionalDa
         }
         switch (type) {
             case 'mute':
-                if (!expiringAt) expiringAt = new Date(new Date().getTime() + 1209600000);
+                if (!expiringAt) expiringAt = new Date(new Date().getTime() + durationParser(moduleConfig.defaultMuteDuration));
                 await victim.timeout(expiringAt.getTime() - new Date().getTime(), localize('moderation', 'mute-audit-log-reason', {
                     u: formatDiscordUserName(user.user),
                     r: reason
@@ -60,7 +60,7 @@ async function moderationAction(client, type, user, victim, reason, additionalDa
                     '%user%': formatDiscordUserName(user.user),
                     '%date%': expiringAt ? formatDate(expiringAt) : null
                 }));
-                if (moduleConfig['changeNicknameOnQuarantine']) await victim.setNickname(moduleConfig['changeNicknameOnMute'].split('%nickname%').join(victim.nickname ? victim.nickname : victim.user.username), '[moderation] ' + localize('moderation', 'mute-audit-log-reason', {
+                if (moduleConfig['changeNicknameOnQuarantine']) await victim.setNickname(moduleConfig['changeNicknameOnMute'].split('%nickname%').join(victim.nickname ? victim.nickname : victim.user.displayName), '[moderation] ' + localize('moderation', 'mute-audit-log-reason', {
                     u: formatDiscordUserName(user.user),
                     r: reason
                 })).catch(() => {
@@ -75,7 +75,7 @@ async function moderationAction(client, type, user, victim, reason, additionalDa
                     '%reason%': reason,
                     '%user%': formatDiscordUserName(user.user)
                 }));
-                if (moduleConfig['changeNicknameOnQuarantine']) await victim.setNickname(victim.user.username, '[moderation] ' + localize('moderation', 'unmute-audit-log-reason', {
+                if (moduleConfig['changeNicknameOnQuarantine']) await victim.setNickname(victim.user.displayName, '[moderation] ' + localize('moderation', 'unmute-audit-log-reason', {
                     u: formatDiscordUserName(user.user),
                     r: reason
                 }));
@@ -83,12 +83,12 @@ async function moderationAction(client, type, user, victim, reason, additionalDa
             case 'quarantine':
                 if (!victim.roles.cache.get(quarantineRole.id)) {
                     if (moduleConfig['remove-all-roles-on-quarantine']) {
-                        await victim.roles.set([quarantineRole], '[moderation] ' + localize('moderation', 'quarantine-audit-log-reason', {
+                        await victim.roles.set([quarantineRole, ...victim.roles.cache.filter(f => f.managed).map(i => i.id)], '[moderation] ' + localize('moderation', 'quarantine-audit-log-reason', {
                             u: formatDiscordUserName(user.user),
                             r: reason
                         })).catch(async e => {
                             client.logger.log(localize('moderation', 'batch-role-remove-failed', {i: victim.id, e}));
-                            for (const role of victim.roles.cache) { // Remove as much roles as possible
+                            for (const role of victim.roles.cache.filter(f => !f.managed)) { // Remove as many roles as possible
                                 await victim.roles.remove(role, '[moderation] ' + localize('moderation', 'quarantine-audit-log-reason', {
                                     u: formatDiscordUserName(user.user),
                                     r: reason
@@ -117,7 +117,7 @@ async function moderationAction(client, type, user, victim, reason, additionalDa
                         u: formatDiscordUserName(user.user),
                         r: reason
                     }));
-                    if (moduleConfig['changeNicknameOnQuarantine']) await victim.setNickname(moduleConfig['changeNicknameOnQuarantine'].split('%nickname%').join(victim.nickname ? victim.nickname : victim.user.username), '[moderation] ' + localize('moderation', 'quarantine-audit-log-reason', {
+                    if (moduleConfig['changeNicknameOnQuarantine']) await victim.setNickname(moduleConfig['changeNicknameOnQuarantine'].split('%nickname%').join(victim.nickname ? victim.nickname : victim.user.displayName), '[moderation] ' + localize('moderation', 'quarantine-audit-log-reason', {
                         u: formatDiscordUserName(user.user),
                         r: reason
                     })).catch(() => {
@@ -142,11 +142,11 @@ async function moderationAction(client, type, user, victim, reason, additionalDa
                     '%reason%': reason,
                     '%user%': formatDiscordUserName(user.user)
                 }));
-                if (moduleConfig['changeNicknameOnQuarantine']) await victim.setNickname(victim.user.username).catch(() => {
+                if (moduleConfig['changeNicknameOnQuarantine']) await victim.setNickname(victim.user.displayName).catch(() => {
                 });
                 break;
             case 'kick':
-                sendMessage(victim, embedType(moduleStrings['kick_message'], {
+                await sendMessage(victim, embedType(moduleStrings['kick_message'], {
                     '%reason%': reason,
                     '%user%': formatDiscordUserName(user.user)
                 }));
@@ -313,8 +313,8 @@ module.exports.moderationAction = moderationAction;
  * @param {User} user User to send Message to
  * @param {Object|String} content Content to send to the user
  */
-function sendMessage(user, content) {
-    user.send(content).catch(() => {
+async function sendMessage(user, content) {
+    await user.send(content).catch(() => {
     });
 }
 

@@ -3,10 +3,10 @@
  * @module Helpers
  */
 
-const {MessageEmbed, MessageAttachment} = require('discord.js');
+const {ChannelType, ComponentType, MessageEmbed, MessageAttachment, PermissionFlagsBits} = require('discord.js');
 const {localize} = require('./localize');
 const {PrivatebinClient} = require('@pixelfactory/privatebin');
-const privatebin = new PrivatebinClient('https://paste.scootkit.net');
+const privatebin = new PrivatebinClient('https://paste.scootkit.com');
 const isoCrypto = require('isomorphic-webcrypto');
 const {encode} = require('bs58');
 const crypto = require('crypto');
@@ -59,6 +59,50 @@ function inputReplacer(args, input, returnNull = false) {
 
 module.exports.inputReplacer = inputReplacer;
 
+const colors = {
+    'YELLOW': 0xF1C40F,
+    'GREEN': 0x2ECC71,
+    'GOLD': 0xF1C40F,
+    'PURPLE': 0x9B59B6,
+    'LUMINOUS_VIVID_PINK': 0xE91E63,
+    'FUCHSIA': 0xEB459E,
+    'ORANGE': 0xE67E22,
+    'DARK_AQUA': 0x11806A,
+    'DARK_GREEN': 0x1F8B4C,
+    'DARK_BLUE': 0x206694,
+    'DARK_VIVID_PINK': 0xAD1457,
+    'LIGHT_GREY': 0xBCC0C0,
+    'GREYPLE': 0x99AAB5,
+    'DARK_BUT_NOT_BLACK': 0x2C2F33,
+    'NOT_QUITE_BLACK': 0x23272A,
+    'DARK_NAVY': 0x2C3E50,
+    'DARK_GOLD': 0xC27C0E,
+    'DARK_RED': 0x992D22,
+    'DARKER_GREY': 0x7F8C8D,
+    'DARK_GREY': 0x979C9F,
+    'DARK_ORANGE': 0xA84300,
+    'DARK_PURPLE': 0x71368A,
+    'GREY': 0x95A5A6,
+    'NAVY': 0x34495E,
+    'BLURPLE': 0x5865F2,
+    'BLUE': 0x3498DB,
+    'AQUA': 0x1ABC9C,
+    'WHITE': 0xFFFFFF,
+    'RED': 0xE74C3C
+};
+
+function parseColor(color) {
+    if (colors[color]) return colors[color];
+    if (typeof color === 'number') return color;
+    if (typeof color === 'string') {
+        if (color.startsWith('#')) return parseInt(color.replaceAll('#', ''), 16);
+        return parseInt(color, 16);
+    }
+    return color;
+}
+
+module.exports.parseEmbedColor = parseColor;
+
 /**
  * Will turn an object or string into embeds
  * @param  {string|array} input Input in the configuration file
@@ -99,10 +143,10 @@ function embedType(input, args = {}, optionsToKeep = {}, mergeComponentsRows = [
         const embed = new MessageEmbed({
             title: inputReplacer(args, embedData.title, true),
             description: inputReplacer(args, embedData.description, true),
-            color: embedData.color,
+            color: parseColor(embedData.color),
             thumbnail: embedData.thumbnailURL ? {url: inputReplacer(args, embedData.thumbnailURL)} : null,
             image: embedData.imageURL ? {url: inputReplacer(args, embedData.imageURL)} : null,
-            timestamp: (embedData.footer?.hideTime || embedData.footer?.disabled) ? null : new Date(),
+            timestamp: (embedData.footer?.hideTime || embedData.footer?.disabled || client.strings.disableFooterTimestamp) ? null : new Date(),
             author: embedData.author?.name ? {
                 name: inputReplacer(args, embedData.author.name),
                 iconURL: inputReplacer(args, embedData.author.imageURL, null),
@@ -119,6 +163,7 @@ function embedType(input, args = {}, optionsToKeep = {}, mergeComponentsRows = [
         optionsToKeep.files.push({attachment: url});
     }
 
+    if (optionsToKeep.components) optionsToKeep.components = optionsToKeep.components.map(c => (typeof c.toJSON === 'function' ? c.toJSON() : c)); // polyfill for djs migration
     if (!optionsToKeep.components && client.scnxSetup) optionsToKeep.components = require('./scnx-integration').returnSCNXComponents(input, mergeComponentsRows, args);
     if (!optionsToKeep.content) optionsToKeep.content = inputReplacer(args, input['content'], true);
 
@@ -135,7 +180,7 @@ function embedTypeSchemaV2(input, args = {}, optionsToKeep = {}, mergeComponents
         const emb = new MessageEmbed();
         if (input['title']) emb.setTitle(inputReplacer(args, input['title']));
         if (input['description']) emb.setDescription(inputReplacer(args, input['description']));
-        if (input['color']) emb.setColor(input['color']);
+        if (input['color']) emb.setColor(parseColor(input['color']));
         if (input['url']) emb.setURL(input['url']);
         if ((input['image'] || '').replaceAll(' ', '')) emb.setImage(inputReplacer(args, input['image']));
         if ((input['thumbnail'] || '').replaceAll(' ', '')) emb.setThumbnail(inputReplacer(args, input['thumbnail']));
@@ -207,7 +252,7 @@ async function postToSCNetworkPaste(content, opts = {
 }) {
     const key = isoCrypto.getRandomValues(new Uint8Array(32));
     const res = await privatebin.sendText(content, key, opts);
-    return `https://paste.scootkit.net${res.url}#${encode(key)}`;
+    return `https://paste.scootkit.com${res.url}#${encode(key)}`;
 }
 
 module.exports.postToSCNetworkPaste = postToSCNetworkPaste;
@@ -306,7 +351,7 @@ async function sendMultipleSiteButtonMessage(channel, sites = [], allowedUserIDs
         fetchReply: true
     });
     else m = await channel.send({components: [{type: 'ACTION_ROW', components: getButtons(1)}], embeds: [sites[0]]});
-    const c = m.createMessageComponentCollector({componentType: 'BUTTON', time: 60000});
+    const c = m.createMessageComponentCollector({componentType: ComponentType.Button, time: 60000});
     let currentSite = 1;
     c.on('collect', async (interaction) => {
         if (!allowedUserIDs.includes(interaction.user.id)) return interaction.reply({
@@ -453,29 +498,37 @@ module.exports.dateToDiscordTimestamp = dateToDiscordTimestamp;
 async function lockChannel(channel, allowedRoles = [], reason = localize('main', 'channel-lock')) {
     const dup = await channel.client.models['ChannelLock'].findOne({where: {id: channel.id}});
     if (dup) await dup.destroy();
-    await channel.client.models['ChannelLock'].create({
-        id: channel.id,
-        lockReason: reason,
-        permissions: Array.from(channel.permissionOverwrites.cache.values())
-    });
 
-    for (const overwrite of channel.permissionOverwrites.cache.filter(e => e.allow.has('SEND_MESSAGES')).values()) {
-        await overwrite.edit({
-            SEND_MESSAGES: false,
-            SEND_MESSAGES_IN_THREADS: false
-        }, reason);
-    }
 
-    const everyoneRole = await channel.guild.roles.cache.find(r => r.name === '@everyone');
-    if (channel.permissionsFor(everyoneRole).has('VIEW_CHANNEL')) await channel.permissionOverwrites.create(everyoneRole, {
-        SEND_MESSAGES: false,
-        SEND_MESSAGES_IN_THREADS: false
-    }, {reason});
+    if (channel.type === ChannelType.PublicThread || channel.type === ChannelType.PrivateThread) {
+        await channel.setLocked(true, reason);
+    } else {
+        await channel.client.models['ChannelLock'].create({
+            id: channel.id,
+            lockReason: reason,
+            permissions: Array.from(channel.permissionOverwrites.cache.values())
+        });
 
-    for (const roleID of allowedRoles) {
-        await channel.permissionOverwrites.create(roleID, {
-            SEND_MESSAGES: true
+        for (const overwrite of channel.permissionOverwrites.cache.filter(e => e.allow.has(PermissionFlagsBits.SendMessages)).values()) {
+            if (overwrite.type === 'role' && channel.client.guild.members.me.roles.botRole?.id === overwrite.id) continue;
+            if (overwrite.type === 'member' && channel.client.user.id === overwrite.id) continue;
+            await overwrite.edit({
+                SendMessages: false,
+                SendMessagesInThreads: false
+            }, reason);
+        }
+
+        const everyoneRole = await channel.guild.roles.cache.find(r => r.name === '@everyone');
+        if (channel.permissionsFor(everyoneRole).has(PermissionFlagsBits.ViewChannel)) await channel.permissionOverwrites.create(everyoneRole, {
+            SendMessages: false,
+            SendMessagesInThreads: false
         }, {reason});
+
+        for (const roleID of allowedRoles) {
+            await channel.permissionOverwrites.create(roleID, {
+                SendMessages: true
+            }, {reason});
+        }
     }
 }
 
@@ -487,8 +540,12 @@ async function lockChannel(channel, allowedRoles = [], reason = localize('main',
  */
 async function unlockChannel(channel, reason = localize('main', 'channel-unlock')) {
     const item = await channel.client.models['ChannelLock'].findOne({where: {id: channel.id}});
-    if (item && (item || {}).permissions) await channel.permissionOverwrites.set(item.permissions, reason);
-    else channel.client.logger.error(localize('main', 'channel-unlock-data-not-found', {c: channel.id}));
+    if (channel.type === ChannelType.PublicThread || channel.type === ChannelType.PrivateThread) {
+        await channel.setLocked(false, reason);
+    } else {
+        if (item && (item || {}).permissions) await channel.permissionOverwrites.set(item.permissions, reason);
+        else channel.client.logger.error(localize('main', 'channel-unlock-data-not-found', {c: channel.id}));
+    }
 }
 
 module.exports.lockChannel = lockChannel;
@@ -549,7 +606,7 @@ module.exports.disableModule = disableModule;
  */
 module.exports.formatNumber = function (number) {
     if (typeof number === 'string') number = parseInt(number);
-    return new Intl.NumberFormat(client.locale, {}).format(number);
+    return new Intl.NumberFormat(client.locale.split('_')[0], {}).format(number);
 };
 
 /**
@@ -560,3 +617,12 @@ module.exports.formatNumber = function (number) {
 module.exports.hashMD5 = function (string) {
     return crypto.createHash('md5').update(string).digest('hex');
 };
+
+module.exports.shuffleArray = function (input) {
+    const array = [...input];
+    for (let i = array.length - 1; i >= 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}

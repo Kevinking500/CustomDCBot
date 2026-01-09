@@ -3,6 +3,7 @@ const {Op} = require('sequelize');
 const {localize} = require('../../../src/functions/localize');
 const {sendMessage} = require('../channel-settings');
 const {formatDiscordUserName} = require('../../../src/functions/helpers');
+const {ChannelType} = require('discord.js');
 
 module.exports.run = async function (client, oldState, newState) {
     if (!client.botReadyAt) return;
@@ -56,15 +57,17 @@ module.exports.run = async function (client, oldState, newState) {
             newState.setChannel(null, '[temp-channels] ' + localize('temp-channels', 'disconnect-audit-log-reason'));
             alreadyExistingChannel.destroy();
         });
-        const newChannel = await newState.guild.channels.create(moduleConfig['channelname_format']
+        const n = await client.models['temp-channels']['TempChannel'].count({}) + 1;
+        const newChannel = await newState.guild.channels.create({
+            name: moduleConfig['channelname_format']
                 .split('%username%').join(newState.member.user.username)
+                .split('%number%').join(n)
                 .split('%nickname%').join(newState.member.nickname || newState.member.user.username)
                 .split('%tag%').join(formatDiscordUserName(newState.member.user)),
-            {
-                type: 'GUILD_VOICE',
-                parent: moduleConfig['category'],
-                reason: '[temp-channels] ' + localize('temp-channels', 'created-audit-log-reason', {u: formatDiscordUserName(newState.member.user)})
-            });
+            type: ChannelType.GuildVoice,
+            parent: moduleConfig['category'],
+            reason: '[temp-channels] ' + localize('temp-channels', 'created-audit-log-reason', {u: formatDiscordUserName(newState.member.user)})
+        });
         await newState.setChannel(newChannel.id);
         if (moduleConfig['allowUserToChangeName']) await newChannel.permissionOverwrites.create(newState.member, {'MANAGE_CHANNELS': true}, {
             reason: '[temp-channels] ' + localize('temp-channels', 'created-audit-log-reason', {u: formatDiscordUserName(newState.member.user)})
@@ -75,8 +78,9 @@ module.exports.run = async function (client, oldState, newState) {
         let noMicChannel = null;
         if (moduleConfig['create_no_mic_channel']) {
             const everyoneRole = await newChannel.guild.roles.cache.find(role => role.name === '@everyone');
-            noMicChannel = await newChannel.guild.channels.create(`${newChannel.name}-no-mic`, {
-                type: 'GUILD_TEXT',
+            noMicChannel = await newChannel.guild.channels.create({
+                name: `${newChannel.name}-no-mic`,
+                type: ChannelType.GuildText,
                 parent: moduleConfig['category'],
                 topic: localize('temp-channels', 'no-mic-channel-topic', {u: formatDiscordUserName(newState.member.user)}),
                 reason: '[temp-channels] ' + localize('temp-channels', 'created-audit-log-reason', {u: formatDiscordUserName(newState.member.user)}),
