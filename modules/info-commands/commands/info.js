@@ -9,7 +9,6 @@ const {
 } = require('../../../src/functions/helpers');
 const {ChannelType, MessageEmbed} = require('discord.js');
 const {AgeFromDate} = require('age-calculator');
-const {stringNames} = require('../../invite-tracking/events/guildMemberJoin');
 const {calculateLevelXP, isMaxLevel, displayLevel} = require('../../levels/events/messageCreate');
 
 const legacyChannelType = (type) => {
@@ -197,22 +196,6 @@ module.exports.subcommands = {
             embed.addField(moduleStrings.userinfo.xp, `${formatNumber(isMaxLevel(levelUserData.level, interaction.client) ? calculateLevelXP(interaction.client, interaction.client.configurations['levels']['config'].maximumLevel) : levelUserData.xp)}/${isMaxLevel(levelUserData.level, interaction.client) ? '∞' : formatNumber(calculateLevelXP(interaction.client, levelUserData.level))}`, true);
             embed.addField(moduleStrings.userinfo.level, displayLevel(levelUserData.level, interaction.client), true);
             embed.addField(moduleStrings.userinfo.messages, levelUserData.messages.toString(), true);
-        }
-        if (interaction.client.models['invite-tracking']) {
-            const invitedUsers = await interaction.client.models['invite-tracking']['UserInvite'].findAll({
-                where: {
-                    inviter: member.user.id
-                }
-            });
-            const userInvites = await interaction.client.models['invite-tracking']['UserInvite'].findAll({
-                where: {
-                    userID: member.user.id,
-                    left: false
-                },
-                order: [['createdAt', 'DESC']]
-            });
-            if (userInvites[0]) embed.addField(moduleStrings.userinfo['invited-by'], `${localize('invite-tracking', stringNames[userInvites[0].inviteType])}${userInvites[0].inviter ? ` by <@${userInvites[0].inviter}>` : ''}`, true);
-            embed.addField(moduleStrings.userinfo.invites, `\`\`\`| ${localize('info-commands', 'total-invites')} | ${localize('info-commands', 'active-invites')} | ${localize('info-commands', 'left-invites')} |\n| ${pufferStringToSize(invitedUsers.length.toString(), localize('info-commands', 'total-invites').length)} | ${pufferStringToSize(invitedUsers.filter(i => !i.left).length.toString(), localize('info-commands', 'active-invites').length)} | ${pufferStringToSize(invitedUsers.filter(i => i.left).length.toString(), localize('info-commands', 'left-invites').length)} |\`\`\``);
         }
         let permstring = '';
         member.permissions.toArray().forEach(p => {
