@@ -7,35 +7,6 @@ const {
 const { localize } = require('../../../src/functions/localize');
 const { MessageActionRow, MessageButton, MessageEmbed } = require('discord.js');
 
-// Command definition
-module.exports.config = {
-  name: 'ping-protection',
-  description: localize('ping-protection', 'cmd-desc-module'), 
-  usage: '/ping-protection',
-  type: 'slash',
-  options: [
-    {
-      type: 'SUB_COMMAND_GROUP',
-      name: 'user',
-      description: localize('ping-protection', 'cmd-desc-group-user'),
-      options: [
-        { type: 'SUB_COMMAND', name: 'history', description: localize('ping-protection', 'cmd-desc-history'), options: [{ type: 'USER', name: 'user', description: localize('ping-protection', 'cmd-opt-user'), required: true }] },
-        { type: 'SUB_COMMAND', name: 'actions-history', description: localize('ping-protection', 'cmd-desc-actions'), options: [{ type: 'USER', name: 'user', description: localize('ping-protection', 'cmd-opt-user'), required: true }] },
-        { type: 'SUB_COMMAND', name: 'panel', description: localize('ping-protection', 'cmd-desc-panel'), options: [{ type: 'USER', name: 'user', description: localize('ping-protection', 'cmd-opt-user'), required: true }] }
-      ]
-    },
-    {
-      type: 'SUB_COMMAND_GROUP',
-      name: 'list',
-      description: localize('ping-protection', 'cmd-desc-group-list'),
-      options: [
-        { type: 'SUB_COMMAND', name: 'protected', description: localize('ping-protection', 'cmd-desc-list-protected') },
-        { type: 'SUB_COMMAND', name: 'whitelisted', description: localize('ping-protection', 'cmd-desc-list-wl') }
-      ]
-    }
-  ]
-};
-
 module.exports.run = async function (interaction) {
   const group = interaction.options.getSubcommandGroup(false);
   const sub = interaction.options.getSubcommand(false);
@@ -62,12 +33,16 @@ module.exports.subcommands = {
     'panel': async function (interaction) {
       const isAdmin = interaction.member.permissions.has('ADMINISTRATOR') || 
                       (interaction.client.config.admins || []).includes(interaction.user.id);
-      if (!isAdmin) return interaction.reply({ content: localize('ping-protection', 'no-permission'), ephemeral: true });
+      if (!isAdmin) return interaction.reply({ 
+        content: localize('ping-protection', 'no-permission'), 
+        ephemeral: true 
+      });
 
       const user = interaction.options.getUser('user');
       const pingerId = user.id;
       const storageConfig = interaction.client.configurations['ping-protection']['storage'];
-      const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12;
+      const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) 
+      ? storageConfig.pingHistoryRetention : 12;
       const timeframeDays = retentionWeeks * 7;
       
       const pingCount = await getPingCountInWindow(interaction.client, pingerId, timeframeDays);
@@ -119,8 +94,12 @@ async function listHandler(interaction, type) {
     embed.setTitle(localize('ping-protection', 'list-protected-title'));
     embed.setDescription(localize('ping-protection', 'list-protected-desc'));
 
-    const usersList = config.protectedUsers.length > 0 ? config.protectedUsers.map(id => `<@${id}>`).join('\n') : localize('ping-protection', 'list-none');
-    const rolesList = config.protectedRoles.length > 0 ? config.protectedRoles.map(id => `<@&${id}>`).join('\n') : localize('ping-protection', 'list-none');
+    const usersList = config.protectedUsers.length > 0 
+    ? config.protectedUsers.map(id => `<@${id}>`).join('\n') 
+    : localize('ping-protection', 'list-none');
+    const rolesList = config.protectedRoles.length > 0 
+    ? config.protectedRoles.map(id => `<@&${id}>`).join('\n') 
+    : localize('ping-protection', 'list-none');
 
     embed.addFields([
       { name: localize('ping-protection', 'field-prot-users'), value: usersList, inline: true },
@@ -131,8 +110,12 @@ async function listHandler(interaction, type) {
     embed.setTitle(localize('ping-protection', 'list-whitelist-title'));
     embed.setDescription(localize('ping-protection', 'list-whitelist-desc'));
 
-    const rolesList = config.ignoredRoles.length > 0 ? config.ignoredRoles.map(id => `<@&${id}>`).join('\n') : localize('ping-protection', 'list-none');
-    const channelsList = config.ignoredChannels.length > 0 ? config.ignoredChannels.map(id => `<#${id}>`).join('\n') : localize('ping-protection', 'list-none');
+    const rolesList = config.ignoredRoles.length > 0 
+    ? config.ignoredRoles.map(id => `<@&${id}>`).join('\n') 
+    : localize('ping-protection', 'list-none');
+    const channelsList = config.ignoredChannels.length > 0 
+    ? config.ignoredChannels.map(id => `<#${id}>`).join('\n') 
+    : localize('ping-protection', 'list-none');
 
     embed.addFields([
       { name: localize('ping-protection', 'field-wl-roles'), value: rolesList, inline: true },
@@ -142,3 +125,70 @@ async function listHandler(interaction, type) {
 
   await interaction.reply({ embeds: [embed], ephemeral: false });
 }
+
+// Command definition
+module.exports.config = {
+  name: 'ping-protection',
+  description: localize('ping-protection', 'cmd-desc-module'), 
+  usage: '/ping-protection',
+  type: 'slash',
+  options: [
+    {
+            type: 'SUB_COMMAND_GROUP',
+            name: 'user',
+            description: localize('ping-protection', 'cmd-desc-group-user'),
+            options: [
+                {
+                    type: 'SUB_COMMAND',
+                    name: 'history',
+                    description: localize('ping-protection', 'cmd-desc-history'),
+                    options: [{
+                        type: 'USER',
+                        name: 'user',
+                        description: localize('ping-protection', 'cmd-opt-user'),
+                        required: true
+                    }]
+                },
+                {
+                    type: 'SUB_COMMAND',
+                    name: 'actions-history',
+                    description: localize('ping-protection', 'cmd-desc-actions'),
+                    options: [{
+                        type: 'USER',
+                        name: 'user',
+                        description: localize('ping-protection', 'cmd-opt-user'),
+                        required: true
+                    }]
+                },
+                {
+                    type: 'SUB_COMMAND',
+                    name: 'panel',
+                    description: localize('ping-protection', 'cmd-desc-panel'),
+                    options: [{
+                        type: 'USER',
+                        name: 'user',
+                        description: localize('ping-protection', 'cmd-opt-user'),
+                        required: true
+                    }]
+                }
+            ]
+        },
+        {
+            type: 'SUB_COMMAND_GROUP',
+            name: 'list',
+            description: localize('ping-protection', 'cmd-desc-group-list'),
+            options: [
+                {
+                    type: 'SUB_COMMAND',
+                    name: 'protected',
+                    description: localize('ping-protection', 'cmd-desc-list-protected')
+                },
+                {
+                    type: 'SUB_COMMAND',
+                    name: 'whitelisted',
+                    description: localize('ping-protection', 'cmd-desc-list-wl')
+                }
+            ]
+        }
+    ]
+};

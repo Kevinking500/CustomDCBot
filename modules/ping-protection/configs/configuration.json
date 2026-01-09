@@ -100,16 +100,21 @@
       }
     },
     {
-      "name": "allowSelfPing",
+      "name": "selfPingConfiguration",
       "humanName": { 
-        "en": "Allow protected users to ping themselves" 
+        "en": "Self-Ping Configuration" 
       },
       "description": { 
-        "en": "If enabled, a protected user is able to ping themselves without getting the chance to be embarrassed."
+        "en": "Decide what happens when a user pings themselves."
       },
-      "type": "boolean",
+      "type": "select",
+      "content": [
+        "Not allowed",
+        "Allowed, and ignored",
+        "Allowed, but with fun easter eggs"
+      ],
       "default": { 
-        "en": false 
+        "en": "Allowed, and ignored" 
       }
     },
     {

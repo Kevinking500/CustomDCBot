@@ -9,12 +9,11 @@ const { embedType, embedTypeV2, formatDate } = require('../../src/functions/help
 const { localize } = require('../../src/functions/localize');
 
 // Data handling
-async function addPing(client, messageObj, target) {
-    const isRole = !target.username; 
+async function addPing(client, userId, messageUrl, targetId, isRole) {
     await client.models['ping-protection']['PingHistory'].create({
-        userId: messageObj.author.id,
-        messageUrl: messageObj.url || 'Blocked by AutoMod',
-        targetId: target.id,
+        userId: userId,
+        messageUrl: messageUrl || 'Blocked by AutoMod',
+        targetId: targetId,
         isRole: isRole
     });
 }
@@ -39,11 +38,17 @@ async function fetchPingHistory(client, userId, page = 1, limit = 8) {
         limit: limit,
         offset: offset
     });
-    return { total: count, history: rows };
+    return { 
+        total: count, 
+        history: rows 
+    };
 }
 
 async function fetchModHistory(client, userId, page = 1, limit = 8) {
-    if (!client.models['ping-protection'] || !client.models['ping-protection']['ModerationLog']) return { total: 0, history: [] };
+    if (!client.models['ping-protection'] || !client.models['ping-protection']['ModerationLog']) return { 
+        total: 0, 
+        history: [] 
+    };
     try {
         const offset = (page - 1) * limit;
         const { count, rows } = await client.models['ping-protection']['ModerationLog'].findAndCountAll({
@@ -52,9 +57,15 @@ async function fetchModHistory(client, userId, page = 1, limit = 8) {
             limit: limit,
             offset: offset
         });
-        return { total: count, history: rows };
+        return { 
+            total: count, 
+            history: rows 
+        };
     } catch (e) {
-        return { total: 0, history: [] };
+        return { 
+            total: 0, 
+            history: [] 
+        };
     }
 }
 
@@ -172,13 +183,19 @@ async function generateHistoryResponse(client, userId, page = 1) {
         totalPages = Math.ceil(total / limit) || 1;
     }
 
-    const user = await client.users.fetch(userId).catch(() => ({ username: 'Unknown User', displayAvatarURL: () => null }));
+    const user = await client.users.fetch(userId).catch(() => ({ 
+        username: 'Unknown User', 
+        displayAvatarURL: () => null 
+    }));
     const leaverData = await getLeaverStatus(client, userId);
     let description = "";
     
     if (leaverData) {
         const dateStr = formatDate(leaverData.leftAt);
-        description += `⚠️ ${localize('ping-protection', history.length > 0 ? 'leaver-warning-long' : 'leaver-warning-short', { d: dateStr })}\n\n`;
+        description += `⚠️ ${localize('ping-protection', history.length > 0 
+            ? 'leaver-warning-long' 
+            : 'leaver-warning-short', 
+            { d: dateStr })}\n\n`;
     }
 
     if (!isEnabled) {
@@ -201,23 +218,37 @@ async function generateHistoryResponse(client, userId, page = 1) {
     );
 
     const embed = new MessageEmbed()
-        .setTitle(localize('ping-protection', 'embed-history-title', { u: user.username }))
-        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+        .setTitle(localize('ping-protection', 'embed-history-title', { 
+            u: user.username 
+        }))
+        .setThumbnail(user.displayAvatarURL({ 
+            dynamic: true 
+        }))
         .setDescription(description)
         .setColor('ORANGE')
-        .setFooter({ text: client.strings.footer, iconURL: client.strings.footerImgUrl });
+        .setFooter({ 
+            text: client.strings.footer, 
+            iconURL: client.strings.footerImgUrl 
+        });
 
     if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
 
-    return { embeds: [embed], components: [row] };
+    return { 
+        embeds: [embed], 
+        components: [row] 
+    };
 }
 // Generates actions response
 async function generateActionsResponse(client, userId, page = 1) {
     const moderationConfig = client.configurations['ping-protection']['moderation'];
     const limit = 8;
     
-    const rule1 = (moderationConfig && Array.isArray(moderationConfig) && moderationConfig.length > 0) ? moderationConfig[0] : null;
-    const isEnabled = rule1 ? rule1.enableModeration : false;
+    const rule1 = (moderationConfig && Array.isArray(moderationConfig) && moderationConfig.length > 0) 
+    ? moderationConfig[0] 
+    : null;
+    const isEnabled = rule1 
+    ? rule1.enableModeration 
+    : false;
 
     let total = 0, history = [], totalPages = 1;
 
@@ -226,7 +257,10 @@ async function generateActionsResponse(client, userId, page = 1) {
     history = data.history;
     totalPages = Math.ceil(total / limit) || 1;
 
-    const user = await client.users.fetch(userId).catch(() => ({ username: 'Unknown User', displayAvatarURL: () => null }));
+    const user = await client.users.fetch(userId).catch(() => ({ 
+        username: 'Unknown User', 
+        displayAvatarURL: () => null 
+    }));
     let description = "";
 
     if (!isEnabled) {
@@ -251,11 +285,18 @@ async function generateActionsResponse(client, userId, page = 1) {
     );
 
     const embed = new MessageEmbed()
-        .setTitle(localize('ping-protection', 'embed-actions-title', { u: user.username }))
-        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+        .setTitle(localize('ping-protection', 'embed-actions-title', { 
+            u: user.username 
+        }))
+        .setThumbnail(user.displayAvatarURL({ 
+            dynamic: true 
+        }))
         .setDescription(description)
         .setColor(isEnabled ? 'RED' : 'GREY') 
-        .setFooter({ text: client.strings.footer, iconURL: client.strings.footerImgUrl });
+        .setFooter({ 
+            text: client.strings.footer, 
+            iconURL: client.strings.footerImgUrl 
+        });
 
     if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
 
@@ -263,16 +304,29 @@ async function generateActionsResponse(client, userId, page = 1) {
 }
 // Handles data deletion
 async function deleteAllUserData(client, userId) {
-    await client.models['ping-protection']['PingHistory'].destroy({ where: { userId: userId } });
-    await client.models['ping-protection']['ModerationLog'].destroy({ where: { victimID: userId } });
-    await client.models['ping-protection']['LeaverData'].destroy({ where: { userId: userId } });
-    client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-manual-delete-logs', { u: userId }));
+    await client.models['ping-protection']['PingHistory'].destroy({ 
+        where: { userId: userId } 
+    });
+    await client.models['ping-protection']['ModerationLog'].destroy({ 
+        where: { victimID: userId } 
+    });
+    await client.models['ping-protection']['LeaverData'].destroy({ 
+        where: { userId: userId } 
+    });
+    client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-manual-delete-logs', { 
+        u: userId 
+    }));
 }
 async function markUserAsLeft(client, userId) {
-    await client.models['ping-protection']['LeaverData'].upsert({ userId: userId, leftAt: new Date() });
+    await client.models['ping-protection']['LeaverData'].upsert({ 
+        userId: userId, 
+        leftAt: new Date() 
+    });
 }
 async function markUserAsRejoined(client, userId) {
-    await client.models['ping-protection']['LeaverData'].destroy({ where: { userId: userId } });
+    await client.models['ping-protection']['LeaverData'].destroy({ 
+        where: { userId: userId } 
+    });
 }
 async function enforceRetention(client) {
     const storageConfig = client.configurations['ping-protection']['storage'];
@@ -304,12 +358,20 @@ async function enforceRetention(client) {
     if (storageConfig.modLogRetention) {
         const modCutoff = new Date();
         modCutoff.setMonth(modCutoff.getMonth() - (storageConfig.modLogRetention || 6));
-        await client.models['ping-protection']['ModerationLog'].destroy({ where: { createdAt: { [Op.lt]: modCutoff } } });
+        await client.models['ping-protection']['ModerationLog'].destroy({ 
+            where: { 
+                createdAt: { [Op.lt]: modCutoff } 
+            } 
+        });
     }
     if (storageConfig.enableLeaverDataRetention) {
         const leaverCutoff = new Date();
         leaverCutoff.setDate(leaverCutoff.getDate() - (storageConfig.leaverRetention || 1));
-        const leaversToDelete = await client.models['ping-protection']['LeaverData'].findAll({ where: { leftAt: { [Op.lt]: leaverCutoff } } });
+        const leaversToDelete = await client.models['ping-protection']['LeaverData'].findAll({ 
+            where: { 
+                leftAt: { [Op.lt]: leaverCutoff } 
+            } 
+        });
         for (const leaver of leaversToDelete) {
             await deleteAllUserData(client, leaver.userId);
             await leaver.destroy();
@@ -325,7 +387,9 @@ async function executeAction(client, member, rule, reason, storageConfig) {
     }
     const botMember = await member.guild.members.fetch(client.user.id);
     if (botMember.roles.highest.position <= member.roles.highest.position) {
-        client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'punish-role-error', {tag: member.user.tag}));
+        client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'punish-role-error', {
+            tag: member.user.tag
+        }));
         return false;
     }
     const logDb = async (type, duration = null) => {
@@ -340,20 +404,31 @@ async function executeAction(client, member, rule, reason, storageConfig) {
         await logDb('MUTE', rule.muteDuration);
         try { 
             await member.timeout(durationMs, reason); 
-            client.logger.info('[Ping Protection] ' + localize('ping-protection', 'log-mute-success', {tag: member.user.tag, dur: rule.muteDuration}));
+            client.logger.info('[Ping Protection] ' + localize('ping-protection', 'log-mute-success', {
+                tag: member.user.tag, 
+                dur: rule.muteDuration
+            }));
             return true; 
         } catch (error) { 
-            client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'log-mute-error', {tag: member.user.tag, e: error.message}));
+            client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'log-mute-error', {
+                tag: member.user.tag, 
+                e: error.message
+            }));
             return false; 
         }
     } else if (actionType === 'KICK') {
         await logDb('KICK');
         try { 
             await member.kick(reason); 
-            client.logger.info('[Ping Protection] ' + localize('ping-protection', 'log-kick-success', {tag: member.user.tag}));
+            client.logger.info('[Ping Protection] ' + localize('ping-protection', 'log-kick-success', {
+                tag: member.user.tag
+            }));
             return true; 
         } catch (error) { 
-            client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'log-kick-error', {tag: member.user.tag, e: error.message}));
+            client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'log-kick-error', {
+                tag: member.user.tag, 
+                e: error.message
+            }));
             return false; 
         }
     }

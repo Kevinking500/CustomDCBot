@@ -24,19 +24,18 @@ module.exports.run = async function (client, execution) {
 
     let pingCount = 0;
     let timeframeDays = 84;
-    let rule1 = (moderationRules && Array.isArray(moderationRules) && moderationRules.length > 0) ? moderationRules[0] : null;
+    let rule1 = (moderationRules && Array.isArray(moderationRules) && moderationRules.length > 0) 
+    ? moderationRules[0] : null;
 
     if (!!storageConfig && !!storageConfig.enablePingHistory) {
-        const mockAuthor = { id: execution.userId };
-        const mockMessage = { author: mockAuthor, url: 'Blocked by AutoMod' };
-        const mockTarget = { id: rawId };
-
         try {
-            await addPing(client, mockMessage, mockTarget);
+            const isRole = config.protectedRoles.includes(rawId);
+            await addPing(client, execution.userId, 'Blocked by AutoMod', rawId, isRole);
             if (rule1 && !!rule1.useCustomTimeframe) {
                 timeframeDays = rule1.timeframeDays || 7;
             } else {
-                const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
+                const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) 
+                ? storageConfig.pingHistoryRetention : 12; 
                 timeframeDays = retentionWeeks * 7;
             }
             pingCount = await getPingCountInWindow(client, execution.userId, timeframeDays);
@@ -46,10 +45,16 @@ module.exports.run = async function (client, execution) {
 
     if (!rule1 || !rule1.enableModeration) return;
     
-    let requiredCount = (rule1.useCustomTimeframe) ? rule1.pingsCountAdvanced : rule1.pingsCountBasic;
+    let requiredCount = (rule1.useCustomTimeframe) 
+    ? rule1.pingsCountAdvanced 
+    : rule1.pingsCountBasic;
     let generatedReason = (rule1.useCustomTimeframe) 
-        ? localize('ping-protection', 'reason-advanced', { c: pingCount, d: rule1.timeframeDays })
-        : localize('ping-protection', 'reason-basic', { c: pingCount, w: (storageConfig.pingHistoryRetention || 12) });
+        ? localize('ping-protection', 'reason-advanced', { 
+            c: pingCount, d: rule1.timeframeDays 
+        })
+        : localize('ping-protection', 'reason-basic', { 
+            c: pingCount, w: (storageConfig.pingHistoryRetention || 12) 
+        });
 
     if (pingCount >= requiredCount) {
         const memberToPunish = await execution.guild.members.fetch(execution.userId).catch(() => null);
