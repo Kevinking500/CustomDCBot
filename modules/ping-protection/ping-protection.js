@@ -4,17 +4,16 @@
  * @author itskevinnn
  */
 const { Op } = require('sequelize');
-const { MessageActionRow, MessageButton, MessageEmbed } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle, resolveColor } = require('discord.js');
 const { embedType, embedTypeV2, formatDate } = require('../../src/functions/helpers');
 const { localize } = require('../../src/functions/localize');
 
 // Data handling
-async function addPing(client, messageObj, target) {
-    const isRole = !target.username; 
+async function addPing(client, userId, messageUrl, targetId, isRole) {
     await client.models['ping-protection']['PingHistory'].create({
-        userId: messageObj.author.id,
-        messageUrl: messageObj.url || 'Blocked by AutoMod',
-        targetId: target.id,
+        userId: userId,
+        messageUrl: messageUrl || 'Blocked by AutoMod',
+        targetId: targetId,
         isRole: isRole
     });
 }
@@ -80,6 +79,15 @@ async function sendPingWarning(client, message, target, moduleConfig) {
     const warningMsg = moduleConfig.pingWarningMessage;
     if (!warningMsg) return;
 
+    let warnMsg = { ...warningMsg };
+    if (warnMsg.color) {
+        try {
+            safeMsg.color = resolveColor(warnMsg.color);
+        } catch (err) {
+            delete warnMsg.color;
+        }
+    }
+
     const placeholders = {
         '%target-name%': target.name || target.tag || target.username || 'Unknown',
         '%target-mention%': target.toString(),
@@ -87,11 +95,16 @@ async function sendPingWarning(client, message, target, moduleConfig) {
         '%user-id%': message.author.id
     };
 
-    let messageOptions = await embedTypeV2(warningMsg, placeholders);
-    return message.reply(messageOptions).catch(async () => {
-        return message.channel.send(messageOptions).catch(() => {});
-    });
+    try {
+        let messageOptions = await embedTypeV2(warnMsg, placeholders);
+        return message.reply(messageOptions).catch(async () => {
+            return message.channel.send(messageOptions).catch(() => {});
+        });
+    } catch (e) {
+        client.logger.warn(`[Ping Protection] ${error.message}`);
+    }
 }
+
 // Syncs the native AutoMod rule based on configuration
 async function syncNativeAutoMod(client) {
     const config = client.configurations['ping-protection']['configuration'];
@@ -111,7 +124,7 @@ async function syncNativeAutoMod(client) {
 
         const protectedIds = [...(config.protectedRoles || []), ...(config.protectedUsers || [])];
         
-        // Deletest the rule if there are no protected IDs
+        // Deletes the rule if there are no protected IDs
         if (protectedIds.length === 0) {
             if (existingRule) {
                 await existingRule.delete().catch(() => {});
@@ -157,6 +170,7 @@ async function syncNativeAutoMod(client) {
         client.logger.error(`[ping-protection] AutoMod Sync/Cleanup Failed: ${error.message}`);
     }
 }
+
 // Generates history response
 async function generateHistoryResponse(client, userId, page = 1) {
     const storageConfig = client.configurations['ping-protection']['storage'];
@@ -172,13 +186,20 @@ async function generateHistoryResponse(client, userId, page = 1) {
         totalPages = Math.ceil(total / limit) || 1;
     }
 
-    const user = await client.users.fetch(userId).catch(() => ({ username: 'Unknown User', displayAvatarURL: () => null }));
+    const user = await client.users.fetch(userId).catch(() => ({ 
+        username: 'Unknown User', 
+        displayAvatarURL: () => null 
+    }));
+    
     const leaverData = await getLeaverStatus(client, userId);
     let description = "";
     
     if (leaverData) {
         const dateStr = formatDate(leaverData.leftAt);
-        description += `⚠️ ${localize('ping-protection', history.length > 0 ? 'leaver-warning-long' : 'leaver-warning-short', { d: dateStr })}\n\n`;
+        const warningKey = history.length > 0 
+        ? 'leaver-warning-long' 
+        : 'leaver-warning-short';
+        description += `⚠️ ${localize('ping-protection', warningKey, { d: dateStr })}\n\n`;
     }
 
     if (!isEnabled) {
@@ -188,36 +209,67 @@ async function generateHistoryResponse(client, userId, page = 1) {
     } else {
         const lines = history.map((entry, index) => {
             const timeString = formatDate(entry.createdAt);
-            const targetString = entry.targetId ? (entry.isRole ? `<@&${entry.targetId}>` : `<@${entry.targetId}>`) : "Detected";
+            
+            let targetString = "Detected";
+            if (entry.targetId) {
+                targetString = entry.isRole ? `<@&${entry.targetId}>` : `<@${entry.targetId}>`;
+            }
             return `${(page - 1) * limit + index + 1}. **Pinged ${targetString}** at ${timeString}\n[Jump to Message](${entry.messageUrl})`;
         });
         description += lines.join('\n\n');
     }
 
-    const row = new MessageActionRow().addComponents(
-        new MessageButton().setCustomId(`ping-protection_hist-page_${userId}_${page - 1}`).setLabel('Back').setStyle('PRIMARY').setDisabled(page <= 1),
-        new MessageButton().setCustomId('ping_protection_page_count').setLabel(`${page}/${totalPages}`).setStyle('SECONDARY').setDisabled(true),
-        new MessageButton().setCustomId(`ping-protection_hist-page_${userId}_${page + 1}`).setLabel('Next').setStyle('PRIMARY').setDisabled(page >= totalPages || !isEnabled)
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`ping-protection_hist-page_${userId}_${page - 1}`)
+            .setLabel('Back')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(page <= 1),
+        new ButtonBuilder()
+            .setCustomId('ping_protection_page_count')
+            .setLabel(`${page}/${totalPages}`)
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(true),
+        new ButtonBuilder()
+            .setCustomId(`ping-protection_hist-page_${userId}_${page + 1}`)
+            .setLabel('Next')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(page >= totalPages || !isEnabled)
     );
 
-    const embed = new MessageEmbed()
-        .setTitle(localize('ping-protection', 'embed-history-title', { u: user.username }))
-        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+    const embed = new EmbedBuilder()
+        .setTitle(localize('ping-protection', 'embed-history-title', { 
+            u: user.username 
+        }))
+        .setThumbnail(user.displayAvatarURL({ 
+            dynamic: true 
+        }))
         .setDescription(description)
-        .setColor('ORANGE')
-        .setFooter({ text: client.strings.footer, iconURL: client.strings.footerImgUrl });
+        .setColor('Orange')
+        .setFooter({ 
+            text: client.strings.footer, 
+            iconURL: client.strings.footerImgUrl 
+        });
 
     if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
-
-    return { embeds: [embed], components: [row] };
+    return { 
+        embeds: [embed.toJSON()], 
+        components: [row.toJSON()] 
+    };
 }
+
 // Generates actions response
 async function generateActionsResponse(client, userId, page = 1) {
     const moderationConfig = client.configurations['ping-protection']['moderation'];
     const limit = 8;
     
-    const rule1 = (moderationConfig && Array.isArray(moderationConfig) && moderationConfig.length > 0) ? moderationConfig[0] : null;
-    const isEnabled = rule1 ? rule1.enableModeration : false;
+    const rule1 = (moderationConfig && Array.isArray(moderationConfig) && moderationConfig.length > 0) 
+        ? moderationConfig[0] 
+        : null;
+        
+    const isEnabled = rule1 
+    ? rule1.enableModeration 
+    : false;
 
     let total = 0, history = [], totalPages = 1;
 
@@ -226,7 +278,11 @@ async function generateActionsResponse(client, userId, page = 1) {
     history = data.history;
     totalPages = Math.ceil(total / limit) || 1;
 
-    const user = await client.users.fetch(userId).catch(() => ({ username: 'Unknown User', displayAvatarURL: () => null }));
+    const user = await client.users.fetch(userId).catch(() => ({ 
+        username: 'Unknown User', 
+        displayAvatarURL: () => null 
+    }));
+    
     let description = "";
 
     if (!isEnabled) {
@@ -244,32 +300,61 @@ async function generateActionsResponse(client, userId, page = 1) {
         description += lines.join('\n\n') + `\n\n*${localize('ping-protection', 'actions-retention-note')}*`;
     }
 
-    const row = new MessageActionRow().addComponents(
-        new MessageButton().setCustomId(`ping-protection_mod-page_${userId}_${page - 1}`).setLabel('Back').setStyle('PRIMARY').setDisabled(page <= 1),
-        new MessageButton().setCustomId('ping_protection_page_count').setLabel(`${page}/${totalPages}`).setStyle('SECONDARY').setDisabled(true),
-        new MessageButton().setCustomId(`ping-protection_mod-page_${userId}_${page + 1}`).setLabel('Next').setStyle('PRIMARY').setDisabled(page >= totalPages || (!isEnabled && history.length === 0))
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`ping-protection_mod-page_${userId}_${page - 1}`)
+            .setLabel('Back')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(page <= 1),
+        new ButtonBuilder()
+            .setCustomId('ping_protection_page_count')
+            .setLabel(`${page}/${totalPages}`)
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(true),
+        new ButtonBuilder()
+            .setCustomId(`ping-protection_mod-page_${userId}_${page + 1}`)
+            .setLabel('Next')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(page >= totalPages || (!isEnabled && history.length === 0))
     );
 
-    const embed = new MessageEmbed()
+    const embed = new EmbedBuilder()
         .setTitle(localize('ping-protection', 'embed-actions-title', { u: user.username }))
         .setThumbnail(user.displayAvatarURL({ dynamic: true }))
         .setDescription(description)
-        .setColor(isEnabled ? 'RED' : 'GREY') 
+        .setColor(isEnabled 
+            ? 'Red' 
+            : 'Grey'
+        ) 
         .setFooter({ text: client.strings.footer, iconURL: client.strings.footerImgUrl });
 
     if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
-
-    return { embeds: [embed], components: [row] };
+    return { 
+        embeds: [embed.toJSON()], 
+        components: [row.toJSON()] 
+    };
 }
+
 // Handles data deletion
 async function deleteAllUserData(client, userId) {
-    await client.models['ping-protection']['PingHistory'].destroy({ where: { userId: userId } });
-    await client.models['ping-protection']['ModerationLog'].destroy({ where: { victimID: userId } });
-    await client.models['ping-protection']['LeaverData'].destroy({ where: { userId: userId } });
-    client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-manual-delete-logs', { u: userId }));
+    await client.models['ping-protection']['PingHistory'].destroy({ 
+        where: { userId: userId } 
+    });
+    await client.models['ping-protection']['ModerationLog'].destroy({ 
+        where: { victimID: userId } 
+    });
+    await client.models['ping-protection']['LeaverData'].destroy({ 
+        where: { userId: userId } 
+    });
+    client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-manual-delete-logs', { 
+        u: userId 
+    }));
 }
 async function markUserAsLeft(client, userId) {
-    await client.models['ping-protection']['LeaverData'].upsert({ userId: userId, leftAt: new Date() });
+    await client.models['ping-protection']['LeaverData'].upsert({ 
+        userId: userId, 
+        leftAt: new Date() 
+    });
 }
 async function markUserAsRejoined(client, userId) {
     await client.models['ping-protection']['LeaverData'].destroy({ where: { userId: userId } });
@@ -304,12 +389,20 @@ async function enforceRetention(client) {
     if (storageConfig.modLogRetention) {
         const modCutoff = new Date();
         modCutoff.setMonth(modCutoff.getMonth() - (storageConfig.modLogRetention || 6));
-        await client.models['ping-protection']['ModerationLog'].destroy({ where: { createdAt: { [Op.lt]: modCutoff } } });
+        await client.models['ping-protection']['ModerationLog'].destroy({ 
+            where: { 
+                createdAt: { [Op.lt]: modCutoff } 
+            } 
+        });
     }
     if (storageConfig.enableLeaverDataRetention) {
         const leaverCutoff = new Date();
         leaverCutoff.setDate(leaverCutoff.getDate() - (storageConfig.leaverRetention || 1));
-        const leaversToDelete = await client.models['ping-protection']['LeaverData'].findAll({ where: { leftAt: { [Op.lt]: leaverCutoff } } });
+        const leaversToDelete = await client.models['ping-protection']['LeaverData'].findAll({ 
+            where: { 
+                leftAt: { [Op.lt]: leaverCutoff } 
+            } 
+        });
         for (const leaver of leaversToDelete) {
             await deleteAllUserData(client, leaver.userId);
             await leaver.destroy();
@@ -325,7 +418,9 @@ async function executeAction(client, member, rule, reason, storageConfig) {
     }
     const botMember = await member.guild.members.fetch(client.user.id);
     if (botMember.roles.highest.position <= member.roles.highest.position) {
-        client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'punish-role-error', {tag: member.user.tag}));
+        client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'punish-role-error', {
+            tag: member.user.tag
+        }));
         return false;
     }
     const logDb = async (type, duration = null) => {

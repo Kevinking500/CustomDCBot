@@ -1,6 +1,7 @@
-const { Modal, TextInputComponent, MessageActionRow } = require('discord.js'); 
+const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, MessageFlags } = require('discord.js'); 
 const { deleteAllUserData, generateHistoryResponse, generateActionsResponse } = require('../ping-protection');
 const { localize } = require('../../../src/functions/localize');
+
 // Interaction handler
 module.exports.run = async function (client, interaction) {
     if (!client.botReadyAt) return;
@@ -31,37 +32,37 @@ module.exports.run = async function (client, interaction) {
         // Panel buttons
         const [prefix, action, userId] = interaction.customId.split('_');
         
-        const isAdmin = interaction.member.permissions.has('ADMINISTRATOR') || 
+        const isAdmin = interaction.member.permissions.has('Administrator') || 
                         (client.config.admins || []).includes(interaction.user.id);
 
         if (['history', 'actions', 'delete'].includes(action)) {
-             if (!isAdmin) return interaction.reply({ content: localize('ping-protection', 'no-permission'), ephemeral: true });
+             if (!isAdmin) return interaction.reply({ 
+                content: localize('ping-protection', 'no-permission'), 
+                flags: MessageFlags.Ephemeral });
         }
 
         if (action === 'history') {
             const replyOptions = await generateHistoryResponse(client, userId, 1);
-            replyOptions.ephemeral = false;
             await interaction.reply(replyOptions);
         }
 
         else if (action === 'actions') {
             const replyOptions = await generateActionsResponse(client, userId, 1);
-            replyOptions.ephemeral = false;
             await interaction.reply(replyOptions);
         }
         else if (action === 'delete') {
-            const modal = new Modal()
+            const modal = new ModalBuilder()
                 .setCustomId(`ping-protection_confirm-delete_${userId}`)
                 .setTitle(localize('ping-protection', 'modal-title'));
 
-            const input = new TextInputComponent()
+            const input = new TextInputBuilder()
                 .setCustomId('confirmation_text')
                 .setLabel(localize('ping-protection', 'modal-label')) 
-                .setStyle('PARAGRAPH')
+                .setStyle(TextInputStyle.Paragraph)
                 .setPlaceholder(localize('ping-protection', 'modal-phrase'))
                 .setRequired(true);
 
-            const row = new MessageActionRow().addComponents(input);
+            const row = new ActionRowBuilder().addComponents(input);
             modal.addComponents(row);
 
             await interaction.showModal(modal);
@@ -75,9 +76,13 @@ module.exports.run = async function (client, interaction) {
 
         if (userInput === requiredPhrase) {
             await deleteAllUserData(client, userId);
-            await interaction.reply({ content: `✅ ${localize('ping-protection', 'log-manual-delete', {u: userId})}`, ephemeral: true });
+            await interaction.reply({ 
+                content: `✅ ${localize('ping-protection', 'log-manual-delete', {u: userId})}`, 
+                flags: MessageFlags.Ephemeral });
         } else {
-            await interaction.reply({ content: `❌ ${localize('ping-protection', 'modal-failed')}`, ephemeral: true });
+            await interaction.reply({ 
+                content: `❌ ${localize('ping-protection', 'modal-failed')}`, 
+                flags: MessageFlags.Ephemeral });
         }
     }
 };

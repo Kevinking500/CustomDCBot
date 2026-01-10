@@ -187,9 +187,9 @@
       "default": {
         "en": {
           "title": "You are not allowed to ping %target-name%!",
-          "description": "<@%user-id%>, You are not allowed to ping %target-mention% due to your role. You can view which roles/members you are not allowed to ping by using the </ping-protection list protected:1451197999639429142> command.\n\nIf you were replying, make sure to turn off the mention in the reply.",
+          "description": "<@%user-id%>, You are not allowed to ping %target-mention% due to your role. You can view which roles/members you are not allowed to ping by using the ping-protection list protected` command.\n\nIf you were replying, make sure to turn off the mention in the reply.",
           "image": "https://c.tenor.com/zRR5cYKSIV0AAAAd/tenor.gif",
-          "color": "RED"
+          "color": "Red"
         }
       }
     }

@@ -4,11 +4,14 @@ const {
     executeAction, 
     sendPingWarning
 } = require('../ping-protection');
+const { Op } = require('sequelize');
 const { localize } = require('../../../src/functions/localize');
+
 // Tracks the last meme to prevent many duplicates
 const lastMemeMap = new Map();
 // Tracks ping counts for the grind message
 const selfPingCountMap = new Map();
+
 // Handles messages
 module.exports.run = async function (client, message) {
     if (!client.botReadyAt) return;
@@ -30,8 +33,9 @@ module.exports.run = async function (client, message) {
     // Check for protected pings
     const pingedProtectedRole = message.mentions.roles.some(role => config.protectedRoles.includes(role.id));
     let protectedMentions = message.mentions.users.filter(user => config.protectedUsers.includes(user.id));
+    
     // Handles reply pings
-    if (config.allowReplyPings && message.type === 'REPLY' && message.mentions.repliedUser) {
+    if (config.allowReplyPings && message.mentions.repliedUser) {
         const repliedId = message.mentions.repliedUser.id;
         
         if (protectedMentions.has(repliedId)) {
@@ -58,58 +62,66 @@ module.exports.run = async function (client, message) {
     if (!target) return; 
 
     // Funny easter egg when they ping themselves
-    if (target.id === message.author.id && config.allowSelfPing) {
-        const secretChance = 0.01; // Secret for a reason.. (1% chance)
-        const standardMemes = [
-            '[Why are you the way that you are?](<https://www.youtube.com/watch?v=NY9UZI1OUMI>) - You just pinged yourself..',
-            '🔑 [Congratulations, you played yourself.](<https://www.youtube.com/watch?v=Lr7CKWxqhtw>)',
-            '🕷️ [Is this you?](<https://i.kym-cdn.com/entries/icons/original/000/023/397/C-658VsXoAo3ovC.jpg>) - You just pinged yourself.'
-        ];
-        const secretMeme = '🎵 [Never gonna give you up, never gonna let you down...](<https://www.youtube.com/watch?v=dQw4w9WgXcQ>) You just Rick Rolled yourself. Also congrats you unlocked the secret easter egg that only has a 1% chance of appearing!!1!1!!';
-        const currentCount = (selfPingCountMap.get(message.author.id) || 0) + 1;
-        selfPingCountMap.set(message.author.id, currentCount);
+    if (target.id === message.author.id && config.selfPingConfiguration === "Allowed, and ignored") return;
+    if (target.id === message.author.id && config.selfPingConfiguration === "Allowed, but with fun easter eggs") {
+            const secretChance = 0.01; // Secret for a reason.. (1% chance)
+            const standardMemes = [
+                localize('ping-protection', 'meme-why'),
+                localize('ping-protection', 'meme-played'),
+                localize('ping-protection', 'meme-spider')
+            ];
+            const secretMeme = localize('ping-protection', 'meme-rick');
+            const currentCount = (selfPingCountMap.get(message.author.id) || 0) + 1;
+            selfPingCountMap.set(message.author.id, currentCount);
 
-        setTimeout(() => {
-            selfPingCountMap.delete(message.author.id);
-        }, 300000);
+            setTimeout(() => {
+                selfPingCountMap.delete(message.author.id);
+            }, 300000);
 
-        const roll = Math.random();
-        let content = '';
+            const roll = Math.random();
+            let content = '';
 
-        if (roll < secretChance) {
-            content = secretMeme;
-            lastMemeMap.set(message.author.id, -1);
-            selfPingCountMap.delete(message.author.id); // Reset on secret unlock
-        } else if (currentCount === 5) {
-            content = 'Why are you even pinging yourself 5 times in a row? Anyways continue some more to possibly get the secret meme\n-# (good luck grinding, only a 1% chance of getting it and during testing I had it once after 83 pings)';
-        } else {
-            const lastIndex = lastMemeMap.get(message.author.id);
+            if (roll < secretChance) {
+                content = secretMeme;
+                lastMemeMap.set(message.author.id, -1);
+                selfPingCountMap.delete(message.author.id);
+            } else if (currentCount === 5) {
+                content = localize('ping-protection', 'meme-grind');
+            } else {
+                const lastIndex = lastMemeMap.get(message.author.id);
 
-            let possibleMemes = standardMemes.map((_, index) => index);
-            if (lastIndex !== undefined && lastIndex !== -1 && standardMemes.length > 1) {
-                possibleMemes = possibleMemes.filter(i => i !== lastIndex);
+                let possibleMemes = standardMemes.map((_, index) => index);
+                if (lastIndex !== undefined && lastIndex !== -1 && standardMemes.length > 1) {
+                    possibleMemes = possibleMemes.filter(i => i !== lastIndex);
+                }
+
+                const randomIndex = possibleMemes[Math.floor(Math.random() * possibleMemes.length)];
+                content = standardMemes[randomIndex];
+                lastMemeMap.set(message.author.id, randomIndex);
             }
-
-            const randomIndex = possibleMemes[Math.floor(Math.random() * possibleMemes.length)];
-            content = standardMemes[randomIndex];
-            lastMemeMap.set(message.author.id, randomIndex);
-        }
-        await message.reply({ content: content }).catch(() => {});
-        return; 
+            await message.reply({ content: content }).catch(() => {});
+            return; 
     }
 
     let pingCount = 0;
     const pingerId = message.author.id;
     let timeframeDays = 84;
-    let rule1 = (moderationRules && Array.isArray(moderationRules) && moderationRules.length > 0) ? moderationRules[0] : null;
+    let rule1 = null;
+    if (moderationRules && Array.isArray(moderationRules) && moderationRules.length > 0) {
+        rule1 = moderationRules[0];
+    }
 
     if (!!storageConfig && !!storageConfig.enablePingHistory) {      
         try {
-            await addPing(client, message, target);
+            const isRole = !target.username; 
+            await addPing(client, pingerId, message.url, target.id, isRole);
+
             if (rule1 && !!rule1.useCustomTimeframe) {
                 timeframeDays = rule1.timeframeDays;
             } else {
-                const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
+                const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) 
+                    ? storageConfig.pingHistoryRetention 
+                    : 12; 
                 timeframeDays = retentionWeeks * 7;
             }
             pingCount = await getPingCountInWindow(client, pingerId, timeframeDays);
@@ -126,26 +138,39 @@ module.exports.run = async function (client, message) {
 
     if (!!rule1.useCustomTimeframe) {
         requiredCount = rule1.pingsCountAdvanced;
-        generatedReason = localize('ping-protection', 'reason-advanced', { c: pingCount, d: rule1.timeframeDays });
+        generatedReason = localize('ping-protection', 'reason-advanced', { 
+            c: pingCount, 
+            d: rule1.timeframeDays 
+        });
     } else {
         requiredCount = rule1.pingsCountBasic;
-        const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) ? storageConfig.pingHistoryRetention : 12; 
-        generatedReason = localize('ping-protection', 'reason-basic', { c: pingCount, w: retentionWeeks });
+        const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) 
+            ? storageConfig.pingHistoryRetention 
+            : 12; 
+        
+        generatedReason = localize('ping-protection', 'reason-basic', { 
+            c: pingCount, 
+            w: retentionWeeks 
+        });
     }
 
     if (pingCount >= requiredCount) {
-        const { Op } = require('sequelize');
         const oneMinuteAgo = new Date(new Date() - 60000);
         try {
             const recentLog = await client.models['ping-protection']['ModerationLog'].findOne({
-                where: { victimID: message.author.id, createdAt: { [Op.gt]: oneMinuteAgo } }
+                where: { 
+                    victimID: message.author.id, 
+                    createdAt: { [Op.gt]: oneMinuteAgo } 
+                }
             });
             if (recentLog) return; 
         } catch (e) {}
 
         let memberToPunish = message.member;
         if (!memberToPunish) {
-            try { memberToPunish = await message.guild.members.fetch(message.author.id); } catch (e) { return; }
+            try { 
+                memberToPunish = await message.guild.members.fetch(message.author.id); 
+            } catch (e) { return; }
         }
         await executeAction(client, memberToPunish, rule1, generatedReason, storageConfig);
     }
