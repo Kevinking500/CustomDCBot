@@ -105,6 +105,75 @@
       "default": {
         "en": 60
       }
+    },
+    {
+      "name": "enableActionLogging",
+      "humanName": {
+        "en": "Enable action logging"
+      },
+      "description": {
+        "en": "If enabled, moderation actions will be logged in the channel where a protected user/role got pinged."
+      },
+      "type": "boolean",
+      "default": {
+        "en": true
+      }
+    },
+    {
+      "name": "actionLogMessage",
+      "humanName": {
+        "en": "Action log message"
+      },
+      "description": {
+        "en": "The message that will be sent when a user is punished for pinging protected users/roles."
+      },
+      "type": "string",
+      "allowEmbed": true,
+      "params": [
+        {
+          "name": "pinger-mention",
+          "description": {
+            "en": "Mention of the user who pinged"
+          }
+        },
+        {
+          "name": "pinger-name",
+          "description": {
+            "en": "Name of the user who pinged"
+          }
+        },
+        {
+          "name": "action",
+          "description": {
+            "en": "The action that was taken (muted/kicked)"
+          }
+        },
+        {
+          "name": "pings",
+          "description": {
+            "en": "Number of pings that triggered the action"
+          }
+        },
+        {
+          "name": "timeframe",
+          "description": {
+            "en": "The timeframe in days in which the pings occurred"
+          }
+        },
+        {
+          "name": "duration",
+          "description": {
+            "en": "Duration of the mute in minutes (only for the mute action)"
+          }
+        }
+      ],
+      "default": {
+        "en": {
+          "title": "Moderation action taken against %pinger-name%",
+          "description": "I have taken action against %pinger-mention% for pinging protected users/roles %pings% times within %timeframe% days.\n **Action:** %action%\n**Duration:** %duration% minutes",
+          "color": 16711680
+        }
+      }
     }
   ]
 }

@@ -4,7 +4,7 @@
  * @author itskevinnn
  */
 const { Op } = require('sequelize');
-const { ActionRowBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle, resolveColor } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle } = require('discord.js');
 const { embedType, embedTypeV2, formatDate } = require('../../src/functions/helpers');
 const { localize } = require('../../src/functions/localize');
 
@@ -80,14 +80,6 @@ async function sendPingWarning(client, message, target, moduleConfig) {
     if (!warningMsg) return;
 
     let warnMsg = { ...warningMsg };
-    if (warnMsg.color) {
-        try {
-            safeMsg.color = resolveColor(warnMsg.color);
-        } catch (err) {
-            delete warnMsg.color;
-        }
-    }
-
     const placeholders = {
         '%target-name%': target.name || target.tag || target.username || 'Unknown',
         '%target-mention%': target.toString(),
@@ -100,7 +92,7 @@ async function sendPingWarning(client, message, target, moduleConfig) {
         return message.reply(messageOptions).catch(async () => {
             return message.channel.send(messageOptions).catch(() => {});
         });
-    } catch (e) {
+    } catch (error) {
         client.logger.warn(`[Ping Protection] ${error.message}`);
     }
 }
@@ -166,7 +158,7 @@ async function syncNativeAutoMod(client) {
         } else {
             await guild.autoModerationRules.create(ruleData);
         }
-    } catch (e) {
+    } catch (error) {
         client.logger.error(`[ping-protection] AutoMod Sync/Cleanup Failed: ${error.message}`);
     }
 }
@@ -319,14 +311,21 @@ async function generateActionsResponse(client, userId, page = 1) {
     );
 
     const embed = new EmbedBuilder()
-        .setTitle(localize('ping-protection', 'embed-actions-title', { u: user.username }))
-        .setThumbnail(user.displayAvatarURL({ dynamic: true }))
+        .setTitle(localize('ping-protection', 'embed-actions-title', { 
+            u: user.username 
+        }))
+        .setThumbnail(user.displayAvatarURL({ 
+            dynamic: true 
+        }))
         .setDescription(description)
         .setColor(isEnabled 
             ? 'Red' 
             : 'Grey'
         ) 
-        .setFooter({ text: client.strings.footer, iconURL: client.strings.footerImgUrl });
+        .setFooter({ 
+            text: client.strings.footer, 
+            iconURL: client.strings.footerImgUrl 
+        });
 
     if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
     return { 
@@ -346,7 +345,7 @@ async function deleteAllUserData(client, userId) {
     await client.models['ping-protection']['LeaverData'].destroy({ 
         where: { userId: userId } 
     });
-    client.logger.info('[ping-protection] ' + localize('ping-protection', 'log-manual-delete-logs', { 
+    client.logger.info(localize('ping-protection', 'log-manual-delete-logs', { 
         u: userId 
     }));
 }
@@ -357,18 +356,24 @@ async function markUserAsLeft(client, userId) {
     });
 }
 async function markUserAsRejoined(client, userId) {
-    await client.models['ping-protection']['LeaverData'].destroy({ where: { userId: userId } });
+    await client.models['ping-protection']['LeaverData'].destroy({ 
+        where: { userId: userId } 
+    });
 }
 async function enforceRetention(client) {
     const storageConfig = client.configurations['ping-protection']['storage'];
     if (!storageConfig) return;
+
     if (storageConfig.enablePingHistory) {
         const historyCutoff = new Date();
         const retentionWeeks = storageConfig.pingHistoryRetention || 12;
         historyCutoff.setDate(historyCutoff.getDate() - (retentionWeeks * 7));
+
         if (storageConfig.DeleteAllPingHistoryAfterTimeframe) {
             const usersWithExpiredData = await client.models['ping-protection']['PingHistory'].findAll({
-                where: { createdAt: { [Op.lt]: historyCutoff } },
+                where: { 
+                    createdAt: { [Op.lt]: historyCutoff } 
+                },
                 attributes: ['userId'],
                 group: ['userId']
             });
@@ -410,19 +415,76 @@ async function enforceRetention(client) {
     }
 }
 
-async function executeAction(client, member, rule, reason, storageConfig) {
+// Executes moderation action
+async function executeAction(client, member, rule, reason, storageConfig, originChannel = null, stats = {}) {
     const actionType = rule.actionType; 
+    
+    // Sends action log if enabled
+    const sendActionLog = async () => {
+        if (!rule.enableActionLogging || !originChannel) return;
+
+        const logMsgConfig = rule.actionLogMessage;
+        if (!logMsgConfig) return;
+        let safeMsg = { ...logMsgConfig };
+
+        const placeholders = {
+            '%pinger-mention%': member.toString(),
+            '%pinger-name%': member.user.tag,
+            '%action%': rule.actionType,
+            '%duration%': rule.muteDuration || 'N/A',
+            '%pings%': stats.pingCount || 'N/A',
+            '%timeframe%': stats.timeframeDays || 'N/A'
+        };
+
+        try {
+            let messageOptions = await embedTypeV2(safeMsg, placeholders);
+            await originChannel.send(messageOptions).catch(() => {});
+        } catch (error) {
+            client.logger.warn(localize('ping-protection', 'log-action-log-failed', { 
+                e: error.message 
+            }));
+        }
+    };
+
+    // Sends error message if action fails
+    const sendErrorLog = async (error) => {
+        if (!originChannel) return;
+        
+        const errorEmbed = new EmbedBuilder()
+            .setTitle(localize('ping-protection', 'punish-log-failed-title', { 
+                u: member.user.tag 
+            }))
+            .setDescription(
+                localize('ping-protection', 'punish-log-failed-desc', { 
+                    m: member.toString() 
+                }) + 
+                `\n${localize('ping-protection', 'punish-log-error', { 
+                    e: error.message 
+                })}`
+            )
+            .setColor(16711680); 
+
+        await originChannel.send({ embeds: [errorEmbed.toJSON()] }).catch(() => {});
+    };
+    
     if (!member) {
-        client.logger.debug('[Ping Protection] ' + localize('ping-protection', 'not-a-member'));
+        client.logger.debug(localize('ping-protection', 'log-not-a-member'));
         return false;
     }
+
     const botMember = await member.guild.members.fetch(client.user.id);
     if (botMember.roles.highest.position <= member.roles.highest.position) {
-        client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'punish-role-error', {
+        await sendErrorLog({ 
+            message: localize('ping-protection', 'punish-role-error', { 
+                tag: member.user.tag 
+            }) 
+        });
+        client.logger.warn(localize('ping-protection', 'log-punish-role-error', {
             tag: member.user.tag
         }));
         return false;
     }
+
     const logDb = async (type, duration = null) => {
         try {
             await client.models['ping-protection']['ModerationLog'].create({
@@ -430,25 +492,36 @@ async function executeAction(client, member, rule, reason, storageConfig) {
             });
         } catch (dbError) {}
     };
+
     if (actionType === 'MUTE') {
         const durationMs = rule.muteDuration * 60000;
         await logDb('MUTE', rule.muteDuration);
         try { 
             await member.timeout(durationMs, reason); 
-            client.logger.info('[Ping Protection] ' + localize('ping-protection', 'log-mute-success', {tag: member.user.tag, dur: rule.muteDuration}));
+            await sendActionLog();
             return true; 
         } catch (error) { 
-            client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'log-mute-error', {tag: member.user.tag, e: error.message}));
+            await sendErrorLog(error);
+            client.logger.warn(localize('ping-protection', 'log-mute-error', {
+                tag: member.user.tag, 
+                e: error.message
+            }));
             return false; 
         }
-    } else if (actionType === 'KICK') {
+
+    } 
+    else if (actionType === 'KICK') {
         await logDb('KICK');
         try { 
             await member.kick(reason); 
-            client.logger.info('[Ping Protection] ' + localize('ping-protection', 'log-kick-success', {tag: member.user.tag}));
+            await sendActionLog();
             return true; 
         } catch (error) { 
-            client.logger.warn('[Ping Protection] ' + localize('ping-protection', 'log-kick-error', {tag: member.user.tag, e: error.message}));
+            await sendErrorLog(error);
+            client.logger.warn(localize('ping-protection', 'log-kick-error', {
+                tag: member.user.tag, 
+                e: error.message
+            }));
             return false; 
         }
     }

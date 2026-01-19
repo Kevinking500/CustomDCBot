@@ -142,7 +142,8 @@ module.exports.run = async function (client, message) {
             c: pingCount, 
             d: rule1.timeframeDays 
         });
-    } else {
+    } 
+    else {
         requiredCount = rule1.pingsCountBasic;
         const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) 
             ? storageConfig.pingHistoryRetention 
@@ -172,6 +173,10 @@ module.exports.run = async function (client, message) {
                 memberToPunish = await message.guild.members.fetch(message.author.id); 
             } catch (e) { return; }
         }
-        await executeAction(client, memberToPunish, rule1, generatedReason, storageConfig);
+
+        await executeAction(
+            client,memberToPunish,rule1,generatedReason,storageConfig,message.channel,
+            { pingCount, timeframeDays }
+        );
     }
 };
