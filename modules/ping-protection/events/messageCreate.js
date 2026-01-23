@@ -6,6 +6,7 @@ const {
 } = require('../ping-protection');
 const { Op } = require('sequelize');
 const { localize } = require('../../../src/functions/localize');
+const { randomElementFromArray } = require('../../../src/functions/helpers'); 
 
 // Tracks the last meme to prevent many duplicates
 const lastMemeMap = new Map();
@@ -21,8 +22,6 @@ module.exports.run = async function (client, message) {
     const config = client.configurations['ping-protection']['configuration'];
     const storageConfig = client.configurations['ping-protection']['storage'];
     const moderationRules = client.configurations['ping-protection']['moderation'];
-    
-    if (!config) return;
 
     if (message.author.bot) return;
 
@@ -95,7 +94,7 @@ module.exports.run = async function (client, message) {
                     possibleMemes = possibleMemes.filter(i => i !== lastIndex);
                 }
 
-                const randomIndex = possibleMemes[Math.floor(Math.random() * possibleMemes.length)];
+                const randomIndex = randomElementFromArray(possibleMemes);
                 content = standardMemes[randomIndex];
                 lastMemeMap.set(message.author.id, randomIndex);
             }
@@ -103,80 +102,80 @@ module.exports.run = async function (client, message) {
             return; 
     }
 
-    let pingCount = 0;
-    const pingerId = message.author.id;
-    let timeframeDays = 84;
-    let rule1 = null;
-    if (moderationRules && Array.isArray(moderationRules) && moderationRules.length > 0) {
-        rule1 = moderationRules[0];
-    }
-
+    // Log and process pings
     if (!!storageConfig && !!storageConfig.enablePingHistory) {      
         try {
             const isRole = !target.username; 
-            await addPing(client, pingerId, message.url, target.id, isRole);
-
-            if (rule1 && !!rule1.useCustomTimeframe) {
-                timeframeDays = rule1.timeframeDays;
-            } else {
-                const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) 
-                    ? storageConfig.pingHistoryRetention 
-                    : 12; 
-                timeframeDays = retentionWeeks * 7;
-            }
-            pingCount = await getPingCountInWindow(client, pingerId, timeframeDays);
+            await addPing(client, message.author.id, message.url, target.id, isRole);
         } catch (e) {}
     }
 
-    // Send warning if enabled and moderation actions
     await sendPingWarning(client, message, target, config);
     
-    if (!rule1 || !rule1.enableModeration) return;
+    if (!moderationRules || !Array.isArray(moderationRules) || moderationRules.length === 0) return;
+
+    const pingerId = message.author.id;
     
-    let requiredCount = 0;
-    let generatedReason = "";
-
-    if (!!rule1.useCustomTimeframe) {
-        requiredCount = rule1.pingsCountAdvanced;
-        generatedReason = localize('ping-protection', 'reason-advanced', { 
-            c: pingCount, 
-            d: rule1.timeframeDays 
-        });
-    } 
-    else {
-        requiredCount = rule1.pingsCountBasic;
-        const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) 
-            ? storageConfig.pingHistoryRetention 
-            : 12; 
+    for (let i = moderationRules.length - 1; i >= 0; i--) {
+        const rule = moderationRules[i];
         
-        generatedReason = localize('ping-protection', 'reason-basic', { 
-            c: pingCount, 
-            w: retentionWeeks 
-        });
-    }
+        let timeframeDays = 0;
+        let retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) 
+        ? storageConfig.pingHistoryRetention 
+        : 12;
 
-    if (pingCount >= requiredCount) {
-        const oneMinuteAgo = new Date(new Date() - 60000);
-        try {
-            const recentLog = await client.models['ping-protection']['ModerationLog'].findOne({
-                where: { 
-                    victimID: message.author.id, 
-                    createdAt: { [Op.gt]: oneMinuteAgo } 
-                }
-            });
-            if (recentLog) return; 
-        } catch (e) {}
-
-        let memberToPunish = message.member;
-        if (!memberToPunish) {
-            try { 
-                memberToPunish = await message.guild.members.fetch(message.author.id); 
-            } catch (e) { return; }
+        if (!!rule.useCustomTimeframe) {
+            timeframeDays = rule.timeframeDays || 7;
+        } 
+        else {
+            timeframeDays = retentionWeeks * 7;
         }
 
-        await executeAction(
-            client,memberToPunish,rule1,generatedReason,storageConfig,message.channel,
-            { pingCount, timeframeDays }
-        );
+        const pingCount = await getPingCountInWindow(client, pingerId, timeframeDays);
+        const requiredCount = (rule.useCustomTimeframe) ? rule.pingsCountAdvanced : rule.pingsCountBasic;
+
+        if (pingCount >= requiredCount) {
+            const oneMinuteAgo = new Date(new Date() - 60000);
+            try {
+                const recentLog = await client.models['ping-protection']['ModerationLog'].findOne({
+                    where: { 
+                        victimID: message.author.id, 
+                        createdAt: { [Op.gt]: oneMinuteAgo } 
+                    }
+                });
+                if (recentLog) break;
+            } catch (e) {}
+
+            const generatedReason = (rule.useCustomTimeframe) 
+                ? localize('ping-protection', 'reason-advanced', { 
+                    c: pingCount, 
+                    d: timeframeDays 
+                })
+                : localize('ping-protection', 'reason-basic', { 
+                    c: pingCount, 
+                    w: retentionWeeks 
+                });
+
+            let memberToPunish = message.member;
+            if (!memberToPunish) {
+                try { 
+                    memberToPunish = await message.guild.members.fetch(message.author.id); 
+                } catch (e) { continue; }
+            }
+
+            if (memberToPunish) {
+                const success = await executeAction(
+                    client,
+                    memberToPunish,
+                    rule,
+                    generatedReason,
+                    storageConfig,
+                    message.channel,
+                    { pingCount, timeframeDays }
+                );
+                
+                if (success) break;
+            }
+        }
     }
 };

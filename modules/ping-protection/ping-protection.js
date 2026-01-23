@@ -84,7 +84,7 @@ async function sendPingWarning(client, message, target, moduleConfig) {
         '%target-name%': target.name || target.tag || target.username || 'Unknown',
         '%target-mention%': target.toString(),
         '%target-id%': target.id,
-        '%user-id%': message.author.id
+        '%pinger-id%': message.author.id
     };
 
     try {
@@ -104,7 +104,7 @@ async function syncNativeAutoMod(client) {
     try {
         const guild = await client.guilds.fetch(client.guildID);
         const rules = await guild.autoModerationRules.fetch();
-        const existingRule = rules.find(r => r.name === 'SCNX Ping Protection');
+        const existingRule = rules.find(r => r.name === 'Ping Protection System');
 
         // Logic to disable/delete the rule
         if (!config || !config.enableAutomod) {
@@ -114,14 +114,34 @@ async function syncNativeAutoMod(client) {
             return;
         }
 
-        const protectedIds = [...(config.protectedRoles || []), ...(config.protectedUsers || [])];
+        const protectedIdsSet = new Set(config.protectedUsers || []);
         
+        if (config.protectedRoles && config.protectedRoles.length > 0) {
+            guild.members.cache.forEach(member => {
+                if (member.roles.cache.some(r => config.protectedRoles.includes(r.id))) {
+                    protectedIdsSet.add(member.id);
+                }
+            });
+        }
+        
+        const protectedIds = [...protectedIdsSet];
+
         // Deletes the rule if there are no protected IDs
         if (protectedIds.length === 0) {
             if (existingRule) {
                 await existingRule.delete().catch(() => {});
             }
             return;
+        }
+
+        let keywordFilter = [
+            ...protectedIds.map(id => `<@${id}>`), 
+            ...protectedIds.map(id => `<@!${id}>`) 
+        ];
+
+        if (keywordFilter.length > 1000) {
+            client.logger.warn(localize('ping-protection', 'log-automod-keyword-limit'));
+            keywordFilter = keywordFilter.slice(0, 1000);
         }
         
         // AutoMod rule data
@@ -145,7 +165,7 @@ async function syncNativeAutoMod(client) {
             eventType: 1, 
             triggerType: 1, 
             triggerMetadata: {
-                keywordFilter: protectedIds.map(id => `*${id}*`) 
+                keywordFilter: keywordFilter
             },
             actions: actions,
             enabled: true,
@@ -206,7 +226,17 @@ async function generateHistoryResponse(client, userId, page = 1) {
             if (entry.targetId) {
                 targetString = entry.isRole ? `<@&${entry.targetId}>` : `<@${entry.targetId}>`;
             }
-            return `${(page - 1) * limit + index + 1}. **Pinged ${targetString}** at ${timeString}\n[Jump to Message](${entry.messageUrl})`;
+
+            const linkText = entry.messageUrl 
+                ? `[${localize('ping-protection', 'label-jump')}](${entry.messageUrl})` 
+                : localize('ping-protection', 'no-message-link');
+
+            return localize('ping-protection', 'list-entry-text', {
+                index: (page - 1) * limit + index + 1,
+                target: targetString,
+                time: timeString,
+                link: linkText
+            });
         });
         description += lines.join('\n\n');
     }
@@ -214,7 +244,7 @@ async function generateHistoryResponse(client, userId, page = 1) {
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId(`ping-protection_hist-page_${userId}_${page - 1}`)
-            .setLabel('Back')
+            .setLabel(localize('helpers', 'back'))
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page <= 1),
         new ButtonBuilder()
@@ -224,7 +254,7 @@ async function generateHistoryResponse(client, userId, page = 1) {
             .setDisabled(true),
         new ButtonBuilder()
             .setCustomId(`ping-protection_hist-page_${userId}_${page + 1}`)
-            .setLabel('Next')
+            .setLabel(localize('helpers', 'next'))
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page >= totalPages || !isEnabled)
     );
@@ -277,10 +307,6 @@ async function generateActionsResponse(client, userId, page = 1) {
     
     let description = "";
 
-    if (!isEnabled) {
-        description += `${localize('ping-protection', 'warning-mod-disabled')}\n\n`;
-    }
-
     if (history.length === 0) {
         description += localize('ping-protection', 'no-data-found');
     } else {
@@ -295,7 +321,7 @@ async function generateActionsResponse(client, userId, page = 1) {
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId(`ping-protection_mod-page_${userId}_${page - 1}`)
-            .setLabel('Back')
+            .setLabel(localize('helpers', 'back'))
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page <= 1),
         new ButtonBuilder()
@@ -305,7 +331,7 @@ async function generateActionsResponse(client, userId, page = 1) {
             .setDisabled(true),
         new ButtonBuilder()
             .setCustomId(`ping-protection_mod-page_${userId}_${page + 1}`)
-            .setLabel('Next')
+            .setLabel(localize('helpers', 'next'))
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page >= totalPages || (!isEnabled && history.length === 0))
     );

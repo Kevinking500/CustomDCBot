@@ -3,24 +3,29 @@
   "humanName": {
     "en": "Moderation Actions"
   },
+  "configElementName": {
+    "en": {
+      "one": "punishment",
+      "more": "punishment"
+    }
+  },
   "description": {
     "en": "Define triggers for punishments."
   },
   "configElements": true,
   "content": [
     {
-      "name": "enableModeration",
+      "name": "pingsCountBasic",
       "humanName": {
-        "en": "Enable Moderation Actions"
+        "en": "Pings to trigger moderation"
       },
       "description": {
-        "en": "If enabled, members who ping protected users/roles repeatedly will be punished. NOTE: THIS WILL NOT WORK WHEN PINGS HISTORY LOGGING IS DISABLED!"
+        "en": "The amount of pings required to trigger a moderation action (Uses 'Ping History Retention' timeframe)."
       },
-      "type": "boolean",
+      "type": "integer",
       "default": {
-        "en": false
-      },
-      "elementToggle": true
+        "en": 10
+      }
     },
     {
       "name": "useCustomTimeframe",
@@ -36,22 +41,9 @@
       }
     },
     {
-      "name": "pingsCountBasic",
-      "humanName": {
-        "en": "Pings to trigger moderation"
-      },
-      "description": {
-        "en": "The amount of pings required to trigger a moderation action (Uses 'Ping History Retention' timeframe)."
-      },
-      "type": "integer",
-      "default": {
-        "en": 10
-      }
-    },
-    {
       "name": "pingsCountAdvanced",
       "humanName": {
-        "en": "Pings to trigger (Advanced)"
+        "en": "Pings to trigger (Custom Timeframe)"
       },
       "description": {
         "en": "The amount of pings required in the custom timeframe below."
@@ -171,7 +163,7 @@
         "en": {
           "title": "Moderation action taken against %pinger-name%",
           "description": "I have taken action against %pinger-mention% for pinging protected users/roles %pings% times within %timeframe% days.\n **Action:** %action%\n**Duration:** %duration% minutes",
-          "color": 16711680
+          "color": "#ed4245"
         }
       }
     }

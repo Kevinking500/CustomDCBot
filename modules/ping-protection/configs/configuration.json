@@ -113,6 +113,24 @@
       }
     },
     {
+      "name": "selfPingConfiguration",
+      "humanName": { 
+        "en": "Self-Ping configuration" 
+      },
+      "description": { 
+        "en": "Configure what happens when a protected user pings themselves."
+      },
+      "type": "select",
+      "content": [
+        "Not allowed",
+        "Allowed, and ignored",
+        "Allowed, but with fun easter eggs"
+      ],
+      "default": { 
+        "en": "Allowed, and ignored" 
+      }
+    },
+    {
       "name": "enableAutomod",
       "humanName": { 
         "en": "Enable automod" 
@@ -133,11 +151,13 @@
       "description": { 
         "en": "Channel where AutoMod alerts are sent." 
       },
-      "type": "array",
-      "content": "channelID",
+      "type": "channelID",
       "default": { 
         "en": [] 
       },
+      "channelTypes": [
+        "GUILD_TEXT"
+      ],
       "dependsOn": "enableAutomod"
     },
     {
@@ -148,9 +168,8 @@
         "en": "Custom text shown to the user when blocked (Max 150 characters)." 
       },
       "type": "string",
-      "maxLength": 150,
       "default": { 
-        "en": "Protected User Ping: Your message was blocked but the content was sent to the log channel." 
+        "en": "Protected User Ping: Your message was blocked because you are trying to ping a protected user/role. The content of your message might be sent to a log channel depending on the configuration." 
       },
       "dependsOn": "enableAutomod"
     },
@@ -182,14 +201,20 @@
           "description": { 
             "en": "ID of the pinged user/role"
           }
+        },
+        {
+          "name": "pinger-id",
+          "description": { 
+            "en": "ID of the user who pinged" 
+          }
         }
       ],
       "default": {
         "en": {
           "title": "You are not allowed to ping %target-name%!",
-          "description": "<@%user-id%>, You are not allowed to ping %target-mention% due to your role. You can view which roles/members you are not allowed to ping by using the ping-protection list protected` command.\n\nIf you were replying, make sure to turn off the mention in the reply.",
-          "image": "https://c.tenor.com/zRR5cYKSIV0AAAAd/tenor.gif",
-          "color": "16711680"
+          "description": "<@%pinger-id%>, You are not allowed to ping %target-mention% due to your role. You can view which roles/members you are not allowed to ping by using the ping-protection list protected` command.\n\nIf you were replying, make sure to turn off the mention in the reply.",
+          "image": "https://scnx-cdn.scootkit.net/1769198862209-rJfCVKzAuo6uQLhPUe9o2P6ArJkDBSVUCEyUQM6bqt5WFKWK.gif",
+          "color": "#ed4245"
         }
       }
     }

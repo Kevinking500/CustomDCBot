@@ -43,12 +43,18 @@ module.exports.run = async function (client, interaction) {
 
         if (action === 'history') {
             const replyOptions = await generateHistoryResponse(client, userId, 1);
-            await interaction.reply(replyOptions);
+            await interaction.reply({ 
+                ...replyOptions, 
+                flags: MessageFlags.Ephemeral 
+            });
         }
 
         else if (action === 'actions') {
             const replyOptions = await generateActionsResponse(client, userId, 1);
-            await interaction.reply(replyOptions);
+            await interaction.reply({ 
+                ...replyOptions, 
+                flags: MessageFlags.Ephemeral 
+            });
         }
         else if (action === 'delete') {
             const modal = new ModalBuilder()

@@ -37,7 +37,7 @@
       "dependsOn": "enablePingHistory"
     },
     {
-      "name": "DeleteAllPingHistoryAfterTimeframe",
+      "name": "deleteAllPingHistoryAfterTimeframe",
       "humanName": {
         "en": "Delete all the pings in history after the timeframe?"
       },

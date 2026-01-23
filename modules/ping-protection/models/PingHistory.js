@@ -9,7 +9,7 @@ module.exports = class PingProtectionPingHistory extends Model {
             },
             messageUrl: {
                 type: DataTypes.STRING,
-                allowNull: false
+                allowNull: true
             },
             targetId: {
                 type: DataTypes.STRING,

@@ -5,6 +5,7 @@ const {
   generateActionsResponse
 } = require('../ping-protection');
 const { localize } = require('../../../src/functions/localize');
+const { truncate } = require('../../../src/functions/helpers');
 const { ActionRowBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 
 module.exports.run = async function (interaction) {
@@ -23,22 +24,14 @@ module.exports.subcommands = {
     'history': async function (interaction) {
       const user = interaction.options.getUser('user');
       const payload = await generateHistoryResponse(interaction.client, user.id, 1);
-      await interaction.reply(payload); 
+      await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }); 
     },
     'actions-history': async function (interaction) {
       const user = interaction.options.getUser('user');
       const payload = await generateActionsResponse(interaction.client, user.id, 1);
-      await interaction.reply(payload);
+      await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
     },
     'panel': async function (interaction) {
-      const isAdmin = interaction.member.permissions.has('Administrator') || 
-                      (interaction.client.config.admins || []).includes(interaction.user.id);
-      
-      if (!isAdmin) return interaction.reply({ 
-        content: localize('ping-protection', 'no-permission'), 
-        flags: MessageFlags.Ephemeral 
-      });
-
       const user = interaction.options.getUser('user');
       const pingerId = user.id;
       const storageConfig = interaction.client.configurations['ping-protection']['storage'];
@@ -114,8 +107,16 @@ async function listHandler(interaction, type) {
       : localize('ping-protection', 'list-none');
 
     embed.addFields([
-      { name: localize('ping-protection', 'field-prot-users'), value: usersList, inline: true },
-      { name: localize('ping-protection', 'field-prot-roles'), value: rolesList, inline: true }
+      { 
+        name: localize('ping-protection', 'field-prot-users'), 
+        value: truncate(usersList, 1024), 
+        inline: true 
+      },
+      { 
+        name: localize('ping-protection', 'field-prot-roles'), 
+        value: truncate(rolesList, 1024), 
+        inline: true 
+      }
     ]);
 
   } else if (type === 'whitelisted') {
@@ -131,8 +132,14 @@ async function listHandler(interaction, type) {
       : localize('ping-protection', 'list-none');
 
     embed.addFields([
-      { name: localize('ping-protection', 'field-wl-roles'), value: rolesList, inline: true },
-      { name: localize('ping-protection', 'field-wl-channels'), value: channelsList, inline: true }
+      { 
+        name: localize('ping-protection', 'field-wl-roles'),
+        value: truncate(rolesList, 1024),
+        inline: true },
+      { 
+        name: localize('ping-protection', 'field-wl-channels'),
+        value: truncate(channelsList, 1024),
+        inline: true }
     ]);
   }
 
@@ -144,6 +151,7 @@ module.exports.config = {
   description: localize('ping-protection', 'cmd-desc-module'), 
   usage: '/ping-protection',
   type: 'slash',
+  defaultPermission: false,
   options: [
     {
             type: 'SUB_COMMAND_GROUP',
