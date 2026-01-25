@@ -8,8 +8,29 @@ const { ActionRowBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle } = require('
 const { embedType, embedTypeV2, formatDate } = require('../../src/functions/helpers');
 const { localize } = require('../../src/functions/localize');
 
+const recentPings = new Set();
+
 // Data handling
 async function addPing(client, userId, messageUrl, targetId, isRole) {
+    const config = client.configurations['ping-protection']['configuration'];
+    const duplicateWindow = config.enableAutomod ? 5000 : 2000;
+    const debounceKey = `${userId}_${targetId}`;
+
+    if (recentPings.has(debounceKey)) return;
+    recentPings.add(debounceKey);
+    setTimeout(() => {
+        recentPings.delete(debounceKey);
+    }, duplicateWindow);
+
+    const recentDuplicate = await client.models['ping-protection']['PingHistory'].findOne({
+        where: {
+            userId: userId,
+            targetId: targetId,
+            createdAt: { [Op.gt]: new Date(Date.now() - duplicateWindow) }
+        }
+    });
+
+    if (recentDuplicate) return;
     await client.models['ping-protection']['PingHistory'].create({
         userId: userId,
         messageUrl: messageUrl || 'Blocked by AutoMod',
@@ -17,7 +38,7 @@ async function addPing(client, userId, messageUrl, targetId, isRole) {
         isRole: isRole
     });
 }
-
+// Gets ping count in timeframe
 async function getPingCountInWindow(client, userId, days) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
@@ -29,7 +50,7 @@ async function getPingCountInWindow(client, userId, days) {
         }
     });
 }
-
+// Fetches ping history
 async function fetchPingHistory(client, userId, page = 1, limit = 8) { 
     const offset = (page - 1) * limit;
     const { count, rows } = await client.models['ping-protection']['PingHistory'].findAndCountAll({ 
@@ -40,7 +61,7 @@ async function fetchPingHistory(client, userId, page = 1, limit = 8) {
     });
     return { total: count, history: rows };
 }
-
+// Fetches moderation history
 async function fetchModHistory(client, userId, page = 1, limit = 8) {
     if (!client.models['ping-protection'] || !client.models['ping-protection']['ModerationLog']) return { total: 0, history: [] };
     try {
@@ -56,7 +77,7 @@ async function fetchModHistory(client, userId, page = 1, limit = 8) {
         return { total: 0, history: [] };
     }
 }
-
+// Gets leaver status
 async function getLeaverStatus(client, userId) {
     return await client.models['ping-protection']['LeaverData'].findByPk(userId);
 }
@@ -74,7 +95,7 @@ function getSafeChannelId(configValue) {
     }
     return null;
 }
-
+// Sends ping warning message
 async function sendPingWarning(client, message, target, moduleConfig) {
     const warningMsg = moduleConfig.pingWarningMessage;
     if (!warningMsg) return;
@@ -114,34 +135,37 @@ async function syncNativeAutoMod(client) {
             return;
         }
 
+        const keywords = [];
+        if (config.protectedRoles) {
+            config.protectedRoles.forEach(roleId => {
+                keywords.push(`<@&${roleId}>`);
+            });
+        }
+
         const protectedIdsSet = new Set(config.protectedUsers || []);
-        
-        if (config.protectedRoles && config.protectedRoles.length > 0) {
-            guild.members.cache.forEach(member => {
+        if (config.protectAllUsersWithProtectedRole && config.protectedRoles && config.protectedRoles.length > 0) {
+             guild.members.cache.forEach(member => {
                 if (member.roles.cache.some(r => config.protectedRoles.includes(r.id))) {
                     protectedIdsSet.add(member.id);
                 }
             });
         }
         
-        const protectedIds = [...protectedIdsSet];
+        protectedIdsSet.forEach(id => {
+            keywords.push(`<@${id}>`);
+            keywords.push(`<@!${id}>`);
+        });
 
-        // Deletes the rule if there are no protected IDs
-        if (protectedIds.length === 0) {
+        if (keywords.length === 0) {
             if (existingRule) {
                 await existingRule.delete().catch(() => {});
             }
             return;
         }
 
-        let keywordFilter = [
-            ...protectedIds.map(id => `<@${id}>`), 
-            ...protectedIds.map(id => `<@!${id}>`) 
-        ];
-
-        if (keywordFilter.length > 1000) {
+        if (keywords.length > 1000) {
             client.logger.warn(localize('ping-protection', 'log-automod-keyword-limit'));
-            keywordFilter = keywordFilter.slice(0, 1000);
+            keywords.splice(1000); 
         }
         
         // AutoMod rule data
@@ -161,11 +185,11 @@ async function syncNativeAutoMod(client) {
         }
 
         const ruleData = {
-            name: 'SCNX Ping Protection',
+            name: 'Ping Protection System',
             eventType: 1, 
             triggerType: 1, 
             triggerMetadata: {
-                keywordFilter: keywordFilter
+                keywordFilter: keywords
             },
             actions: actions,
             enabled: true,
@@ -183,7 +207,7 @@ async function syncNativeAutoMod(client) {
     }
 }
 
-// Generates history response
+// Makes the history embed
 async function generateHistoryResponse(client, userId, page = 1) {
     const storageConfig = client.configurations['ping-protection']['storage'];
     const limit = 8;
@@ -227,7 +251,8 @@ async function generateHistoryResponse(client, userId, page = 1) {
                 targetString = entry.isRole ? `<@&${entry.targetId}>` : `<@${entry.targetId}>`;
             }
 
-            const linkText = entry.messageUrl 
+            const hasValidLink = entry.messageUrl && entry.messageUrl !== 'Blocked by AutoMod';
+            const linkText = hasValidLink
                 ? `[${localize('ping-protection', 'label-jump')}](${entry.messageUrl})` 
                 : localize('ping-protection', 'no-message-link');
 
@@ -280,18 +305,11 @@ async function generateHistoryResponse(client, userId, page = 1) {
     };
 }
 
-// Generates actions response
+// Makes the moderation actions history embed
 async function generateActionsResponse(client, userId, page = 1) {
     const moderationConfig = client.configurations['ping-protection']['moderation'];
     const limit = 8;
-    
-    const rule1 = (moderationConfig && Array.isArray(moderationConfig) && moderationConfig.length > 0) 
-        ? moderationConfig[0] 
-        : null;
-        
-    const isEnabled = rule1 
-    ? rule1.enableModeration 
-    : false;
+    const isEnabled = moderationConfig && Array.isArray(moderationConfig) && moderationConfig.length > 0;
 
     let total = 0, history = [], totalPages = 1;
 
@@ -375,17 +393,21 @@ async function deleteAllUserData(client, userId) {
         u: userId 
     }));
 }
+
 async function markUserAsLeft(client, userId) {
     await client.models['ping-protection']['LeaverData'].upsert({ 
         userId: userId, 
         leftAt: new Date() 
     });
 }
+
 async function markUserAsRejoined(client, userId) {
     await client.models['ping-protection']['LeaverData'].destroy({ 
         where: { userId: userId } 
     });
 }
+
+// Enforces data retention
 async function enforceRetention(client) {
     const storageConfig = client.configurations['ping-protection']['storage'];
     if (!storageConfig) return;
@@ -554,11 +576,76 @@ async function executeAction(client, member, rule, reason, storageConfig, origin
     return false;
 }
 
+// Processes a ping event
+async function processPing(client, userId, targetId, isRole, messageUrl, originChannel, memberToPunish) {
+    const config = client.configurations['ping-protection']['configuration'];
+    const storageConfig = client.configurations['ping-protection']['storage'];
+    const moderationRules = client.configurations['ping-protection']['moderation'];
+
+    if (storageConfig?.enablePingHistory) {
+        try {
+            await addPing(client, userId, messageUrl, targetId, isRole);
+        } catch (e) {}
+    }
+
+    if (!moderationRules || !Array.isArray(moderationRules) || moderationRules.length === 0) return;
+
+    for (let i = moderationRules.length - 1; i >= 0; i--) {
+        const rule = moderationRules[i];
+        
+        const retentionWeeks = storageConfig?.pingHistoryRetention || 12;
+        const timeframeDays = rule.useCustomTimeframe 
+        ? (rule.timeframeDays || 7) 
+        : (retentionWeeks * 7);
+
+        const pingCount = await getPingCountInWindow(client, userId, timeframeDays);
+        const requiredCount = rule.useCustomTimeframe 
+        ? rule.pingsCountAdvanced 
+        : rule.pingsCountBasic;
+
+        if (pingCount >= requiredCount) {
+            const oneMinuteAgo = new Date(Date.now() - 60000);
+            try {
+                const recentLog = await client.models['ping-protection']['ModerationLog'].findOne({
+                    where: { 
+                        victimID: userId, 
+                        createdAt: { [Op.gt]: oneMinuteAgo } 
+                    }
+                });
+                if (recentLog) break;
+            } catch (e) {}
+
+            const generatedReason = rule.useCustomTimeframe 
+                ? localize('ping-protection', 'reason-advanced', { 
+                    c: pingCount, 
+                    d: timeframeDays })
+                : localize('ping-protection', 'reason-basic', { 
+                    c: pingCount, 
+                    w: retentionWeeks });
+
+            if (memberToPunish) {
+                const success = await executeAction(
+                    client,
+                    memberToPunish,
+                    rule,
+                    generatedReason,
+                    storageConfig,
+                    originChannel,
+                    { pingCount, timeframeDays }
+                );
+                
+                if (success) break;
+            }
+        }
+    }
+}
+
 module.exports = {
     addPing,
     getPingCountInWindow,
     sendPingWarning,
     syncNativeAutoMod,
+    processPing,
     fetchPingHistory,
     fetchModHistory,
     executeAction,

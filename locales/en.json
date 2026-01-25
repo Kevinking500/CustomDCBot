@@ -989,7 +989,7 @@
     "meme-rick": "🎵 [Never gonna give you up, never gonna let you down...](<https://www.youtube.com/watch?v=dQw4w9WgXcQ>) You just Rick Rolled yourself. Also congrats you unlocked the secret easter egg that only has a 1% chance of appearing!!1!1!!",
     "meme-grind": "Why are you even pinging yourself 5 times in a row? Anyways continue some more to possibly get the secret meme\n-# (good luck grinding, only a 1% chance of getting it and during testing I had it once after 83 pings)",
     "label-jump": "Jump to Message",
-    "no-message-link": "No message link available",
+    "no-message-link": "This ping was blocked by AutoMod",
     "list-entry-text": "%index. **Pinged %target** at %time\n%link"
     }
 }

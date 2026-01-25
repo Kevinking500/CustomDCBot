@@ -69,7 +69,11 @@ module.exports.subcommands = {
           inline: false
         }]);
 
-      await interaction.reply({ embeds: [embed.toJSON()], components: [row.toJSON()] });
+      await interaction.reply({ 
+        embeds: [embed.toJSON()], 
+        components: [row.toJSON()], 
+        flags: MessageFlags.Ephemeral
+      });
     }
   },
   'list': {
@@ -143,7 +147,10 @@ async function listHandler(interaction, type) {
     ]);
   }
 
-  await interaction.reply({ embeds: [embed.toJSON()] });
+  await interaction.reply({ 
+    embeds: [embed.toJSON()], 
+    flags: MessageFlags.Ephemeral 
+  });
 }
 
 module.exports.config = {

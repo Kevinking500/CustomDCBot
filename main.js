@@ -12,7 +12,7 @@ const client = new Discord.Client({
     partials: [Partials.Message, Partials.GuildMember, Partials.GuildScheduledEvent, Partials.Reaction, Partials.User, Partials.Channel], // Most of these are not needed, but enabling them does not increase CPU / RAM usage and does not introduce problems, as we handle them in the event emitter system
     allowedMentions: {parse: ['users', 'roles']}, // Disables @everyone mentions because everyone hates them
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildBans, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildPresences, GatewayIntentBits.GuildInvites, GatewayIntentBits.GuildEmojisAndStickers, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.GuildEmojisAndStickers, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildWebhooks]
+        GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildPresences, GatewayIntentBits.GuildInvites, GatewayIntentBits.GuildEmojisAndStickers, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.GuildEmojisAndStickers, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.AutoModerationExecution]
 });
 client.intervals = [];
 client.jobs = [];

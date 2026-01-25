@@ -22,12 +22,25 @@
         "en": "Protected Roles"
       },
       "description": { 
-        "en": "Members with these roles will trigger protection when pinged."
+        "en": "Specific roles which are protected from pings."
       },
       "type": "array",
       "content": "roleID",
       "default": { 
         "en": [] 
+      }
+    },
+    {
+      "name": "protectAllUsersWithProtectedRole",
+      "humanName": { 
+        "en": "Protect all users with a protected role" 
+      },
+      "description": {
+        "en": "if enabled, all users with at least one protected role will be protected from pings, even if they are not specifically listed as protected users."
+      },
+      "type": "boolean",
+      "default": { 
+        "en": true 
       }
     },
     {
@@ -100,34 +113,21 @@
       }
     },
     {
-      "name": "allowSelfPing",
-      "humanName": { 
-        "en": "Allow protected users to ping themselves" 
-      },
-      "description": { 
-        "en": "If enabled, a protected user is able to ping themselves without getting the chance to be embarrassed."
-      },
-      "type": "boolean",
-      "default": { 
-        "en": true 
-      }
-    },
-    {
       "name": "selfPingConfiguration",
       "humanName": { 
         "en": "Self-Ping configuration" 
       },
       "description": { 
-        "en": "Configure what happens when a protected user pings themselves."
+        "en": "Configure what happens when a protected user pings themselves. Note: Automod overrides this setting meaning this setting will not apply if Automod is enabled."
       },
       "type": "select",
       "content": [
-        "Not allowed",
-        "Allowed, and ignored",
-        "Allowed, but with fun easter eggs"
+        "Get punished like normal members",
+        "Ignored",
+        "Get fun easter eggs when pinging themselves"
       ],
       "default": { 
-        "en": "Allowed, and ignored" 
+        "en": "Ignored" 
       }
     },
     {
@@ -168,6 +168,7 @@
         "en": "Custom text shown to the user when blocked (Max 150 characters)." 
       },
       "type": "string",
+      "maxLength": 150,
       "default": { 
         "en": "Protected User Ping: Your message was blocked because you are trying to ping a protected user/role. The content of your message might be sent to a log channel depending on the configuration." 
       },

@@ -1,16 +1,12 @@
 const { 
-    addPing, 
-    getPingCountInWindow, 
-    executeAction, 
+    processPing,
     sendPingWarning
 } = require('../ping-protection');
-const { Op } = require('sequelize');
 const { localize } = require('../../../src/functions/localize');
 const { randomElementFromArray } = require('../../../src/functions/helpers'); 
 
-// Tracks the last meme to prevent many duplicates
+// Tracks the last meme for duplicates + counts for grind message
 const lastMemeMap = new Map();
-// Tracks ping counts for the grind message
 const selfPingCountMap = new Map();
 
 // Handles messages
@@ -20,8 +16,6 @@ module.exports.run = async function (client, message) {
     if (message.guild.id !== client.guildID) return;
 
     const config = client.configurations['ping-protection']['configuration'];
-    const storageConfig = client.configurations['ping-protection']['storage'];
-    const moderationRules = client.configurations['ping-protection']['moderation'];
 
     if (message.author.bot) return;
 
@@ -31,8 +25,23 @@ module.exports.run = async function (client, message) {
 
     // Check for protected pings
     const pingedProtectedRole = message.mentions.roles.some(role => config.protectedRoles.includes(role.id));
-    let protectedMentions = message.mentions.users.filter(user => config.protectedUsers.includes(user.id));
-    
+    const protectedMentions = new Set();
+    const mentionedUsers = message.mentions.users;
+
+    if (mentionedUsers.size > 0) {
+        mentionedUsers.forEach(user => {
+            if (config.protectedUsers.includes(user.id)) {
+                protectedMentions.add(user.id);
+            }
+            else if (config.protectAllUsersWithProtectedRole) {
+                const member = message.mentions.members.get(user.id);
+                if (member && member.roles.cache.some(r => config.protectedRoles.includes(r.id))) {
+                    protectedMentions.add(user.id);
+                }
+            }
+        });
+    }
+
     // Handles reply pings
     if (config.allowReplyPings && message.mentions.repliedUser) {
         const repliedId = message.mentions.repliedUser.id;
@@ -46,6 +55,7 @@ module.exports.run = async function (client, message) {
             }
         }
     }
+
     // Determines if any protected entities were pinged
     const pingedProtectedUser = protectedMentions.size > 0;
 
@@ -53,7 +63,8 @@ module.exports.run = async function (client, message) {
     
     let target = null;
     if (pingedProtectedUser) {
-        target = protectedMentions.first();
+        const firstId = protectedMentions.values().next().value;
+        target = message.mentions.users.get(firstId);
     } else if (pingedProtectedRole) {
         target = message.mentions.roles.find(r => config.protectedRoles.includes(r.id));
     }
@@ -61,8 +72,8 @@ module.exports.run = async function (client, message) {
     if (!target) return; 
 
     // Funny easter egg when they ping themselves
-    if (target.id === message.author.id && config.selfPingConfiguration === "Allowed, and ignored") return;
-    if (target.id === message.author.id && config.selfPingConfiguration === "Allowed, but with fun easter eggs") {
+    if (target.id === message.author.id && config.selfPingConfiguration === "Ignored") return;
+    if (target.id === message.author.id && config.selfPingConfiguration === "Get fun easter eggs when pinging themselves") {
             const secretChance = 0.01; // Secret for a reason.. (1% chance)
             const standardMemes = [
                 localize('ping-protection', 'meme-why'),
@@ -102,80 +113,23 @@ module.exports.run = async function (client, message) {
             return; 
     }
 
-    // Log and process pings
-    if (!!storageConfig && !!storageConfig.enablePingHistory) {      
-        try {
-            const isRole = !target.username; 
-            await addPing(client, message.author.id, message.url, target.id, isRole);
-        } catch (e) {}
-    }
-
     await sendPingWarning(client, message, target, config);
-    
-    if (!moderationRules || !Array.isArray(moderationRules) || moderationRules.length === 0) return;
 
-    const pingerId = message.author.id;
-    
-    for (let i = moderationRules.length - 1; i >= 0; i--) {
-        const rule = moderationRules[i];
-        
-        let timeframeDays = 0;
-        let retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention) 
-        ? storageConfig.pingHistoryRetention 
-        : 12;
-
-        if (!!rule.useCustomTimeframe) {
-            timeframeDays = rule.timeframeDays || 7;
-        } 
-        else {
-            timeframeDays = retentionWeeks * 7;
-        }
-
-        const pingCount = await getPingCountInWindow(client, pingerId, timeframeDays);
-        const requiredCount = (rule.useCustomTimeframe) ? rule.pingsCountAdvanced : rule.pingsCountBasic;
-
-        if (pingCount >= requiredCount) {
-            const oneMinuteAgo = new Date(new Date() - 60000);
-            try {
-                const recentLog = await client.models['ping-protection']['ModerationLog'].findOne({
-                    where: { 
-                        victimID: message.author.id, 
-                        createdAt: { [Op.gt]: oneMinuteAgo } 
-                    }
-                });
-                if (recentLog) break;
-            } catch (e) {}
-
-            const generatedReason = (rule.useCustomTimeframe) 
-                ? localize('ping-protection', 'reason-advanced', { 
-                    c: pingCount, 
-                    d: timeframeDays 
-                })
-                : localize('ping-protection', 'reason-basic', { 
-                    c: pingCount, 
-                    w: retentionWeeks 
-                });
-
-            let memberToPunish = message.member;
-            if (!memberToPunish) {
-                try { 
-                    memberToPunish = await message.guild.members.fetch(message.author.id); 
-                } catch (e) { continue; }
-            }
-
-            if (memberToPunish) {
-                const success = await executeAction(
-                    client,
-                    memberToPunish,
-                    rule,
-                    generatedReason,
-                    storageConfig,
-                    message.channel,
-                    { pingCount, timeframeDays }
-                );
-                
-                if (success) break;
-            }
-        }
+    const isRole = !target.username;
+    let memberToPunish = message.member;
+    if (!memberToPunish) {
+        try { 
+            memberToPunish = await message.guild.members.fetch(message.author.id); 
+        } catch (e) {return;}
     }
+
+    await processPing(
+        client, 
+        message.author.id, 
+        target.id, 
+        isRole, 
+        message.url,
+        message.channel, 
+        memberToPunish
+    );
 };
