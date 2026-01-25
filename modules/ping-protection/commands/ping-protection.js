@@ -67,7 +67,12 @@ module.exports.subcommands = {
           name: localize('ping-protection', 'field-quick-history', { w: retentionWeeks }),
           value: localize('ping-protection', 'field-quick-desc', { p: pingCount, m: modData.total }),
           inline: false
-        }]);
+        }])
+        .setFooter({ 
+            text: interaction.client.strings.footer, 
+            iconURL: interaction.client.strings.footerImgUrl 
+        });
+      if (!interaction.client.strings.disableFooterTimestamp) embed.setTimestamp();
 
       await interaction.reply({ 
         embeds: [embed.toJSON()], 

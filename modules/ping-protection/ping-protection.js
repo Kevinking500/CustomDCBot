@@ -498,19 +498,24 @@ async function executeAction(client, member, rule, reason, storageConfig, origin
     const sendErrorLog = async (error) => {
         if (!originChannel) return;
         
-        const errorEmbed = new EmbedBuilder()
-            .setTitle(localize('ping-protection', 'punish-log-failed-title', { 
-                u: member.user.tag 
-            }))
-            .setDescription(
-                localize('ping-protection', 'punish-log-failed-desc', { 
-                    m: member.toString() 
-                }) + 
-                `\n${localize('ping-protection', 'punish-log-error', { 
-                    e: error.message 
-                })}`
-            )
-            .setColor(16711680); 
+    const errorEmbed = new EmbedBuilder()
+        .setTitle(localize('ping-protection', 'punish-log-failed-title', { 
+            u: member.user.tag 
+        }))
+        .setDescription(
+            localize('ping-protection', 'punish-log-failed-desc', { 
+                m: member.toString() 
+            }) + 
+            `\n${localize('ping-protection', 'punish-log-error', { 
+                e: error.message 
+            })}`
+        )
+        .setColor("#ed4245")
+        .setFooter({ 
+            text: client.strings.footer, 
+            iconURL: client.strings.footerImgUrl 
+        });
+    if (!client.strings.disableFooterTimestamp) errorEmbed.setTimestamp();
 
         await originChannel.send({ embeds: [errorEmbed.toJSON()] }).catch(() => {});
     };
