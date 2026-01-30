@@ -170,7 +170,7 @@
       "type": "string",
       "maxLength": 150,
       "default": { 
-        "en": "Protected User Ping: Your message was blocked because you are trying to ping a protected user/role. The content of your message might be sent to a log channel depending on the configuration." 
+        "en": "Your message was blocked because you are trying to ping a protected user/role. The message content might be logged depending on the configuration." 
       },
       "dependsOn": "enableAutomod"
     },

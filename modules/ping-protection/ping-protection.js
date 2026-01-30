@@ -389,7 +389,7 @@ async function deleteAllUserData(client, userId) {
     await client.models['ping-protection']['LeaverData'].destroy({ 
         where: { userId: userId } 
     });
-    client.logger.info(localize('ping-protection', 'log-manual-delete-logs', { 
+    client.logger.info(localize('ping-protection', 'log-data-deletion', { 
         u: userId 
     }));
 }
