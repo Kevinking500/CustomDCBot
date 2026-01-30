@@ -964,7 +964,7 @@
     "btn-actions": "Actions history",
     "btn-delete": "Delete all data (Risky)",
     "list-protected-title": "Protected Users and Roles",
-    "list-protected-desc": "View all protected users and roles here. When someone pings one of these protected user(s)/role(s), a warning will be sent. Exceptions are whitelisted roles, users and channels.",
+    "list-protected-desc": "View all protected users and roles here. When someone pings one of these protected user(s)/role(s), a warning will be sent. Exceptions are when pinged by someone with a whitelisted role/as a whitelisted user or when it's sent in a whitelisted channel.",
     "field-protected-users": "Protected Users",
     "field-protected-roles": "Protected Roles",
     "list-whitelist-title": "Whitelisted Roles, Users and Channels",
