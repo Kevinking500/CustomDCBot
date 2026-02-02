@@ -441,7 +441,7 @@ async function enforceRetention(client) {
     }
     if (storageConfig.modLogRetention) {
         const modCutoff = new Date();
-        modCutoff.setMonth(modCutoff.getMonth() - (storageConfig.modLogRetention || 6));
+        modCutoff.setMonth(modCutoff.getMonth() - (storageConfig.modLogRetention || 12));
         await client.models['ping-protection']['ModerationLog'].destroy({ 
             where: { 
                 createdAt: { [Op.lt]: modCutoff } 

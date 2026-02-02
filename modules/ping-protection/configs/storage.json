@@ -55,14 +55,14 @@
         "en": "Moderation Log Retention (Months)"
       },
       "description": {
-        "en": "How long to keep records of punishments (1-12 Months). This is applied when moderation actions are enabled."
+        "en": "How long to keep records of punishments (1 - 24 Months). This is applied when moderation actions are enabled."
       },
       "type": "integer",
       "default": {
-        "en": 6
+        "en": 12
       },
       "minValue": "1",
-      "maxValue": "12"
+      "maxValue": "24"
     },
     {
       "name": "enableLeaverDataRetention",
