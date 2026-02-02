@@ -597,16 +597,14 @@ async function processPing(client, userId, targetId, isRole, messageUrl, originC
 
     for (let i = moderationRules.length - 1; i >= 0; i--) {
         const rule = moderationRules[i];
-        
+
         const retentionWeeks = storageConfig?.pingHistoryRetention || 12;
         const timeframeDays = rule.useCustomTimeframe 
         ? (rule.timeframeDays || 7) 
         : (retentionWeeks * 7);
 
         const pingCount = await getPingCountInWindow(client, userId, timeframeDays);
-        const requiredCount = rule.useCustomTimeframe 
-        ? rule.pingsCountAdvanced 
-        : rule.pingsCountBasic;
+        const requiredCount = rule.pingsCount;
 
         if (pingCount >= requiredCount) {
             const oneMinuteAgo = new Date(Date.now() - 60000);

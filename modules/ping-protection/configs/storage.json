@@ -26,14 +26,14 @@
         "en": "Ping History Retention"
       },
       "description": {
-        "en": "Decides on how long to keep ping logs. Minimum is 4 weeks (1 month) with a maximum of 24 weeks (6 months). This is the length factor of the 'Basic' punishment timeframe."
+        "en": "Decides on how long to keep ping logs. Minimum is 4 weeks (1 month) with a maximum of 96 weeks (2 years). This is the length factor of the 'Basic' punishment timeframe."
       },
       "type": "integer",
       "default": {
         "en": 12
       },
       "minValue": "4",
-      "maxValue": "24",
+      "maxValue": "96",
       "dependsOn": "enablePingHistory"
     },
     {
