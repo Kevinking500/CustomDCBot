@@ -18,14 +18,14 @@
   "categories": [
     {
       "id": "protection",
-      "icon": "fas fa-clipboard-user",
+      "icon": "fa-solid fa-shield",
       "displayName": {
         "en": "Protected"
       }
     },
     {
       "id": "whitelisted",
-      "icon": "fa-solid fa-clipboard-check",
+      "icon": "fa-solid fa-badge-check",
       "displayName": {
         "en": "Whitelists"
       }
@@ -46,7 +46,7 @@
     },
     {
       "id": "messages",
-      "icon": "fas fa-comment-dots",
+      "icon": "fa-duotone fa-regular fa-triangle-exclamation",
       "displayName": {
         "en": "Warning message"
       }

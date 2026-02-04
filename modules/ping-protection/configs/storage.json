@@ -9,7 +9,7 @@
   "categories": [
     {
       "id": "pings",
-      "icon": "fa-solid fa-calendar",
+      "icon": "fa-regular fa-clock-rotate-left",
       "displayName": {
         "en": "Ping History"
       }
