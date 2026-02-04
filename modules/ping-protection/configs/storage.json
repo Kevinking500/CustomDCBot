@@ -6,9 +6,33 @@
   "description": {
     "en": "Configure how long moderation logs and leaver data are kept."
   },
+  "categories": [
+    {
+      "id": "pings",
+      "icon": "fas fa-clock-rotate-left",
+      "displayName": {
+        "en": "Ping History"
+      }
+    },
+    {
+      "id": "moderation",
+      "icon": "fas fa-gavel",
+      "displayName": {
+        "en": "Moderation Logs"
+      }
+    },
+    {
+      "id": "leavers",
+      "icon": "fas fa-sign-out-alt",
+      "displayName": {
+        "en": "Leaver Data"
+      }
+    }
+  ],
   "content": [
     {
       "name": "enablePingHistory",
+      "category": "pings",
       "humanName": {
         "en": "Enable Ping History"
       },
@@ -22,6 +46,7 @@
     },
     {
       "name": "pingHistoryRetention",
+      "category": "pings",
       "humanName": {
         "en": "Ping History Retention"
       },
@@ -38,6 +63,7 @@
     },
     {
       "name": "deleteAllPingHistoryAfterTimeframe",
+      "category": "pings",
       "humanName": {
         "en": "Delete all the pings in history after the timeframe?"
       },
@@ -51,6 +77,7 @@
     },
     {
       "name": "modLogRetention",
+      "category": "moderation",
       "humanName": {
         "en": "Moderation Log Retention (Months)"
       },
@@ -66,6 +93,7 @@
     },
     {
       "name": "enableLeaverDataRetention",
+      "category": "leavers",
       "humanName": {
         "en": "Keep user logs after they leave"
       },
@@ -79,6 +107,7 @@
     },
     {
       "name": "leaverRetention",
+      "category": "leavers",
       "humanName": {
         "en": "Leaver Data Retention (Days)"
       },
