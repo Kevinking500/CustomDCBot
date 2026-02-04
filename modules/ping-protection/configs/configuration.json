@@ -18,35 +18,35 @@
   "categories": [
     {
       "id": "protection",
-      "icon": "fas fa-shield",
+      "icon": "fas fa-clipboard-user",
       "displayName": {
         "en": "Protected"
       }
     },
     {
       "id": "whitelisted",
-      "icon": "fas fa-list-check",
+      "icon": "fa-solid fa-clipboard-check",
       "displayName": {
         "en": "Whitelists"
       }
     },
     {
       "id": "rules",
-      "icon": "fas fa-list",
+      "icon": "fas fa-gears",
       "displayName": {
         "en": "Ping rules"
       }
     },
     {
       "id": "automod",
-      "icon": "fas fa-robot",
+      "icon": "far fa-robot",
       "displayName": {
         "en": "AutoMod settings"
       }
     },
     {
       "id": "messages",
-      "icon": "fas fa-exclamation-triangle",
+      "icon": "fas fa-comment-dots",
       "displayName": {
         "en": "Warning message"
       }

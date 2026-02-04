@@ -9,21 +9,21 @@
   "categories": [
     {
       "id": "pings",
-      "icon": "fas fa-clock-rotate-left",
+      "icon": "fa-solid fa-calendar",
       "displayName": {
         "en": "Ping History"
       }
     },
     {
       "id": "moderation",
-      "icon": "fas fa-gavel",
+      "icon": "fas fa-hammer",
       "displayName": {
         "en": "Moderation Logs"
       }
     },
     {
       "id": "leavers",
-      "icon": "fas fa-sign-out-alt",
+      "icon": "fas fa-right-from-bracket",
       "displayName": {
         "en": "Leaver Data"
       }
