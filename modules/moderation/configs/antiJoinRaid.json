@@ -29,8 +29,8 @@
     {
       "name": "timeframe",
       "humanName": {
-        "de": "Zeitfenster",
-        "en": "Timeframe"
+        "de": "Zeitfenster (in Minuten)",
+        "en": "Timeframe (in minutes)"
       },
       "default": {
         "en": 5,

@@ -167,7 +167,7 @@
       "name": "require_reason",
       "humanName": {
         "de": "Begründung erzwingen",
-        "en": "Fore moderators to set a reason"
+        "en": "Force moderators to set a reason"
       },
       "default": {
         "en": true,
@@ -183,7 +183,7 @@
       "name": "require_proof",
       "humanName": {
         "de": "Beweis-Bild erzwingen",
-        "en": "Fore moderators to upload proof"
+        "en": "Force moderators to upload proof"
       },
       "dependsOn": "require_reason",
       "default": {
@@ -338,6 +338,21 @@
         "ban",
         "quarantine"
       ]
+    },
+    {
+      "name": "defaultMuteDuration",
+      "humanName": {
+        "de": "Standardmäßige Mute-Länge",
+        "en": "Default Mute-Duration"
+      },
+      "type": "string",
+      "default": {
+        "en": "14d"
+      },
+      "description": {
+        "en": "Default mute duration when none was configured. Will also be used for automod features (e.g. when someone posts a blacklisted word). Maximum value of 28 days.",
+        "de": "Standardmäßige Mute-Länge, wenn keine eingestellt wurde. Wird auch für Automod-Funktionen verwendet (also wenn z.B. jemand ein gesperrtes Wort postet). Höchstlänge von 28 Tagen."
+      }
     },
     {
       "name": "changeNicknames",

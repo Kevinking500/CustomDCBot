@@ -29,16 +29,16 @@
     {
       "name": "timeframe",
       "humanName": {
-        "de": "Zeitfenster",
-        "en": "Timeframe"
+        "de": "Zeitfenster (in Sekunden)",
+        "en": "Timeframe (in seconds)"
       },
       "default": {
         "en": 5,
         "de": 5
       },
       "description": {
-        "en": "Timeframe after which message objects get deleted (and can not longer be used to detect spam)",
-        "de": "Zeitfenster, in dem Nachrichten gelöscht werden (und nicht länger zur Erkennung von Spam verwendet werden können)"
+        "en": "Timeframe in seconds after which message objects get deleted (and can not longer be used to detect spam)",
+        "de": "Zeitfenster in Sekunden, in dem Nachrichten gelöscht werden (und nicht länger zur Erkennung von Spam verwendet werden können)"
       },
       "type": "integer"
     },

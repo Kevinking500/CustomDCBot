@@ -1,8 +1,13 @@
 const {registerNeededEdit} = require('../leaderboardChannel');
 const {localize} = require('../../../src/functions/localize');
 const {formatDiscordUserName} = require('../../../src/functions/helpers');
+const {calculateLevelXP, displayLevel} = require('../events/messageCreate');
 
 async function runXPAction(interaction, newXP) {
+    await interaction.deferReply({
+        ephemeral: true
+    });
+
     const member = interaction.options.getMember('user');
     let user = await interaction.client.models['levels']['User'].findOne({
         where: {
@@ -17,23 +22,15 @@ async function runXPAction(interaction, newXP) {
         });
     }
     user.xp = newXP(user.xp);
-    if (user.xp < 0) return interaction.reply({
-        ephemeral: true,
+    if (user.xp < 0) return interaction.editReply({
         content: '⚠️ ' + localize('levels', 'negative-xp')
     });
 
     function runXPCheck() {
-        const nextLevelXp = user.level * 750 + ((user.level - 1) * 500);
+        const nextLevelXp = calculateLevelXP(interaction.client, user.level + 1);
         if (nextLevelXp <= user.xp) {
             user.level = user.level + 1;
-            if (interaction.client.configurations.levels.config.reward_roles[user.level.toString()]) {
-                if (interaction.client.configurations.levels.config.reward_roles[user.level.toString()]) {
-                    for (const role of Object.values(interaction.client.configurations.levels.config.reward_roles)) {
-                        if (member.roles.cache.has(role)) member.roles.remove(role, '[levels] ' + localize('levels', 'granted-rewards-audit-log')).catch();
-                    }
-                }
-                member.roles.add(interaction.client.configurations.levels.config.reward_roles[user.level.toString()]);
-            }
+            fixLevelRoles(interaction, member, user.level);
             runXPCheck();
         }
     }
@@ -54,8 +51,7 @@ async function runXPAction(interaction, newXP) {
         l: user.level,
         v: user.xp
     }));
-    await interaction.reply({
-        ephemeral: true,
+    await interaction.editReply({
         content: localize('levels', 'successfully-changed', {
             l: user.level,
             u: member.user.toString(),
@@ -64,50 +60,55 @@ async function runXPAction(interaction, newXP) {
     });
 }
 
+async function fixLevelRoles(interaction, member, level) {
+    let highest = null;
+    for (const key in interaction.client.configurations.levels.config.reward_roles) {
+        const role = interaction.client.configurations.levels.config.reward_roles[key];
+        if (parseInt(key) <= level) {
+            if (highest && highest < parseInt(key) && interaction.client.configurations.levels.config.onlyTopLevelRole) await member.roles.remove(interaction.client.configurations.levels.config.reward_roles[highest.toString()], '[levels] ' + localize('levels', 'granted-rewards-audit-log')).catch();
+            highest = parseInt(key);
+            await member.roles.add(role, '[levels] ' + localize('levels', 'granted-rewards-audit-log'));
+        } else if (member.roles.cache.has(role)) await member.roles.remove(role, '[levels] ' + localize('levels', 'granted-rewards-audit-log')).catch();
+    }
+}
+
 async function runLevelAction(interaction, newLevel) {
+    await interaction.deferReply({ephemeral: true});
+
     const member = interaction.options.getMember('user');
     const user = await interaction.client.models['levels']['User'].findOne({
         where: {
             userID: member.user.id
         }
     });
-    if (!user) return interaction.reply({
-        ephemeral: true,
+    if (!user) return interaction.editReply({
         content: '⚠️ ' + localize('levels', 'cheat-no-profile')
     });
     user.level = newLevel(user.level);
-    if (user.level < 1) return interaction.reply({
-        ephemeral: true,
+    if (interaction.client.configurations['levels']['config'].startFromZero) user.level = user.level + 1;
+    if (user.level < 1) return interaction.editReply({
         content: '⚠️ ' + localize('levels', 'negative-level')
     });
-    user.xp = (user.level - 1) * 750 + ((user.level - 2) * 500);
-    if (interaction.client.configurations.levels.config.reward_roles[user.level.toString()]) {
-        if (interaction.client.configurations.levels.config.reward_roles[user.level.toString()]) {
-            for (const role of Object.values(interaction.client.configurations.levels.config.reward_roles)) {
-                if (member.roles.cache.has(role)) member.roles.remove(role, '[levels] ' + localize('levels', 'granted-rewards-audit-log')).catch();
-            }
-        }
-        member.roles.add(interaction.client.configurations.levels.config.reward_roles[user.level.toString()]);
-    }
+    user.xp = calculateLevelXP(interaction.client, user.level);
 
+    await fixLevelRoles(interaction, member, user.level);
 
     await user.save();
     interaction.client.logger.info(localize('levels', 'manipulated', {
         u: formatDiscordUserName(interaction.user),
         m: formatDiscordUserName(member.user),
-        l: user.level,
+        l: displayLevel(user.level, interaction.client),
         v: user.xp
     }));
     if (interaction.client.logChannel) await interaction.client.logChannel.send(localize('levels', 'manipulated', {
         u: formatDiscordUserName(interaction.user),
         m: formatDiscordUserName(member.user),
-        l: user.level,
+        l: displayLevel(user.level, interaction.client),
         v: user.xp
     }));
-    await interaction.reply({
-        ephemeral: true,
+    await interaction.editReply({
         content: localize('levels', 'successfully-changed', {
-            l: user.level,
+            l: displayLevel(user.level, interaction.client),
             u: member.user.toString(),
             x: user.xp
         })
@@ -142,7 +143,7 @@ module.exports.subcommands = {
                 u: user.userID
             }));
             await user.destroy();
-            await interaction.editReply(localize('levels', 'removed-xp-successfully'));
+            await interaction.editReply(localize('levels', 'removed-xp-successfully', {u: user.userID}));
         } else {
             const users = await interaction.client.models['levels']['User'].findAll();
             for (const user of users) await user.destroy();

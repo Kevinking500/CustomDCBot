@@ -60,7 +60,7 @@ module.exports.run = async function () {
                             emoji: '📝'
                         }]
                 }];
-            const message = embedType(moduleConfig['settingsMessage'], {}, {components});
+            const message = embedType(moduleConfig['settingsMessage'], {}, {components: components.map(c => c.toJSON())});
             await messages.first().edit(message);
         } else await sendMessage(settingsChannel);
     }

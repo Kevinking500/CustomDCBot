@@ -1,7 +1,10 @@
 const {localize} = require('../../../src/functions/localize');
 const {
     embedType, dateToDiscordTimestamp, lockChannel, unlockChannel,
-    sendMultipleSiteButtonMessage, truncate, formatDiscordUserName
+    sendMultipleSiteButtonMessage,
+    truncate,
+    formatDiscordUserName,
+    parseEmbedColor
 } = require('../../../src/functions/helpers');
 const {moderationAction} = require('../moderationActions');
 const durationParser = require('parse-duration');
@@ -104,7 +107,7 @@ module.exports.subcommands = {
                 .setTitle(localize('moderation', 'notes-embed-title', {u: formatDiscordUserName(interaction.options.getUser('user'))}))
                 .setFooter({text: interaction.client.strings.footer, iconURL: interaction.client.strings.footerImgUrl})
                 .setThumbnail(interaction.options.getUser('user').avatarURL())
-                .setColor('GREEN')
+                .setColor(parseEmbedColor('GREEN'))
                 .setAuthor({name: interaction.client.user.username, iconURL: interaction.client.user.avatarURL()})
                 .setFields(fields);
             interaction.editReply({
@@ -229,7 +232,7 @@ module.exports.subcommands = {
         if (interaction.replied) return;
         if (!checkRoles(interaction, 3)) return;
         const parseDuration = interaction.options.getString('duration') ? new Date(new Date().getTime() + durationParser(interaction.options.getString('duration'))) : null;
-        moderationAction(interaction.client, 'quarantine', interaction.member, interaction.memberToExecuteUpon, interaction.options.getString('reason'), {roles: Array.from(interaction.options.getMember('user').roles.cache.keys())}, parseDuration).then(r => {
+        moderationAction(interaction.client, 'quarantine', interaction.member, interaction.memberToExecuteUpon, interaction.options.getString('reason'), {roles: Array.from(interaction.options.getMember('user').roles.cache.filter(f => !f.managed).keys())}, parseDuration).then(r => {
             if (r) {
                 if (parseDuration) interaction.editReply({
                     content: localize('moderation', 'expiring-action-done', {
@@ -410,7 +413,7 @@ module.exports.subcommands = {
          */
         function addSite(fs) {
             const embed = new MessageEmbed()
-                .setColor('YELLOW')
+                .setColor(parseEmbedColor('YELLOW'))
                 .setAuthor({name: interaction.client.user.username, iconURL: interaction.client.user.avatarURL()})
                 .setTitle(localize('moderation', 'actions-embed-title', {
                     u: formatDiscordUserName(interaction.memberToExecuteUpon.user),

@@ -1,5 +1,10 @@
-const {embedType, lockChannel} = require('../../../src/functions/helpers');
+const {
+    embedType,
+    lockChannel,
+    randomIntFromInterval
+} = require('../../../src/functions/helpers');
 const {localize} = require('../../../src/functions/localize');
+const {startGame} = require('../guessTheNumber');
 
 module.exports.run = async (client, msg) => {
     if (!client.botReadyAt) return;
@@ -13,7 +18,7 @@ module.exports.run = async (client, msg) => {
         }
     });
     if (!game) return;
-    if (msg.member.roles.cache.filter(m => m.client.configurations['guess-the-number']['config'].adminRoles.includes(m.id)).size !== 0) return msg.react('⛔');
+    if (msg.member.roles.cache.filter(m => m.client.configurations['guess-the-number']['config'].adminRoles.includes(m.id)).size !== 0 && !(client.configurations['guess-the-number']['channel'].enabled && client.configurations['guess-the-number']['channel'].channel === msg.channel.id)) return msg.react('⛔');
     const parsedInt = parseInt(msg.content);
     if (isNaN(parsedInt)) return msg.react('🚫');
     if (parsedInt < game.min || parsedInt > game.max) return msg.react('🚫');
@@ -21,8 +26,7 @@ module.exports.run = async (client, msg) => {
     await game.save();
     if (parsedInt !== game.number) {
         if (client.configurations['guess-the-number']['config']['higherLowerReactions']) {
-            if (game.number < parsedInt) await msg.react('⬇');
-            else await msg.react('⬆');
+            if (game.number < parsedInt) await msg.react('⬇'); else await msg.react('⬆');
             return;
         }
         return msg.react('❌');
@@ -38,4 +42,5 @@ module.exports.run = async (client, msg) => {
         '%guessCount%': game.guessCount,
         '%number%': game.number
     }));
+    if (client.configurations['guess-the-number']['channel'].enabled && client.configurations['guess-the-number']['channel'].channel === msg.channel.id) await startGame(msg.channel, randomIntFromInterval(client.configurations['guess-the-number']['channel'].minInt, client.configurations['guess-the-number']['channel'].maxInt), client.configurations['guess-the-number']['channel'].minInt, client.configurations['guess-the-number']['channel'].maxInt);
 };

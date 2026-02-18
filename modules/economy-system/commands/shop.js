@@ -3,16 +3,14 @@ const {localize} = require('../../../src/functions/localize');
 
 /**
  * @param {*} interaction Interaction
- * @returns {boolean} Result
+ * @returns {Promise<boolean>} Result
  */
 async function checkPerms(interaction) {
     const result = interaction.client.configurations['economy-system']['config']['shopManagers'].includes(interaction.user.id) || interaction.client.config['botOperators'].includes(interaction.user.id);
-    if (!result) {
-        await interaction.reply({
+    if (!result) await interaction.reply({
             content: interaction.client.strings['not_enough_permissions'],
             ephemeral: !interaction.client.configurations['economy-system']['config']['publicCommandReplies']
         });
-    }
     return result;
 }
 

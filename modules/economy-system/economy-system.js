@@ -3,10 +3,14 @@
  * @module economy-system
  * @author jateute
  */
-const { MessageEmbed } = require('discord.js');
-const {embedType, inputReplacer} = require('../../src/functions/helpers');
+const {MessageEmbed} = require('discord.js');
+const {
+    embedType,
+    inputReplacer,
+    parseEmbedColor
+} = require('../../src/functions/helpers');
 const {localize} = require('../../src/functions/localize');
-const { Op } = require('sequelize');
+const {Op} = require('sequelize');
 
 /**
  * add a User to DB
@@ -240,16 +244,10 @@ async function buyShopItem(interaction, id, name) {
             ]
         }
     });
-    if (item.length < 1) return await interaction.editReply({
-        content: interaction.client.configurations['economy-system']['strings']['notFound']
-    });
-    else if (item.length > 1) return await interaction.editReply({
-        content: interaction.client.configurations['economy-system']['strings']['multipleMatches']
-    });
+    if (item.length < 1) return await interaction.editReply(embedType(interaction.client.configurations['economy-system']['strings']['notFound']));
+    else if (item.length > 1) return await interaction.editReply(embedType(interaction.client.configurations['economy-system']['strings']['multipleMatches']));
 
-    if (interaction.member.roles.cache.has(item[0]['role'])) return await interaction.editReply({
-        content: interaction.client.configurations['economy-system']['strings']['rebuyItem']
-    });
+    if (interaction.member.roles.cache.has(item[0]['role'])) return await interaction.editReply(embedType(interaction.client.configurations['economy-system']['strings']['rebuyItem']));
     let user = await interaction.client.models['economy-system']['Balance'].findOne({
         where: {
             id: interaction.user.id
@@ -263,9 +261,7 @@ async function buyShopItem(interaction, id, name) {
             }
         });
     }
-    if (user.balance < item[0]['price']) return await interaction.editReply({
-        content: interaction.client.configurations['economy-system']['strings']['notEnoughMoney']
-    });
+    if (user.balance < item[0]['price']) return await interaction.editReply(embedType(interaction.client.configurations['economy-system']['strings']['notEnoughMoney']));
     await interaction.member.roles.add(item[0]['role']);
     await editBalance(interaction.client, interaction.user.id, 'remove', item[0]['price']);
     leaderboard(interaction.client);
@@ -331,6 +327,7 @@ async function deleteShopItem(interaction) {
         const nameOption = interaction.options.get('item-name');
         const idOption = interaction.options.get('item-id');
         let model;
+
         if (nameOption && idOption) {
             model = await interaction.client.models['economy-system']['Shop'].findAll({
                 where: {
@@ -340,32 +337,37 @@ async function deleteShopItem(interaction) {
                     ]
                 }
             });
-        }else if (nameOption) {
+        } else if (nameOption) {
             model = await interaction.client.models['economy-system']['Shop'].findAll({
                 where: {
                     name: nameOption['value']
                 }
             });
-        }
-        else if (idOption) {
+        } else if (idOption) {
             model = await interaction.client.models['economy-system']['Shop'].findAll({
                 where: {
                     id: idOption['value']
                 }
             });
         } else {
-            await interaction.editReply("Please use the id or the name!")
+            await interaction.editReply('Please use the id or the name!');
         }
 
         if (model.length > 1) {
             await interaction.editReply(embedType(interaction.client.configurations['economy-system']['strings']['multipleMatches']));
             resolve();
         } else if (model.length < 1) {
-            await interaction.editReply(embedType(interaction.client.configurations['economy-system']['strings']['noMatches'], {'%id%': idOption ? idOption['value'] : '-', '%name%': nameOption ? nameOption['value'] : '-'}));
+            await interaction.editReply(embedType(interaction.client.configurations['economy-system']['strings']['noMatches'], {
+                '%id%': idOption ? idOption['value'] : '-',
+                '%name%': nameOption ? nameOption['value'] : '-'
+            }));
             resolve();
         } else {
             await model[0].destroy();
-            await interaction.editReply(embedType(interaction.client.configurations['economy-system']['strings']['itemDelete'], {'%name%': model[0]['name'], '%id%': model[0]['id']}));
+            await interaction.editReply(embedType(interaction.client.configurations['economy-system']['strings']['itemDelete'], {
+                '%name%': model[0]['name'],
+                '%id%': model[0]['id']
+            }));
             interaction.client.logger.info(`[economy-system] ` + localize('economy-system', 'delete-item', {
                 u: interaction.user.tag,
                 i: model.name
@@ -393,7 +395,13 @@ async function createShopMsg(client, guild, ephemeral) {
     const options = [];
     for (let i = 0; i < items.length; i++) {
         const roles = await guild.roles.fetch(items[i].dataValues.role);
-        string = `${string}${inputReplacer({'%id%': items[i].dataValues.id, '%itemName%': items[i].dataValues.name, '%price%': `${items[i].dataValues.price} ${client.configurations['economy-system']['config']['currencySymbol']}`, '%sellcount%': roles ? roles.members.size : '0'}, client.configurations['economy-system']['strings']['itemString'])}`;
+        string = `${string}${inputReplacer({
+            '%id%': items[i].dataValues.id,
+            '%itemName%': items[i].dataValues.name,
+            '%price%': `${items[i].dataValues.price} ${client.configurations['economy-system']['config']['currencySymbol']}`,
+            '%sellcount%': roles ? roles.members.size : '0',
+            '\n': ''
+        }, client.configurations['economy-system']['strings']['itemString'])}\n`;
         options.push({
             label: items[i].dataValues.name,
             description: localize('economy-system', 'select-menu-price', {
@@ -416,7 +424,10 @@ async function createShopMsg(client, guild, ephemeral) {
             }]
         }];
     }
-    return embedType(client.configurations['economy-system']['strings']['shopMsg'], {'%shopItems%': string}, { ephemeral: ephemeral, components: components });
+    return embedType(client.configurations['economy-system']['strings']['shopMsg'], {'%shopItems%': string}, {
+        ephemeral: ephemeral,
+        components: components
+    });
 }
 
 /**
@@ -471,14 +482,23 @@ async function leaderboard(client) {
     const messages = (await channel.messages.fetch()).filter(msg => msg.author.id === client.user.id);
 
     const embed = new MessageEmbed()
-      .setTitle(moduleStr['leaderboardEmbed']['title'])
-      .setDescription(moduleStr['leaderboardEmbed']['description'])
-      .setTimestamp()
-      .setColor(moduleStr['leaderboardEmbed']['color'])
-      .setAuthor({name: client.user.username, iconURL: client.user.avatarURL()})
-      .setFooter({text: client.strings.footer, iconURL: client.strings.footerImgUrl});
+        .setTitle(moduleStr['leaderboardEmbed']['title'])
+        .setDescription(moduleStr['leaderboardEmbed']['description'])
+        .setTimestamp()
+        .setColor(parseEmbedColor(moduleStr['leaderboardEmbed']['color']))
+        .setAuthor({
+            name: client.user.username,
+            iconURL: client.user.avatarURL()
+        })
+        .setFooter({
+            text: client.strings.footer,
+            iconURL: client.strings.footerImgUrl
+        });
 
-    if (model.length !== 0) embed.addFields({name: 'Leaderboard:', value: await topTen(model, client)});
+    if (model.length !== 0) embed.addFields({
+        name: 'Leaderboard:',
+        value: await topTen(model, client)
+    });
     if ((moduleStr['leaderboardEmbed']['thumbnail'] || '').replaceAll(' ', '')) embed.setThumbnail(moduleStr['leaderboardEmbed']['thumbnail']);
     if ((moduleStr['leaderboardEmbed']['image'] || '').replaceAll(' ', '')) embed.setImage(moduleStr['leaderboardEmbed']['image']);
 
