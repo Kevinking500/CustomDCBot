@@ -5,19 +5,57 @@
   },
   "commandsWarnings": {
     "normal": [
-    "/ping-protection user history",
-    "/ping-protection user actions-history",
-    "/ping-protection list roles",
-    "/ping-protection list users",
-    "/ping-protection list whitelisted"
+      "/ping-protection user history",
+      "/ping-protection user actions-history",
+      "/ping-protection list roles",
+      "/ping-protection list users",
+      "/ping-protection list whitelisted"
     ]
   },
   "description": {
     "en": "Configure protected users/roles, whitelisted roles/members, ignored channels and the notification message."
   },
+  "categories": [
+    {
+      "id": "protection",
+      "icon": "fa-solid fa-shield",
+      "displayName": {
+        "en": "Protected"
+      }
+    },
+    {
+      "id": "whitelisted",
+      "icon": "fa-solid fa-badge-check",
+      "displayName": {
+        "en": "Whitelists"
+      }
+    },
+    {
+      "id": "rules",
+      "icon": "fas fa-gears",
+      "displayName": {
+        "en": "Ping rules"
+      }
+    },
+    {
+      "id": "automod",
+      "icon": "far fa-robot",
+      "displayName": {
+        "en": "AutoMod settings"
+      }
+    },
+    {
+      "id": "messages",
+      "icon": "fa-duotone fa-regular fa-triangle-exclamation",
+      "displayName": {
+        "en": "Warning message"
+      }
+    }
+  ],
   "content": [
     {
       "name": "protectedRoles",
+      "category": "protection",
       "humanName": { 
         "en": "Protected Roles"
       },
@@ -32,6 +70,7 @@
     },
     {
       "name": "protectAllUsersWithProtectedRole",
+      "category": "protection",
       "humanName": { 
         "en": "Protect all users with a protected role" 
       },
@@ -45,6 +84,7 @@
     },
     {
       "name": "protectedUsers",
+      "category": "protection",
       "humanName": { 
         "en": "Protected Users"
       },
@@ -59,6 +99,7 @@
     },
     {
       "name": "ignoredRoles",
+      "category": "whitelisted",
       "humanName": { 
         "en": "Whitelisted Roles"
       },
@@ -73,6 +114,7 @@
     },
     {
       "name": "ignoredChannels",
+      "category": "whitelisted",
       "humanName": { 
         "en": "Whitelisted Channels" 
       },
@@ -87,6 +129,7 @@
     },
     {
       "name": "ignoredUsers",
+      "category": "whitelisted",
       "humanName": { 
         "en": "Whitelisted Users" 
       },
@@ -101,6 +144,7 @@
     },
     {
       "name": "allowReplyPings",
+      "category": "rules",
       "humanName": { 
         "en": "Allow Reply Pings" 
       },
@@ -114,6 +158,7 @@
     },
     {
       "name": "selfPingConfiguration",
+      "category": "rules",
       "humanName": { 
         "en": "Self-Ping configuration" 
       },
@@ -132,6 +177,7 @@
     },
     {
       "name": "enableAutomod",
+      "category": "automod",
       "humanName": { 
         "en": "Enable automod" 
       },
@@ -145,6 +191,7 @@
     },
     {
       "name": "autoModLogChannel",
+      "category": "automod",
       "humanName": { 
         "en": "AutoMod Log Channel" 
       },
@@ -162,20 +209,23 @@
     },
     {
       "name": "autoModBlockMessage",
+      "category": "automod",
       "humanName": { 
-        "en": "AutoMod custom message for message block" },
+        "en": "AutoMod custom message for message block" 
+      },
       "description": { 
         "en": "Custom text shown to the user when blocked (Max 150 characters)." 
       },
       "type": "string",
       "maxLength": 150,
       "default": { 
-        "en": "Protected User Ping: Your message was blocked because you are trying to ping a protected user/role. The content of your message might be sent to a log channel depending on the configuration." 
+        "en": "Your message was blocked because you are trying to ping a protected user/role. The message content might be logged depending on the configuration." 
       },
       "dependsOn": "enableAutomod"
     },
     {
       "name": "pingWarningMessage",
+      "category": "messages",
       "humanName": { 
         "en": "Warning Message"
       },

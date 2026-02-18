@@ -15,12 +15,12 @@
   "configElements": true,
   "content": [
     {
-      "name": "pingsCountBasic",
+      "name": "pingsCount",
       "humanName": {
         "en": "Pings to trigger moderation"
       },
       "description": {
-        "en": "The amount of pings required to trigger a moderation action (Uses 'Ping History Retention' timeframe)."
+        "en": "The amount of pings required to trigger a moderation action."
       },
       "type": "integer",
       "default": {
@@ -33,26 +33,12 @@
         "en": "Use a custom timeframe"
       },
       "description": {
-        "en": "If enabled, you can choose your own custom timeframe and the basic configuration will be ignored."
+        "en": "If enabled, you can choose your own custom timeframe of days in which the pings must occur to trigger the moderation action."
       },
       "type": "boolean",
       "default": {
         "en": false
       }
-    },
-    {
-      "name": "pingsCountAdvanced",
-      "humanName": {
-        "en": "Pings to trigger (Custom Timeframe)"
-      },
-      "description": {
-        "en": "The amount of pings required in the custom timeframe below."
-      },
-      "type": "integer",
-      "default": {
-        "en": 5
-      },
-      "dependsOn": "useCustomTimeframe"
     },
     {
       "name": "timeframeDays",

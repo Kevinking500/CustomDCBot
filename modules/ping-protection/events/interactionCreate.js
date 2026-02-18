@@ -83,7 +83,7 @@ module.exports.run = async function (client, interaction) {
         if (userInput === requiredPhrase) {
             await deleteAllUserData(client, userId);
             await interaction.reply({ 
-                content: `✅ ${localize('ping-protection', 'log-manual-delete', {u: userId})}`, 
+                content: `✅ ${localize('ping-protection', 'modal-success-data-deletion', {u: userId})}`, 
                 flags: MessageFlags.Ephemeral });
         } else {
             await interaction.reply({ 

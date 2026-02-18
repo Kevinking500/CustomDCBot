@@ -389,7 +389,7 @@ async function deleteAllUserData(client, userId) {
     await client.models['ping-protection']['LeaverData'].destroy({ 
         where: { userId: userId } 
     });
-    client.logger.info(localize('ping-protection', 'log-manual-delete-logs', { 
+    client.logger.info(localize('ping-protection', 'log-data-deletion', { 
         u: userId 
     }));
 }
@@ -441,7 +441,7 @@ async function enforceRetention(client) {
     }
     if (storageConfig.modLogRetention) {
         const modCutoff = new Date();
-        modCutoff.setMonth(modCutoff.getMonth() - (storageConfig.modLogRetention || 6));
+        modCutoff.setMonth(modCutoff.getMonth() - (storageConfig.modLogRetention || 12));
         await client.models['ping-protection']['ModerationLog'].destroy({ 
             where: { 
                 createdAt: { [Op.lt]: modCutoff } 
@@ -597,16 +597,22 @@ async function processPing(client, userId, targetId, isRole, messageUrl, originC
 
     for (let i = moderationRules.length - 1; i >= 0; i--) {
         const rule = moderationRules[i];
-        
+
         const retentionWeeks = storageConfig?.pingHistoryRetention || 12;
         const timeframeDays = rule.useCustomTimeframe 
         ? (rule.timeframeDays || 7) 
         : (retentionWeeks * 7);
 
         const pingCount = await getPingCountInWindow(client, userId, timeframeDays);
-        const requiredCount = rule.useCustomTimeframe 
-        ? rule.pingsCountAdvanced 
-        : rule.pingsCountBasic;
+        const requiredCount =
+            rule.pingsCount ??
+            rule.pingsCountAdvanced ??
+            rule.pingsCountBasic;
+        
+        // Skip this rule if no valid threshold is configured
+        if (typeof requiredCount !== 'number' || !Number.isFinite(requiredCount)) {
+            continue;
+        }
 
         if (pingCount >= requiredCount) {
             const oneMinuteAgo = new Date(Date.now() - 60000);

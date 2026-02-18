@@ -117,12 +117,12 @@ async function listHandler(interaction, type) {
 
     embed.addFields([
       { 
-        name: localize('ping-protection', 'field-prot-users'), 
+        name: localize('ping-protection', 'field-protected-users'), 
         value: truncate(usersList, 1024), 
         inline: true 
       },
       { 
-        name: localize('ping-protection', 'field-prot-roles'), 
+        name: localize('ping-protection', 'field-protected-roles'), 
         value: truncate(rolesList, 1024), 
         inline: true 
       }
@@ -140,6 +140,10 @@ async function listHandler(interaction, type) {
       ? config.ignoredChannels.map(id => `<#${id}>`).join('\n') 
       : localize('ping-protection', 'list-none');
 
+    const usersList = config.ignoredUsers.length > 0 
+      ? config.ignoredUsers.map(id => `<@${id}>`).join('\n') 
+      : localize('ping-protection', 'list-none');
+
     embed.addFields([
       { 
         name: localize('ping-protection', 'field-wl-roles'),
@@ -148,7 +152,12 @@ async function listHandler(interaction, type) {
       { 
         name: localize('ping-protection', 'field-wl-channels'),
         value: truncate(channelsList, 1024),
-        inline: true }
+        inline: true },
+      {
+        name: localize('ping-protection', 'field-wl-users'),
+        value: truncate(usersList, 1024),
+        inline: true
+      }
     ]);
   }
 
