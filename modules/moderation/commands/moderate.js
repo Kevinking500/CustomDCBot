@@ -1,9 +1,14 @@
 const {localize} = require('../../../src/functions/localize');
 const {
     embedType, dateToDiscordTimestamp, lockChannel, unlockChannel,
-    sendMultipleSiteButtonMessage, truncate, formatDiscordUserName
+    sendMultipleSiteButtonMessage,
+    truncate,
+    formatDiscordUserName,
+    parseEmbedColor,
+    safeSetFooter
 } = require('../../../src/functions/helpers');
 const {moderationAction} = require('../moderationActions');
+const {activateLockdown, liftLockdown, isLockdownActive} = require('../lockdown');
 const durationParser = require('parse-duration');
 const {MessageEmbed} = require('discord.js');
 const {Op} = require('sequelize');
@@ -13,7 +18,7 @@ module.exports.beforeSubcommand = async function (interaction) {
     if (interaction.options.getUser('user')) {
         interaction.memberToExecuteUpon = interaction.options.getMember('user');
         if (!interaction.memberToExecuteUpon) {
-            if (interaction.options['_subcommand'] !== 'ban') return interaction.reply({
+            if (!['ban', 'actions'].includes(interaction.options['_subcommand'])) return interaction.reply({
                 ephemeral: true,
                 content: '⚠️ ' + localize('moderation', 'user-not-on-server')
             });
@@ -102,11 +107,11 @@ module.exports.subcommands = {
             });
             const embed = new MessageEmbed()
                 .setTitle(localize('moderation', 'notes-embed-title', {u: formatDiscordUserName(interaction.options.getUser('user'))}))
-                .setFooter({text: interaction.client.strings.footer, iconURL: interaction.client.strings.footerImgUrl})
                 .setThumbnail(interaction.options.getUser('user').avatarURL())
-                .setColor('GREEN')
+                .setColor(parseEmbedColor('GREEN'))
                 .setAuthor({name: interaction.client.user.username, iconURL: interaction.client.user.avatarURL()})
                 .setFields(fields);
+            safeSetFooter(embed, interaction.client);
             interaction.editReply({
                 embeds: [embed]
             });
@@ -229,7 +234,7 @@ module.exports.subcommands = {
         if (interaction.replied) return;
         if (!checkRoles(interaction, 3)) return;
         const parseDuration = interaction.options.getString('duration') ? new Date(new Date().getTime() + durationParser(interaction.options.getString('duration'))) : null;
-        moderationAction(interaction.client, 'quarantine', interaction.member, interaction.memberToExecuteUpon, interaction.options.getString('reason'), {roles: Array.from(interaction.options.getMember('user').roles.cache.keys())}, parseDuration).then(r => {
+        moderationAction(interaction.client, 'quarantine', interaction.member, interaction.memberToExecuteUpon, interaction.options.getString('reason'), {roles: Array.from(interaction.options.getMember('user').roles.cache.filter(f => !f.managed).keys())}, parseDuration).then(r => {
             if (r) {
                 if (parseDuration) interaction.editReply({
                     content: localize('moderation', 'expiring-action-done', {
@@ -345,6 +350,31 @@ module.exports.subcommands = {
             interaction.editReply({content: '⚠️ ' + r});
         });
     },
+    'lockdown': async function (interaction) {
+        if (interaction.replied) return;
+        if (!checkRoles(interaction, 4)) return;
+        const lockdownConfig = interaction.client.configurations['moderation']['lockdown'];
+        if (!lockdownConfig || !lockdownConfig.enabled) return interaction.editReply({
+            content: '⚠️ ' + localize('moderation', 'lockdown-not-enabled')
+        });
+        const enable = interaction.options.getBoolean('enable');
+        if (enable) {
+            if (await isLockdownActive(interaction.client)) return interaction.editReply({
+                content: '⚠️ ' + localize('moderation', 'lockdown-already-active')
+            });
+            const reason = interaction.options.getString('reason') || localize('moderation', 'no-reason');
+            const result = await activateLockdown(interaction.client, reason, formatDiscordUserName(interaction.user), false);
+            if (!result) return interaction.editReply({content: '⚠️ ' + localize('moderation', 'lockdown-already-active')});
+            interaction.editReply({content: '🔒 ' + localize('moderation', 'lockdown-activated-reply', {c: result.affectedChannels.toString()})});
+        } else {
+            if (!await isLockdownActive(interaction.client)) return interaction.editReply({
+                content: '⚠️ ' + localize('moderation', 'lockdown-not-active')
+            });
+            const result = await liftLockdown(interaction.client, interaction.options.getString('reason') || localize('moderation', 'no-reason'), formatDiscordUserName(interaction.user));
+            if (!result) return interaction.editReply({content: '⚠️ ' + localize('moderation', 'lockdown-not-active')});
+            interaction.editReply({content: '🔓 ' + localize('moderation', 'lockdown-lifted-reply', {c: result.restoredChannels.toString()})});
+        }
+    },
     'lock': async function (interaction) {
         if (interaction.replied) return;
         if (!checkRoles(interaction, 2)) return;
@@ -410,7 +440,7 @@ module.exports.subcommands = {
          */
         function addSite(fs) {
             const embed = new MessageEmbed()
-                .setColor('YELLOW')
+                .setColor(parseEmbedColor('YELLOW'))
                 .setAuthor({name: interaction.client.user.username, iconURL: interaction.client.user.avatarURL()})
                 .setTitle(localize('moderation', 'actions-embed-title', {
                     u: formatDiscordUserName(interaction.memberToExecuteUpon.user),
@@ -418,8 +448,8 @@ module.exports.subcommands = {
                 }))
                 .setDescription(localize('moderation', 'actions-embed-description', {u: formatDiscordUserName(interaction.memberToExecuteUpon.user)}))
                 .setThumbnail(interaction.memberToExecuteUpon.user.avatarURL())
-                .setFooter({text: interaction.client.strings.footer, iconURL: interaction.client.strings.footerImgUrl})
                 .addFields(fs);
+            safeSetFooter(embed, interaction.client);
             sites.push(embed);
         }
 
@@ -513,7 +543,7 @@ function checkRoles(interaction, minLevel) {
         else interaction.reply(data);
         return false;
     }
-    if (!interaction.memberToExecuteUpon) return true;
+    if (!interaction.memberToExecuteUpon || interaction.memberToExecuteUpon.notFound) return true;
     if (interaction.memberToExecuteUpon.roles.cache.find(r => allowedRoles.includes(r.id))) {
         const data = embedType(interaction.client.configurations['moderation']['strings']['this_is_a_mod'], {
             '%required_level%': minLevel
@@ -530,408 +560,430 @@ module.exports.config = {
     description: localize('moderation', 'moderate-command-description'),
 
     defaultMemberPermissions: ['MODERATE_MEMBERS'],
-    options: [
-        {
-            type: 'SUB_COMMAND_GROUP',
-            name: 'notes',
-            description: localize('moderation', 'moderate-notes-command-description'),
-            options: [
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'view',
-                    description: localize('moderation', 'moderate-notes-command-view'),
-                    options: [
-                        {
-                            type: 'USER',
-                            name: 'user',
-                            required: true,
-                            description: localize('moderation', 'moderate-user-description')
-                        }
-                    ]
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'create',
-                    description: localize('moderation', 'moderate-notes-command-create'),
-                    options: [
-                        {
-                            type: 'USER',
-                            name: 'user',
-                            required: true,
-                            description: localize('moderation', 'moderate-user-description')
-                        },
-                        {
-                            type: 'STRING',
-                            name: 'notes',
-                            required: true,
-                            description: localize('moderation', 'moderate-notes-description')
-                        }
-                    ]
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'edit',
-                    description: localize('moderation', 'moderate-notes-command-edit'),
-                    options: [
-                        {
-                            type: 'USER',
-                            name: 'user',
-                            required: true,
-                            description: localize('moderation', 'moderate-user-description')
-                        },
-                        {
-                            type: 'INTEGER',
-                            name: 'note-id',
-                            required: true,
-                            description: localize('moderation', 'moderate-note-id-description')
-                        },
-                        {
-                            type: 'STRING',
-                            name: 'notes',
-                            required: true,
-                            description: localize('moderation', 'moderate-notes-description')
-                        }
-                    ]
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'delete',
-                    description: localize('moderation', 'moderate-notes-command-delete'),
-                    options: [
-                        {
-                            type: 'USER',
-                            name: 'user',
-                            required: true,
-                            description: localize('moderation', 'moderate-user-description')
-                        },
-                        {
-                            type: 'INTEGER',
-                            name: 'note-id',
-                            required: true,
-                            description: localize('moderation', 'moderate-note-id-description')
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'ban',
-            description: localize('moderation', 'moderate-ban-command-description'),
-            options: function (client) {
-                return [{
-                    type: 'USER',
-                    name: 'user',
-                    required: true,
-                    description: localize('moderation', 'moderate-user-description')
-                },
+    options: function (client) {
+        const opts = [
+            {
+                type: 'SUB_COMMAND_GROUP',
+                name: 'notes',
+                description: localize('moderation', 'moderate-notes-command-description'),
+                options: [
                     {
-                        type: 'STRING',
-                        name: 'reason',
-                        required: client.configurations['moderation']['config']['require_reason'],
-                        description: localize('moderation', 'moderate-reason-description')
+                        type: 'SUB_COMMAND',
+                        name: 'view',
+                        description: localize('moderation', 'moderate-notes-command-view'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                required: true,
+                                description: localize('moderation', 'moderate-user-description')
+                            }
+                        ]
                     },
                     {
-                        type: 'ATTACHMENT',
-                        name: 'proof',
-                        required: (client.configurations['moderation']['config']['require_proof'] && client.configurations['moderation']['config']['require_reason']),
-                        description: localize('moderation', 'moderate-proof-description')
+                        type: 'SUB_COMMAND',
+                        name: 'create',
+                        description: localize('moderation', 'moderate-notes-command-create'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                required: true,
+                                description: localize('moderation', 'moderate-user-description')
+                            },
+                            {
+                                type: 'STRING',
+                                name: 'notes',
+                                required: true,
+                                description: localize('moderation', 'moderate-notes-description')
+                            }
+                        ]
                     },
                     {
-                        type: 'STRING',
-                        name: 'duration',
-                        required: false,
-                        description: localize('moderation', 'moderate-duration-description')
+                        type: 'SUB_COMMAND',
+                        name: 'edit',
+                        description: localize('moderation', 'moderate-notes-command-edit'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                required: true,
+                                description: localize('moderation', 'moderate-user-description')
+                            },
+                            {
+                                type: 'INTEGER',
+                                name: 'note-id',
+                                required: true,
+                                description: localize('moderation', 'moderate-note-id-description')
+                            },
+                            {
+                                type: 'STRING',
+                                name: 'notes',
+                                required: true,
+                                description: localize('moderation', 'moderate-notes-description')
+                            }
+                        ]
                     },
                     {
-                        type: 'INTEGER',
-                        name: 'days',
-                        required: false,
-                        description: localize('moderation', 'moderate-days-description')
+                        type: 'SUB_COMMAND',
+                        name: 'delete',
+                        description: localize('moderation', 'moderate-notes-command-delete'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                required: true,
+                                description: localize('moderation', 'moderate-user-description')
+                            },
+                            {
+                                type: 'INTEGER',
+                                name: 'note-id',
+                                required: true,
+                                description: localize('moderation', 'moderate-note-id-description')
+                            }
+                        ]
                     }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'quarantine',
-            description: localize('moderation', 'moderate-quarantine-command-description'),
-            options: function (client) {
-                return [{
-                    type: 'USER',
-                    name: 'user',
-                    required: true,
-                    description: localize('moderation', 'moderate-user-description')
-                },
-                    {
-                        type: 'STRING',
-                        name: 'reason',
-                        required: client.configurations['moderation']['config']['require_reason'],
-                        description: localize('moderation', 'moderate-reason-description')
-                    },
-                    {
-                        type: 'STRING',
-                        name: 'duration',
-                        required: false,
-                        description: localize('moderation', 'moderate-duration-description')
-                    }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'unban',
-            description: localize('moderation', 'moderate-unban-command-description'),
-            options: function (client) {
-                return [{
-                    type: 'STRING',
-                    name: 'id',
-                    required: true,
-                    autocomplete: true,
-                    description: localize('moderation', 'moderate-userid-description')
-                },
-                    {
-                        type: 'STRING',
-                        name: 'reason',
-                        required: client.configurations['moderation']['config']['require_reason'],
-                        description: localize('moderation', 'moderate-reason-description')
-                    }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'unquarantine',
-            description: localize('moderation', 'moderate-unquarantine-command-description'),
-            options: function (client) {
-                return [{
-                    type: 'USER',
-                    name: 'user',
-                    required: true,
-                    description: localize('moderation', 'moderate-user-description')
-                },
-                    {
-                        type: 'STRING',
-                        name: 'reason',
-                        required: client.configurations['moderation']['config']['require_reason'],
-                        description: localize('moderation', 'moderate-reason-description')
-                    }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'clear',
-            description: localize('moderation', 'moderate-clear-command-description'),
-            options: [{
-                type: 'INTEGER',
-                name: 'amount',
-                required: false,
-                description: localize('moderation', 'moderate-clear-amount-description')
-            }
-            ]
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'kick',
-            description: localize('moderation', 'moderate-kick-command-description'),
-            options: function (client) {
-                return [{
-                    type: 'USER',
-                    name: 'user',
-                    required: true,
-                    description: localize('moderation', 'moderate-user-description')
-                },
-                    {
-                        type: 'STRING',
-                        name: 'reason',
-                        required: client.configurations['moderation']['config']['require_reason'],
-                        description: localize('moderation', 'moderate-reason-description')
-                    },
-                    {
-                        type: 'ATTACHMENT',
-                        name: 'proof',
-                        required: (client.configurations['moderation']['config']['require_proof'] && client.configurations['moderation']['config']['require_reason']),
-                        description: localize('moderation', 'moderate-proof-description')
-                    }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'mute',
-            description: localize('moderation', 'moderate-mute-command-description'),
-            options: function (client) {
-                return [{
-                    type: 'USER',
-                    name: 'user',
-                    required: true,
-                    description: localize('moderation', 'moderate-user-description')
-                },
-                    {
-                        type: 'STRING',
-                        name: 'duration',
+                ]
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'ban',
+                description: localize('moderation', 'moderate-ban-command-description'),
+                options: function (client) {
+                    return [{
+                        type: 'USER',
+                        name: 'user',
                         required: true,
-                        description: localize('moderation', 'moderate-duration-description')
+                        description: localize('moderation', 'moderate-user-description')
                     },
-                    {
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        },
+                        {
+                            type: 'ATTACHMENT',
+                            name: 'proof',
+                            required: (client.configurations['moderation']['config']['require_proof'] && client.configurations['moderation']['config']['require_reason']),
+                            description: localize('moderation', 'moderate-proof-description')
+                        },
+                        {
+                            type: 'STRING',
+                            name: 'duration',
+                            required: false,
+                            description: localize('moderation', 'moderate-duration-description')
+                        },
+                        {
+                            type: 'INTEGER',
+                            name: 'days',
+                            required: false,
+                            description: localize('moderation', 'moderate-days-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'quarantine',
+                description: localize('moderation', 'moderate-quarantine-command-description'),
+                options: function (client) {
+                    return [{
+                        type: 'USER',
+                        name: 'user',
+                        required: true,
+                        description: localize('moderation', 'moderate-user-description')
+                    },
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        },
+                        {
+                            type: 'STRING',
+                            name: 'duration',
+                            required: false,
+                            description: localize('moderation', 'moderate-duration-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'unban',
+                description: localize('moderation', 'moderate-unban-command-description'),
+                options: function (client) {
+                    return [{
                         type: 'STRING',
-                        name: 'reason',
-                        required: client.configurations['moderation']['config']['require_reason'],
-                        description: localize('moderation', 'moderate-reason-description')
+                        name: 'id',
+                        required: true,
+                        autocomplete: true,
+                        description: localize('moderation', 'moderate-userid-description')
                     },
-                    {
-                        type: 'ATTACHMENT',
-                        name: 'proof',
-                        required: (client.configurations['moderation']['config']['require_proof'] && client.configurations['moderation']['config']['require_reason']),
-                        description: localize('moderation', 'moderate-proof-description')
-                    }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'unmute',
-            description: localize('moderation', 'moderate-unmute-command-description'),
-            options: function (client) {
-                return [{
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'unquarantine',
+                description: localize('moderation', 'moderate-unquarantine-command-description'),
+                options: function (client) {
+                    return [{
+                        type: 'USER',
+                        name: 'user',
+                        required: true,
+                        description: localize('moderation', 'moderate-user-description')
+                    },
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'clear',
+                description: localize('moderation', 'moderate-clear-command-description'),
+                options: [{
+                    type: 'INTEGER',
+                    name: 'amount',
+                    required: false,
+                    description: localize('moderation', 'moderate-clear-amount-description')
+                }
+                ]
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'kick',
+                description: localize('moderation', 'moderate-kick-command-description'),
+                options: function (client) {
+                    return [{
+                        type: 'USER',
+                        name: 'user',
+                        required: true,
+                        description: localize('moderation', 'moderate-user-description')
+                    },
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        },
+                        {
+                            type: 'ATTACHMENT',
+                            name: 'proof',
+                            required: (client.configurations['moderation']['config']['require_proof'] && client.configurations['moderation']['config']['require_reason']),
+                            description: localize('moderation', 'moderate-proof-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'mute',
+                description: localize('moderation', 'moderate-mute-command-description'),
+                options: function (client) {
+                    return [{
+                        type: 'USER',
+                        name: 'user',
+                        required: true,
+                        description: localize('moderation', 'moderate-user-description')
+                    },
+                        {
+                            type: 'STRING',
+                            name: 'duration',
+                            required: true,
+                            description: localize('moderation', 'moderate-duration-description')
+                        },
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        },
+                        {
+                            type: 'ATTACHMENT',
+                            name: 'proof',
+                            required: (client.configurations['moderation']['config']['require_proof'] && client.configurations['moderation']['config']['require_reason']),
+                            description: localize('moderation', 'moderate-proof-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'unmute',
+                description: localize('moderation', 'moderate-unmute-command-description'),
+                options: function (client) {
+                    return [{
+                        type: 'USER',
+                        name: 'user',
+                        required: true,
+                        description: localize('moderation', 'moderate-user-description')
+                    },
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'warn',
+                description: localize('moderation', 'moderate-warn-command-description'),
+                options: function (client) {
+                    return [{
+                        type: 'USER',
+                        name: 'user',
+                        required: true,
+                        description: localize('moderation', 'moderate-user-description')
+                    },
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        },
+                        {
+                            type: 'ATTACHMENT',
+                            name: 'proof',
+                            required: (client.configurations['moderation']['config']['require_proof'] && client.configurations['moderation']['config']['require_reason']),
+                            description: localize('moderation', 'moderate-proof-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'channel-mute',
+                description: localize('moderation', 'moderate-channel-mute-description'),
+                options: function (client) {
+                    return [{
+                        type: 'USER',
+                        name: 'user',
+                        required: true,
+                        description: localize('moderation', 'moderate-user-description')
+                    },
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        },
+                        {
+                            type: 'ATTACHMENT',
+                            name: 'proof',
+                            required: (client.configurations['moderation']['config']['require_proof'] && client.configurations['moderation']['config']['require_reason']),
+                            description: localize('moderation', 'moderate-proof-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'remove-channel-mute',
+                description: localize('moderation', 'moderate-unchannel-mute-description'),
+                options: function (client) {
+                    return [{
+                        type: 'USER',
+                        name: 'user',
+                        required: true,
+                        description: localize('moderation', 'moderate-user-description')
+                    },
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'actions',
+                description: localize('moderation', 'moderate-actions-command-description'),
+                options: [{
                     type: 'USER',
                     name: 'user',
                     required: true,
                     description: localize('moderation', 'moderate-user-description')
-                },
-                    {
+                }
+                ]
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'revoke-warn',
+                description: localize('moderation', 'moderate-unwarn-command-description'),
+                options: function (client) {
+                    return [{
+                        type: 'STRING',
+                        name: 'warn-id',
+                        required: true,
+                        autocomplete: true,
+                        description: localize('moderation', 'moderate-warnid-description')
+                    }, {
                         type: 'STRING',
                         name: 'reason',
                         required: client.configurations['moderation']['config']['require_reason'],
                         description: localize('moderation', 'moderate-reason-description')
                     }
-                ];
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'lock',
+                description: localize('moderation', 'moderate-lock-command-description'),
+                options: function (client) {
+                    return [
+                        {
+                            type: 'STRING',
+                            name: 'reason',
+                            required: client.configurations['moderation']['config']['require_reason'],
+                            description: localize('moderation', 'moderate-reason-description')
+                        }
+                    ];
+                }
+            },
+            {
+                type: 'SUB_COMMAND',
+                name: 'unlock',
+                description: localize('moderation', 'moderate-unlock-command-description')
             }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'warn',
-            description: localize('moderation', 'moderate-warn-command-description'),
-            options: function (client) {
-                return [{
-                    type: 'USER',
-                    name: 'user',
+        ];
+        const lockdownConfig = client.configurations['moderation']['lockdown'];
+        if (lockdownConfig && lockdownConfig.enabled) {
+            opts.push({
+                type: 'SUB_COMMAND',
+                name: 'lockdown',
+                description: localize('moderation', 'moderate-lockdown-command-description'),
+                options: [{
+                    type: 'BOOLEAN',
+                    name: 'enable',
                     required: true,
-                    description: localize('moderation', 'moderate-user-description')
-                },
-                    {
-                        type: 'STRING',
-                        name: 'reason',
-                        required: client.configurations['moderation']['config']['require_reason'],
-                        description: localize('moderation', 'moderate-reason-description')
-                    },
-                    {
-                        type: 'ATTACHMENT',
-                        name: 'proof',
-                        required: (client.configurations['moderation']['config']['require_proof'] && client.configurations['moderation']['config']['require_reason']),
-                        description: localize('moderation', 'moderate-proof-description')
-                    }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'channel-mute',
-            description: localize('moderation', 'moderate-channel-mute-description'),
-            options: function (client) {
-                return [{
-                    type: 'USER',
-                    name: 'user',
-                    required: true,
-                    description: localize('moderation', 'moderate-user-description')
-                },
-                    {
-                        type: 'STRING',
-                        name: 'reason',
-                        required: client.configurations['moderation']['config']['require_reason'],
-                        description: localize('moderation', 'moderate-reason-description')
-                    },
-                    {
-                        type: 'ATTACHMENT',
-                        name: 'proof',
-                        required: (client.configurations['moderation']['config']['require_proof'] && client.configurations['moderation']['config']['require_reason']),
-                        description: localize('moderation', 'moderate-proof-description')
-                    }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'remove-channel-mute',
-            description: localize('moderation', 'moderate-unchannel-mute-description'),
-            options: function (client) {
-                return [{
-                    type: 'USER',
-                    name: 'user',
-                    required: true,
-                    description: localize('moderation', 'moderate-user-description')
-                },
-                    {
-                        type: 'STRING',
-                        name: 'reason',
-                        required: client.configurations['moderation']['config']['require_reason'],
-                        description: localize('moderation', 'moderate-reason-description')
-                    }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'actions',
-            description: localize('moderation', 'moderate-actions-command-description'),
-            options: [{
-                type: 'USER',
-                name: 'user',
-                required: true,
-                description: localize('moderation', 'moderate-user-description')
-            }
-            ]
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'revoke-warn',
-            description: localize('moderation', 'moderate-unwarn-command-description'),
-            options: function (client) {
-                return [{
-                    type: 'STRING',
-                    name: 'warn-id',
-                    required: true,
-                    autocomplete: true,
-                    description: localize('moderation', 'moderate-warnid-description')
+                    description: localize('moderation', 'moderate-lockdown-enable-description')
                 }, {
                     type: 'STRING',
                     name: 'reason',
                     required: client.configurations['moderation']['config']['require_reason'],
                     description: localize('moderation', 'moderate-reason-description')
-                }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'lock',
-            description: localize('moderation', 'moderate-lock-command-description'),
-            options: function (client) {
-                return [
-                    {
-                        type: 'STRING',
-                        name: 'reason',
-                        required: client.configurations['moderation']['config']['require_reason'],
-                        description: localize('moderation', 'moderate-reason-description')
-                    }
-                ];
-            }
-        },
-        {
-            type: 'SUB_COMMAND',
-            name: 'unlock',
-            description: localize('moderation', 'moderate-unlock-command-description')
+                }]
+            });
         }
-    ]
+        return opts;
+    }
 };
