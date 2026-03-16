@@ -182,7 +182,7 @@
         "en": "Status Change Log Channel"
       },
       "description": {
-        "en": "Channel where status changes are logged. By default this uses your main log channel, but you can set a seperate channel here."
+        "en": "Channel where status changes are logged. By default this uses your main log channel, but you can set a separate channel here."
       },
       "type": "channelID",
       "allowNull": true,

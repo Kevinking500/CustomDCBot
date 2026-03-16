@@ -1216,7 +1216,7 @@
         "err-shift-data-unavailable": "Shift data unavailable: %error",
         "btn-view-history": "View History",
         "panel-deletion-title": "Data Deletion: %tag",
-        "panel-deletion-desc": "⚠️ DANGEROUS AREA ⚠️\nYou are now entering a dengrous zone. At this place, you are able to delete specific or all data for the selected user. These actions ***CANNOT BE UNDONE*** and should only be used if you are absolutely sure about what you are doing. If  you only want to delete specific entries, please use the respective command for that entry instead.\nIf you are unsure, click 'Go Back' from the dropdown now.\n\nUse the dropdown below to choose which data you want to delete or delete all data. Choose wisely and gracefully.",
+        "panel-deletion-desc": "⚠️ DANGEROUS AREA ⚠️\nYou are now entering a dangerous zone. At this place, you are able to delete specific or all data for the selected user. These actions ***CANNOT BE UNDONE*** and should only be used if you are absolutely sure about what you are doing. If  you only want to delete specific entries, please use the respective command for that entry instead.\nIf you are unsure, click 'Go Back' from the dropdown now.\n\nUse the dropdown below to choose which data you want to delete or delete all data. Choose wisely and gracefully.",
         "panel-deletion-placeholder": "Select data to delete...",
         "panel-opt-back": "Go Back",
         "panel-opt-del-act": "Delete Activity Checks",
@@ -1347,7 +1347,7 @@
         "cmd-desc-loar-reason": "Reason for your LoA",
         "cmd-desc-loa-view": "View your Leave of Absence status.",
         "cmd-desc-loav-user": "The user to view the LoA status",
-        "cmd-desc-loa-list": "List of all Leave of Abscences",
+        "cmd-desc-loa-list": "List of all Leave of Absences",
         "cmd-desc-loal-filter": "Filter the LoA list on active, expired or all",
         "cmd-desc-loa-admin": "Manage a user's Leave of Absence.",
         "cmd-desc-loaa-user": "The user to manage their LoA",
@@ -1410,6 +1410,7 @@
         "cmd-desc-submit": "Submit a review for a staff member.",
         "cmd-desc-submit-user": "The user you are reviewing.",
         "cmd-desc-submit-stars": "The star rating for the review.",
-        "cmd-desc-submit-comment": "Your review comment."
+        "cmd-desc-submit-comment": "Your review comment.",
+        "del-no-perm": "You do not have sufficient permissions to perform data deletion."
     }
 }

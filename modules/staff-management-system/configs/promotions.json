@@ -113,7 +113,7 @@
           }
         },
         {
-          "name": "%reason%",
+          "name": "reason",
           "description": {
             "en": "The reason for the promotion."
           }
@@ -189,7 +189,7 @@
           }
         },
         {
-          "name": "%ewRoleMention",
+          "name": "newRoleMention",
           "description": {
             "en": "The pingable mention of the new role."
           }

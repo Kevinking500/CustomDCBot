@@ -1793,7 +1793,8 @@ async function handleStatusExtendSubmit(client, interaction, type) {
         flags: MessageFlags.Ephemeral 
     });
 
-    const newEndDate = new Date(new Date(request.endDate).getTime() + days * 24 * 60 * 60 * 1000);
+    const oldEndDate = new Date(request.endDate);
+    const newEndDate = new Date(oldEndDate.getTime() + days * 24 * 60 * 60 * 1000);
     await request.update({ endDate: newEndDate });
     scheduleStatusExpiry(client, request);
 
@@ -1810,7 +1811,7 @@ async function handleStatusExtendSubmit(client, interaction, type) {
         changesText: localize('staff-management-system', 'status-adjusted-log', { 
             label: meta.label, 
             newEnd: `<t:${Math.floor(newEndDate.getTime() / 1000)}:F>`, 
-            oldEnd: `<t:${Math.floor(new Date(request.endDate).getTime() / 1000)}:F>`, 
+            oldEnd: `<t:${Math.floor(oldEndDate.getTime() / 1000)}:F>`,
             reason 
         }) 
     });

@@ -24,6 +24,7 @@ const {
 } = require('../staff-management');
 const { localize } = require('../../../src/functions/localize');
 const dutyHandlers = require('../commands/duty.js').buttonHandlers;
+const configuration = require('../configuration.json');
 
 module.exports.run = async (client, interaction) => {
     if (!client.botReadyAt) return;
@@ -82,11 +83,11 @@ module.exports.run = async (client, interaction) => {
             const type = action.startsWith('loa-') ? 'LOA' : 'RA';
             const base = action.replace(/^(loa|ra)-/, '');
 
-            if (base === 'end')           return handleStatusEnd(client, interaction, type);
-            if (base === 'end-submit')    return handleStatusEndSubmit(client, interaction, type);
-            if (base === 'extend')        return handleStatusExtend(client, interaction, type);
-            if (base === 'extend-submit') return handleStatusExtendSubmit(client, interaction, type);
-            if (base === 'hist')          return handleStatusHistPage(client, interaction, type);
+            if (base === 'end')           return handleStatusEnd(interaction, type);
+            if (base === 'end-submit')    return handleStatusEndSubmit(interaction, type);
+            if (base === 'extend')        return handleStatusExtend(interaction, type);
+            if (base === 'extend-submit') return handleStatusExtendSubmit(interaction, type);
+            if (base === 'hist')          return handleStatusHistPage(interaction, type);
         }
 
         // ----- Promotion history pagination -----
@@ -172,6 +173,22 @@ module.exports.run = async (client, interaction) => {
 
         // ----- Data deletion modal submission -----
         if (interaction.isModalSubmit() && interaction.customId.startsWith('staff-mgmt_del-confirm_')) {
+            const managementRoles = Array.isArray(configuration.managementRoles) 
+            ? configuration.managementRoles 
+            : [];
+            const memberRoles = interaction.member && interaction.member.roles && interaction.member.roles.cache
+                ? interaction.member.roles.cache
+                : null;
+            const hasManagementRole = memberRoles
+                ? managementRoles.some((roleId) => memberRoles.has(roleId))
+                : false;
+            if (!hasManagementRole) {
+                return interaction.reply({
+                    content: localize('staff-management-system', 'del-no-perm'),
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+            
             const parts = interaction.customId.split('_');
             const targetId = parts[2];
             const selection = parts.slice(3).join('_'); 
@@ -213,6 +230,20 @@ module.exports.run = async (client, interaction) => {
                 const collector = reply.createMessageComponentCollector({ time: 30000 });
 
                 collector.on('collect', async (btnInt) => {
+                    const managementRoles = Array.isArray(configuration.managementRoles) ? configuration.managementRoles : [];
+                    const memberRoles = btnInt.member && btnInt.member.roles && btnInt.member.roles.cache
+                        ? btnInt.member.roles.cache
+                        : null;
+                    const hasManagementRole = memberRoles
+                        ? managementRoles.some((roleId) => memberRoles.has(roleId))
+                        : false;
+                    if (!hasManagementRole) {
+                        return btnInt.reply({
+                            content: localize('staff-management-system', 'del-no-perm'),
+                            flags: MessageFlags.Ephemeral
+                        });
+                    }
+                    
                     if (btnInt.customId.includes('cancel')) {
                         await btnInt.update({ 
                             content: localize('staff-management-system', 'succ-del-canc'), 
@@ -295,7 +326,7 @@ module.exports.run = async (client, interaction) => {
             const fullType = typeMap[parts[1].split('-')[1]];
 
             if (fullType) {
-                const payload = await generatePanelSubpage(client, interaction, targetUser, fullType, page);
+                const payload = await generatePanelSubpage(client, targetUser, fullType, page);
                 if (payload) return interaction.update(payload);
             }
         }

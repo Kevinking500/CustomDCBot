@@ -211,7 +211,7 @@
         "en": "Where should infractions and suspensions be announced?"
       },
       "type": "channelID",
-      "content": [
+      "channelTypes": [
         "GUILD_TEXT", 
         "GUILD_NEWS"
       ],
