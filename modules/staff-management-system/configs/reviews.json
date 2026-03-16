@@ -1,0 +1,147 @@
+{
+  "filename": "reviews.json",
+  "humanName": {
+    "en": "Staff Ratings"
+  },
+  "description": {
+    "en": "Configure the staff rating system and feedback channels."
+  },
+  "categories": [
+    {
+      "id": "settings",
+      "icon": "fas fa-gears",
+      "displayName": {
+        "en": "Settings"
+      }
+    },
+    {
+      "id": "messages",
+      "icon": "fa fa-messages",
+      "displayName": {
+        "en": "Notifications"
+      }
+    }
+  ],
+  "content": [
+    {
+      "name": "enableReviews",
+      "category": "settings",
+      "humanName": {
+        "en": "Enable Reviews System"
+      },
+      "description": {
+        "en": "Enabling this unlocks the staff review system, allowing users to submit ratings and feedback for staff members."
+      },
+      "type": "boolean",
+      "default": {
+        "en": true
+      }
+    },
+    {
+      "name": "reviewLogChannel",
+      "category": "settings",
+      "humanName": {
+        "en": "Reviews Log Channel"
+      },
+      "description": {
+        "en": "Channel where new reviews are posted."
+      },
+      "type": "channelID",
+      "default": {
+        "en": ""
+      }
+    },
+    {
+      "name": "allowSelfRating",
+      "category": "settings",
+      "humanName": {
+        "en": "Allow Self-Rating?"
+      },
+      "description": {
+        "en": "If enabled, staff can review themselves. This is not recommended to keep a fair ratings system."
+      },
+      "type": "boolean",
+      "default": {
+        "en": false
+      }
+    },
+    {
+      "name": "onlyAllowStaffReview",
+      "category": "settings",
+      "humanName": {
+        "en": "Only let users review staff"
+      },
+      "description": {
+        "en": "If enabled, only staff members can review other staff members."
+      },
+      "type": "boolean",
+      "default": {
+        "en": true
+      }
+    },
+    {
+      "name": "ratingMessage",
+      "category": "messages",
+      "humanName": {
+        "en": "Review Message"
+      },
+      "description": {
+        "en": "The message sent when a review is submitted."
+      },
+      "type": "string",
+      "allowEmbed": true,
+      "params": [
+        { 
+          "name": "target", 
+          "description": { 
+            "en": "The staff member" 
+          } 
+        },
+        { 
+          "name": "author", 
+          "description": { 
+            "en": "The reviewer" 
+          } 
+        },
+        { 
+          "name": "stars", 
+          "description": { 
+            "en": "Star emoji string (⭐⭐⭐⭐⭐)" 
+          } 
+        },
+        { 
+          "name": "rating", 
+          "description": { 
+            "en": "Number (1-5)" 
+          } 
+        },
+        { 
+          "name": "comment", 
+          "description": { 
+            "en": "The review text" 
+          } 
+        },
+        { 
+          "name": "staff-profile-picture", 
+          "description": { 
+            "en": "The staff member's profile picture (URL)" 
+          } 
+        },
+        { 
+          "name": "reviewer-profile-picture", 
+          "description": { 
+            "en": "The reviewer's profile picture (URL)" 
+          } 
+        }
+      ],
+      "default": {
+        "en": {
+          "title": "🌟 New Staff Rating",
+          "description": "**Staff:** %target%\n**Rated by:** %author%\n\n**Rating:** %stars% (%rating%/5)\n**Comment:**\n%comment%",
+          "color": "#f1c40f",
+          "thumbnail": "%staff-profile-picture%"
+        }
+      }
+    }
+  ]
+}

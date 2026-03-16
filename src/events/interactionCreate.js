@@ -82,7 +82,7 @@ module.exports.run = async (client, interaction) => {
     }));
 
     try {
-        if (command.options.filter(c => c.type === 'SUB_COMMAND').length === 0) return await command.run(interaction);
+        if (command.options.filter(c => c.type === 'SUB_COMMAND' || c.type === 'SUB_COMMAND_GROUP').length === 0) return await command.run(interaction);
         if (!command.subcommands) {
             interaction.client.logger.error(`Command ${interaction.commandName} has subcommands but does not use the subcommands handler (required).`);
             return interaction.reply({

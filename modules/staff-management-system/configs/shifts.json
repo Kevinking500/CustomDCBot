@@ -1,0 +1,179 @@
+{
+  "filename": "shifts.json",
+  "humanName": {
+    "en": "Shift Management"
+  },
+  "description": {
+    "en": "Configure shift requirements, duty roles, leaderboards, and quotas."
+  },
+  "categories": [
+    {
+      "id": "settings",
+      "icon": "fas fa-gears",
+      "displayName": {
+        "en": "Shift Settings"
+      }
+    },
+    {
+      "id": "leaderboard",
+      "icon": "fas fa-ranking-stars",
+      "displayName": {
+        "en": "Leaderboard"
+      }
+    },
+    {
+      "id": "quotas",
+      "icon": "fa-solid fa-check-to-slot",
+      "displayName": {
+        "en": "Quotas"
+      }
+    }
+  ],
+  "content": [
+    {
+      "name": "enableShifts",
+      "category": "settings",
+      "humanName": {
+        "en": "Enable Shifts"
+      },
+      "description": {
+        "en": "This unlocks the ability for staff to use a shifts system, where they can get on-duty, off-duty, take a break and see their total duty time."
+      },
+      "type": "boolean",
+      "default": {
+        "en": true
+      },
+      "elementToggle": true
+    },
+    {
+      "name": "onDutyRole",
+      "category": "settings",
+      "humanName": {
+        "en": "On-Duty Role"
+      },
+      "description": {
+        "en": "Role given to users when they are on-duty. This is optional, but recommended to easily identify who is on-duty."
+      },
+      "type": "roleID",
+      "allowNull": true,
+      "default": {
+        "en": ""
+      }
+    },
+    {
+      "name": "dutyTypes",
+      "category": "settings",
+      "humanName": {
+        "en": "Duty Types"
+      },
+      "description": {
+        "en": "The types of duty a staff member can select when going on-duty."
+      },
+      "type": "array",
+      "content": "string",
+      "default": {
+        "en": ["Staff"]
+      }
+    },
+    {
+      "name": "minShiftDuration",
+      "category": "settings",
+      "humanName": {
+        "en": "Minimum Shift Duration (minutes)"
+      },
+      "description": {
+        "en": "A minimum shift duration for a shift to count towards their duty time. Default is 0, which means all shift time counts."
+      },
+      "type": "integer",
+      "default": {
+        "en": 0
+      }
+    },
+    {
+      "name": "enableLeaderboard",
+      "category": "leaderboard",
+      "humanName": {
+        "en": "Enable duty leaderboard"
+      },
+      "description": {
+        "en": "If enabled, staff can see a leaderboard of who has the most duty time in the configured timeframe."
+      },
+      "type": "boolean",
+      "default": {
+        "en": true
+      }
+    },
+    {
+      "name": "leaderboardLookback",
+      "category": "leaderboard",
+      "humanName": {
+        "en": "Leaderboard Timeframe"
+      },
+      "description": {
+        "en": "The timeframe of the duty time shown on the leaderboard."
+      },
+      "type": "select",
+      "content": [
+        "Weekly",
+        "Monthly",
+        "All-time"
+      ],
+      "default": {
+        "en": "Weekly"
+      },
+      "dependsOn": "enableLeaderboard"
+    },
+    {
+      "name": "enableQuotas",
+      "category": "quotas",
+      "humanName": {
+        "en": "Enable Quota System"
+      },
+      "description": {
+        "en": "If enabled, you can set a custom quota of hours for staff to meet in the configured timeframe."
+      },
+      "type": "boolean",
+      "default": {
+        "en": false
+      }
+    },
+    {
+      "name": "quotaTimeframe",
+      "category": "quotas",
+      "humanName": {
+        "en": "Quota Timeframe"
+      },
+      "description": {
+        "en": "The timeframe in which the quota must be met."
+      },
+      "type": "select",
+      "content": [
+        "Weekly",
+        "Monthly"
+      ],
+      "default": {
+        "en": "Weekly"
+      },
+      "dependsOn": "enableQuotas"
+    },
+    {
+      "name": "quotas",
+      "category": "quotas",
+      "humanName": {
+        "en": "Role Quotas"
+      },
+      "description": {
+        "en": "Set required hours per role - the left side will be the role, and the right side is a number which is the hours for the quota. The user's highest role counts as their quota."
+      },
+      "type": "keyed",
+      "content": {
+        "key": "roleID",
+        "value": "integer"
+      },
+      "default": {
+        "en": {}
+      },
+      "dependsOn": "enableQuotas"
+    }
+  ]
+}

@@ -1,0 +1,247 @@
+{
+  "filename": "promotions.json",
+  "humanName": {
+    "en": "Promotions"
+  },
+  "description": {
+    "en": "Configure how staff promotions are handled and announced."
+  },
+  "categories": [
+    {
+      "id": "logic",
+      "icon": "fas fa-gears",
+      "displayName": {
+        "en": "General logic"
+      }
+    },
+    {
+      "id": "messages",
+      "icon": "fas fa-comment-dots",
+      "displayName": {
+        "en": "Announcements"
+      }
+    }
+  ],
+  "content": [
+    {
+      "name": "enablePromotions",
+      "category": "logic",
+      "humanName": {
+        "en": "Enable Promotions System"
+      },
+      "description": {
+        "en": "If disabled, the /staff-management promote command will not work."
+      },
+      "type": "boolean",
+      "default": {
+        "en": true
+      },
+      "elementToggle": true
+    },
+    {
+      "name": "autoAddRole",
+      "category": "logic",
+      "humanName": {
+        "en": "Auto-Add New Role?"
+      },
+      "description": {
+        "en": "If enabled, the bot will automatically give the user the new rank role. Note: This makes your server prone to raids by promoting someone to a role with more dangerous permissions which can be used to do malicious actions. It is recommended to keep this setting disabled."
+      },
+      "type": "boolean",
+      "default": {
+        "en": true
+      }
+    },
+    {
+      "name": "promotionsChannel",
+      "category": "messages",
+      "humanName": {
+        "en": "Promotions Channel"
+      },
+      "description": {
+        "en": "The channel where promotion announcements will be sent."
+      },
+      "type": "channelID",
+      "channelTypes": [
+        "GUILD_TEXT",
+        "GUILD_ANNOUNCEMENT"
+      ],
+      "default": {
+        "en": ""
+      }
+    },
+    {
+      "name": "promotionMessage",
+      "category": "messages",
+      "humanName": {
+        "en": "Promotion Announcement Embed"
+      },
+      "description": {
+        "en": "This will be the message sent when someone is promoted."
+      },
+      "type": "string",
+      "allowEmbed": true,
+      "params": [
+        {
+          "name": "user",
+          "description": {
+            "en": "Pings the promoted user."
+          }
+        },
+        {
+          "name": "newRoleName",
+          "description": {
+            "en": "The plain text name of the new role."
+          }
+        },
+        {
+          "name": "newRoleMention",
+          "description": {
+            "en": "The pingable mention of the new role."
+          }
+        },
+        {
+          "name": "promoterMention",
+          "description": {
+            "en": "Pings the staff member who issued the promotion."
+          }
+        },
+        {
+          "name": "promoterName",
+          "description": {
+            "en": "The username of the staff member who issued the promotion."
+          }
+        },
+        {
+          "name": "%reason%",
+          "description": {
+            "en": "The reason for the promotion."
+          }
+        },
+        {
+          "name": "userPfp",
+          "description": {
+            "en": "The avatar URL of the promoted user."
+          }
+        },
+        {
+          "name": "promoterPfp",
+          "description": {
+            "en": "The avatar URL of the promoter."
+          }
+        }
+      ],
+      "default": {
+        "en": {
+          "content": "%user%",
+          "embeds": [
+            {
+              "author": {
+                "name": "Signed, %promoterName%",
+                "imageURL": "%promoterPfp%"
+              },
+              "title": "🎉 New promotion!",
+              "description": "Congratulations, you have been promoted to **%newRoleName%**!\n\n**Promoted to:** %newRoleMention%\n**On behalf of:** %promoterMention%\n**Reason:** %reason%",
+              "color": "#f1c40f",
+              "thumbnailURL": "%userPfp%"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "dmPromotedUser",
+      "category": "messages",
+      "humanName": {
+        "en": "DM Promoted User?"
+      },
+      "description": {
+        "en": "If enabled, the user will receive a direct message when promoted."
+      },
+      "type": "boolean",
+      "default": {
+        "en": false
+      }
+    },
+    {
+      "name": "promotionDmMessage",
+      "category": "messages",
+      "humanName": {
+        "en": "Promotion DM Embed"
+      },
+      "description": {
+        "en": "The message sent directly to the user."
+      },
+      "type": "string",
+      "allowEmbed": true,
+      "dependsOn": "dmPromotedUser",
+      "params": [
+        {
+          "name": "user",
+          "description": {
+            "en": "Pings the promoted user."
+          }
+        },
+        {
+          "name": "newRoleName",
+          "description": {
+            "en": "The plain text name of the new role."
+          }
+        },
+        {
+          "name": "%ewRoleMention",
+          "description": {
+            "en": "The pingable mention of the new role."
+          }
+        },
+        {
+          "name": "promoterMention",
+          "description": {
+            "en": "Pings the staff member who issued the promotion."
+          }
+        },
+        {
+          "name": "promoterName",
+          "description": {
+            "en": "The username of the staff member who issued the promotion."
+          }
+        },
+        {
+          "name": "reason",
+          "description": {
+            "en": "The reason for the promotion."
+          }
+        },
+        {
+          "name": "userPfp",
+          "description": {
+            "en": "The avatar URL of the promoted user."
+          }
+        },
+        {
+          "name": "promoterPfp",
+          "description": {
+            "en": "The avatar URL of the promoter."
+          }
+        }
+      ],
+      "default": {
+        "en": {
+          "content": "%user%",
+          "embeds": [
+            {
+              "author": {
+                "name": "Signed, %promoterName%",
+                "imageURL": "%promoterPfp%"
+              },
+              "title": "🎉 New promotion!",
+              "description": "Congratulations, you have been promoted to **%newRoleName%**!\n\n**Promoted to:** %newRoleMention%\n**On behalf of:** %promoterMention%\n**Reason:** %reason%",
+              "color": "#f1c40f",
+              "thumbnailURL": "%userPfp%"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
