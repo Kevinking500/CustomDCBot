@@ -12,6 +12,20 @@ function getLookbackDate(config) {
     return date;
 }
 
+async function applyBreakElapsedToShift(activeShift, breakStartTime, now = new Date()) {
+    if (!activeShift || !breakStartTime) return;
+
+    const breakStartedAt = new Date(breakStartTime);
+    if (Number.isNaN(breakStartedAt.getTime()) || breakStartedAt > now) return;
+
+    const elapsedBreakMs = now.getTime() - breakStartedAt.getTime();
+    if (elapsedBreakMs <= 0) return;
+
+    await activeShift.update({
+        startTime: new Date(new Date(activeShift.startTime).getTime() + elapsedBreakMs)
+    });
+}
+
 function getQuotaForMember(member, config) {
     if (!config.enableQuotas || !config.quotas || Object.keys(config.quotas).length === 0) return null;
 
@@ -235,20 +249,24 @@ async function buildLeaderboardPayload(client, page = 1, shiftType) {
     }
 
     const lookbackLabel = config.leaderboardLookback || 'Weekly';
-    const embed = new EmbedBuilder()
-        .setTitle(localize('staff-management-system', 'duty-lb-title', { 
-            type: shiftType 
+    const embed = applyFooter(client, new EmbedBuilder()
+        .setTitle(localize('staff-management-system', 'duty-lb-title', {
+            type: shiftType
         }))
         .setColor('Gold')
-        .setDescription(localize('staff-management-system', 'duty-lb-desc', { 
-            lookback: lookbackLabel, 
-            lines: lines.join('\n') 
+        .setDescription(localize('staff-management-system', 'duty-lb-desc', {
+            lookback: lookbackLabel,
+            lines: lines.join('\n')
         }))
-        .setFooter({ text: localize('staff-management-system', 'page-count', { 
-            page, 
-            total: totalPages 
-        }) 
-    }); 
+    );
+
+    embed.addFields({
+        name: '\u200b',
+        value: localize('staff-management-system', 'page-count', {
+            page,
+            total: totalPages
+        })
+    });
 
     const row = buildPaginationRow(
         `duty-mgmt_lb_${page - 1}_${shiftType}`,
@@ -294,16 +312,20 @@ async function buildShiftHistoryPayload(client, userId, page = 1, shiftType) {
         return `**${offset + i + 1}. ${dur}${typeBadge}:**\nStart: <t:${startTs}:F> | End: <t:${endTs}:F>`;
     });
 
-    const embed = new EmbedBuilder()
-        .setTitle(localize('staff-management-system', 'duty-hi-title', { 
-            type: shiftType 
+    const embed = applyFooter(client, new EmbedBuilder()
+        .setTitle(localize('staff-management-system', 'duty-hi-title', {
+            type: shiftType
         }))
         .setColor('Blue')
         .setDescription(lines.join('\n\n'))
-        .setFooter({ text: localize('staff-management-system', 'page-count', { 
-            page, 
-            total: totalPages 
-        }) 
+    );
+
+    embed.addFields({
+        name: '\u200b',
+        value: localize('staff-management-system', 'page-count', {
+            page,
+            total: totalPages
+        })
     }); 
 
     const row = buildPaginationRow(
@@ -474,14 +496,18 @@ async function handleDutyBreakButton(client, interaction) {
     const shiftType = activeShift?.type || 'Staff';
 
     const nowOnBreak = !profile.onBreak;
-    await Profile.update({ 
-        onBreak: nowOnBreak, 
+    if (!nowOnBreak && profile.breakStartTime && activeShift) {
+        await applyBreakElapsedToShift(activeShift, profile.breakStartTime);
+    }
+
+    await Profile.update({
+        onBreak: nowOnBreak,
         breakStartTime: nowOnBreak 
         ? new Date() 
-        : null }, { 
-            where: { userId } 
-        }
-    );
+        : null
+    }, {
+    where: { userId }
+    });
 
     const payload = await buildDutyManagePayload(client, userId, interaction.guild, shiftType);
     return interaction.editReply(payload);
@@ -508,9 +534,15 @@ async function handleDutyEndButton(client, interaction) {
     const shiftType = activeShifts.length > 0 ? activeShifts[0].type : 'Staff';
 
     for (const activeShift of activeShifts) {
+        if (profile.onBreak && profile.breakStartTime) {
+            await applyBreakElapsedToShift(activeShift, profile.breakStartTime);
+        }
+
         const endTime = new Date();
-        const durationSeconds = Math.floor((endTime.getTime() - new Date(activeShift.startTime).getTime()) / 1000);
-        
+        const durationSeconds = Math.floor(
+            (endTime.getTime() - new Date(activeShift.startTime).getTime()) / 1000
+        );
+
         if (config.minShiftDuration && (durationSeconds / 60) < config.minShiftDuration) {
             await activeShift.destroy();
         } else {
@@ -577,16 +609,24 @@ async function handleDutyAdminForceEnd(client, interaction) {
     const config = getConfig(client, 'shifts');
     const Profile = client.models['staff-management-system']['StaffProfile'];
     const Shift = client.models['staff-management-system']['StaffShift'];
+    const profile = await Profile.findByPk(targetUserId);
 
     const activeShifts = await Shift.findAll({ 
         where: { userId: targetUserId, endTime: null } 
     });
     for (const activeShift of activeShifts) {
+        if (profile?.onBreak && profile.breakStartTime) {
+            await applyBreakElapsedToShift(activeShift, profile.breakStartTime);
+        }
+
         const endTime = new Date();
-        const durationSeconds = Math.floor((endTime.getTime() - new Date(activeShift.startTime).getTime()) / 1000);
-        await activeShift.update({ 
-            endTime, 
-            duration: durationSeconds 
+        const durationSeconds = Math.floor(
+            (endTime.getTime() - new Date(activeShift.startTime).getTime()) / 1000
+        );
+
+        await activeShift.update({
+            endTime,
+            duration: durationSeconds
         });
     }
 
@@ -911,6 +951,7 @@ module.exports.subcommands = {
         });
 
         const Shift = i.client.models['staff-management-system']['StaffShift'];
+        const Profile = i.client.models['staff-management-system']['StaffProfile'];
         const activeShifts = await Shift.findAll({ 
             where: { endTime: null }, 
             order: [['startTime', 'ASC']] 
@@ -919,6 +960,13 @@ module.exports.subcommands = {
         if (activeShifts.length === 0) return i.editReply({ 
             content: localize('staff-management-system', 'info-no-act-sh') 
         });
+
+        const profiles = await Profile.findAll({
+            where: {
+                userId: activeShifts.map(shift => shift.userId)
+            }
+        });
+        const profileMap = new Map(profiles.map(profile => [profile.userId, profile]));
 
         const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0 
         ? config.dutyTypes 
@@ -944,8 +992,25 @@ module.exports.subcommands = {
             if (grouped[type]) {
                 const lines = [];
                 for (const shift of grouped[type]) {
-                    const elapsed = Math.floor((Date.now() - new Date(shift.startTime).getTime()) / 1000);
-                    lines.push(`${index}. **<@${shift.userId}>** • ${formatDuration(elapsed)}`);
+                    const profile = profileMap.get(shift.userId);
+                    const isOnBreak = profile?.onBreak && profile?.breakStartTime;
+
+                    let elapsed;
+                    if (isOnBreak) {
+                        elapsed = Math.floor(
+                            (new Date(profile.breakStartTime).getTime() - new Date(shift.startTime).getTime()) / 1000
+                        );
+                    } else {
+                        elapsed = Math.floor(
+                            (Date.now() - new Date(shift.startTime).getTime()) / 1000
+                        );
+                    }
+
+                    const breakSuffix = isOnBreak
+                        ? ` (${localize('staff-management-system', 'stat-brk')})`
+                        : '';
+
+                    lines.push(`${index}. **<@${shift.userId}>** • ${formatDuration(elapsed)}${breakSuffix}`);
                     index++;
                 }
                 embed.addFields({ 
@@ -958,13 +1023,31 @@ module.exports.subcommands = {
         for (const [type, shifts] of Object.entries(grouped)) {
             const lines = [];
             for (const shift of shifts) {
-                const elapsed = Math.floor((Date.now() - new Date(shift.startTime).getTime()) / 1000);
-                lines.push(`${index}. **<@${shift.userId}>** • ${formatDuration(elapsed)}`);
+                const profile = profileMap.get(shift.userId);
+                const isOnBreak = profile?.onBreak && profile?.breakStartTime;
+
+                let elapsed;
+                if (isOnBreak) {
+                    elapsed = Math.floor(
+                        (new Date(profile.breakStartTime).getTime() - new Date(shift.startTime).getTime()) / 1000
+                    );
+                } else {
+                    elapsed = Math.floor(
+                        (Date.now() - new Date(shift.startTime).getTime()) / 1000
+                    );
+                }
+
+                const breakSuffix = isOnBreak
+                    ? ` (${localize('staff-management-system', 'stat-brk')})`
+                    : '';
+
+                lines.push(`${index}. **<@${shift.userId}>** • ${formatDuration(elapsed)}${breakSuffix}`);
                 index++;
             }
-            embed.addFields({ 
-                name: `${type} (${shifts.length}) [Legacy]`, 
-                value: lines.join('\n') 
+
+            embed.addFields({
+                name: `${type} (${shifts.length}) [Legacy]`,
+                value: lines.join('\n')
             });
         }
         await i.editReply({ 

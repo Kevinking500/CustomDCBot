@@ -1280,6 +1280,7 @@
         "ac-f-res": "✅ Responded (%count)",
         "ac-f-fail": "❌ Failed (%count)",
         "ac-f-exc": "🛡️ Exceptions (%count)",
+        "log-ac-send-fail": "Failed to send activity check results message: %error",
         "err-not-mem": "❌ Not a member.",
         "err-self-rate": "❌ Cannot rate yourself.",
         "err-staff-rate": "❌ Can only rate staff.",
@@ -1411,6 +1412,8 @@
         "cmd-desc-submit-user": "The user you are reviewing.",
         "cmd-desc-submit-stars": "The star rating for the review.",
         "cmd-desc-submit-comment": "Your review comment.",
-        "del-no-perm": "You do not have sufficient permissions to perform data deletion."
+        "del-no-perm": "You do not have sufficient permissions to perform data deletion.",
+        "log-err-break-recov": "Break recovery failed: %error",
+        "log-err-exp-susp": "Suspension check failed: %error"
     }
 }

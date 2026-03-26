@@ -1,30 +1,34 @@
-const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, EmbedBuilder } = require('discord.js');
-const { 
-    generateReviewHistoryResponse, 
-    handleStatusEnd, 
-    scheduleStatusExpiry, 
-    handleStatusEndSubmit, 
-    handleStatusExtend, 
-    handleStatusExtendSubmit, 
-    handleStatusHistPage, 
-    sendStatusDm, 
+const {
+    getConfig,
+    checkStaffPermissions,
+    applyFooter,
+    generateReviewHistoryResponse,
     generatePromotionHistoryResponse,
-    generateInfractionHistoryResponse, 
-    generateUserPanel, 
+    generateInfractionHistoryResponse,
+    generateUserPanel,
     generatePanelInfractions,
-    generatePanelPromotions, 
-    generatePanelReviews, 
-    generatePanelStatus, 
-    generatePanelActivity, 
-    generatePanelShifts, 
+    generatePanelPromotions,
+    generatePanelReviews,
+    generatePanelStatus,
+    generatePanelActivity,
+    generatePanelShifts,
     generatePanelDeletion,
-    executeDataDeletion, 
-    generatePanelSubpage, 
-    logStatusChange
+    executeDataDeletion,
+    generatePanelSubpage
 } = require('../staff-management');
+const {
+    handleStatusEnd,
+    scheduleStatusExpiry,
+    handleStatusEndSubmit,
+    handleStatusExtend,
+    handleStatusExtendSubmit,
+    handleStatusHistPage,
+    sendStatusDm,
+    logStatusChange
+} = require('../commands/status.js');
 const { localize } = require('../../../src/functions/localize');
 const dutyHandlers = require('../commands/duty.js').buttonHandlers;
-const configuration = require('../configuration.json');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
 module.exports.run = async (client, interaction) => {
     if (!client.botReadyAt) return;
@@ -83,12 +87,12 @@ module.exports.run = async (client, interaction) => {
             const type = action.startsWith('loa-') ? 'LOA' : 'RA';
             const base = action.replace(/^(loa|ra)-/, '');
 
-            if (base === 'end')           return handleStatusEnd(interaction, type);
-            if (base === 'end-submit')    return handleStatusEndSubmit(interaction, type);
+            if (base === 'end')           return handleStatusEnd(client, interaction, type);
+            if (base === 'end-submit')    return handleStatusEndSubmit(client, interaction, type);
             if (base === 'extend')        return handleStatusExtend(interaction, type);
-            if (base === 'extend-submit') return handleStatusExtendSubmit(interaction, type);
-            if (base === 'hist')          return handleStatusHistPage(interaction, type);
-        }
+            if (base === 'extend-submit') return handleStatusExtendSubmit(client, interaction, type);
+            if (base === 'hist')          return handleStatusHistPage(client, interaction, type);
+        }   
 
         // ----- Promotion history pagination -----
         if (action === 'prom-hist') {
@@ -173,16 +177,9 @@ module.exports.run = async (client, interaction) => {
 
         // ----- Data deletion modal submission -----
         if (interaction.isModalSubmit() && interaction.customId.startsWith('staff-mgmt_del-confirm_')) {
-            const managementRoles = Array.isArray(configuration.managementRoles) 
-            ? configuration.managementRoles 
-            : [];
-            const memberRoles = interaction.member && interaction.member.roles && interaction.member.roles.cache
-                ? interaction.member.roles.cache
-                : null;
-            const hasManagementRole = memberRoles
-                ? managementRoles.some((roleId) => memberRoles.has(roleId))
-                : false;
-            if (!hasManagementRole) {
+            const configuration = getConfig(client, 'configuration');
+
+            if (!checkStaffPermissions(interaction.member, configuration, 'management')) {
                 return interaction.reply({
                     content: localize('staff-management-system', 'del-no-perm'),
                     flags: MessageFlags.Ephemeral
@@ -203,10 +200,11 @@ module.exports.run = async (client, interaction) => {
             }
 
             if (selection === 'del_all') {
-                const embed = new EmbedBuilder()
+                const embed = applyFooter(client, new EmbedBuilder()
                     .setTitle(localize('staff-management-system', 'del-all-title'))
                     .setDescription(localize('staff-management-system', 'del-all-desc'))
-                    .setColor('DarkRed');
+                    .setColor('DarkRed')
+                );
 
                 const row = new ActionRowBuilder()
                 .addComponents(
@@ -227,17 +225,15 @@ module.exports.run = async (client, interaction) => {
                 });
 
                 const reply = await interaction.fetchReply();
-                const collector = reply.createMessageComponentCollector({ time: 30000 });
+                const collector = reply.createMessageComponentCollector({
+                    componentType: ComponentType.Button,
+                    time: 30000,
+                    max: 1,
+                    filter: (btnInt) => btnInt.user.id === interaction.user.id
+                });
 
                 collector.on('collect', async (btnInt) => {
-                    const managementRoles = Array.isArray(configuration.managementRoles) ? configuration.managementRoles : [];
-                    const memberRoles = btnInt.member && btnInt.member.roles && btnInt.member.roles.cache
-                        ? btnInt.member.roles.cache
-                        : null;
-                    const hasManagementRole = memberRoles
-                        ? managementRoles.some((roleId) => memberRoles.has(roleId))
-                        : false;
-                    if (!hasManagementRole) {
+                    if (!checkStaffPermissions(btnInt.member, configuration, 'management')) {
                         return btnInt.reply({
                             content: localize('staff-management-system', 'del-no-perm'),
                             flags: MessageFlags.Ephemeral
@@ -250,10 +246,12 @@ module.exports.run = async (client, interaction) => {
                             embeds: [], 
                             components: [] 
                         });
-                        collector.stop('cancelled');
-                    } else if (btnInt.customId.includes('confirm')) {
+                        return;
+                    }
+
+                    if (btnInt.customId.includes('confirm')) {
                         await executeDataDeletion(client, targetId, 'del_all');
-                        
+
                         client.logger.info(localize('staff-management-system', 'log-del-all', { 
                             target: targetId, 
                             admin: btnInt.user.id 
@@ -264,26 +262,24 @@ module.exports.run = async (client, interaction) => {
                             const payload = await generateUserPanel(client, targetUser);
                             await interaction.message.edit(payload).catch(()=>{});
                         }
-                        
-                        await btnInt.update({ 
-                            content: localize('staff-management-system', 'succ-del-all'), 
-                            embeds: [], 
-                            components: [] 
+
+                        await btnInt.update({
+                            content: localize('staff-management-system', 'succ-del-all'),
+                            embeds: [],
+                            components: []
                         });
-                        collector.stop('confirmed');
                     }
                 });
 
-                collector.on('end', (reason) => {
+                collector.on('end', async (_collected, reason) => {
                     if (reason === 'time') {
-                        interaction.editReply({ 
+                        await interaction.editReply({
                             content: localize('staff-management-system', 'err-del-time'), 
                             embeds: [], 
                             components: [] 
                         }).catch(()=>{});
                     }
                 });
-                return;
             }
 
             await executeDataDeletion(client, targetId, selection);

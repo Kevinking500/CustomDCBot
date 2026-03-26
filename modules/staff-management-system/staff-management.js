@@ -6,7 +6,7 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const { Op } = require('sequelize');
 const schedule = require('node-schedule');
-const { embedTypeV2, formatDate } = require('../../src/functions/helpers');
+const { embedTypeV2, safeSetFooter } = require('../../src/functions/helpers');
 const { localize } = require('../../src/functions/localize');
 
 // --- Local helpers ---
@@ -32,10 +32,35 @@ const parseDurationToDays = (input) => {
 };
 
 const applyFooter = (client, embed) => {
-    embed.setFooter({ text: client.strings.footer, iconURL: client.strings.footerImgUrl });
-    if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
+    safeSetFooter(embed, client);
+    if (!(client.strings && client.strings.disableFooterTimestamp)) {
+        embed.setTimestamp();
+    }
     return embed;
 };
+
+function checkStaffPermissions(member, config, level = 'staff') {
+    if (!member) return false;
+    if (member.permissions?.has('Administrator')) return true;
+
+    const roleMap = {
+        staff: [
+            ...(config?.staffRoles || []),
+            ...(config?.supervisorRoles || []),
+            ...(config?.managementRoles || [])
+        ],
+        supervisor: [
+            ...(config?.supervisorRoles || []),
+            ...(config?.managementRoles || [])
+        ],
+        management: [
+            ...(config?.managementRoles || [])
+        ]
+    };
+
+    const allowedRoles = roleMap[level] || roleMap.staff;
+    return member.roles?.cache?.some(role => allowedRoles.includes(role.id)) || false;
+}
 
 const buildPaginationRow = (backId, countId, nextId, page, totalPages) => {
     return new ActionRowBuilder().addComponents(
@@ -76,149 +101,6 @@ function formatDuration(seconds) {
         : 'time-sec'
     )}`);
     return parts.join(', ') || localize('staff-management-system', 'time-zero');
-}
-
-// ---------- Status DM's and logging ----------
-
-async function sendStatusDm(user, type, dmType, data = {}) {
-    const label = type === 'LOA' 
-    ? 'LoA' 
-    : 'RA';
-    const viewCmd = type === 'LOA' 
-    ? '`/loa view`' 
-    : '`/ra view`';
-    const endFmt = data.endDate 
-    ? `<t:${Math.floor(new Date(data.endDate).getTime() / 1000)}:F>` 
-    : '';
-    
-    // These messages use the locales key to be easily used later
-    const messages = {
-        approved: { 
-            title: 'dm-appr-title', 
-            color: 'Green', 
-            desc: 'dm-appr-desc', 
-            params: { label, approver: data.approver, endFmt, viewCmd } 
-        },
-        denied: { 
-            title: 'dm-deny-title', 
-            color: 'Red', 
-            desc: 'dm-deny-desc', 
-            params: { label, denier: data.denier, reason: data.reason } 
-        },
-        extended: { 
-            title: 'dm-ext-title', 
-            color: 'Yellow', 
-            desc: 'dm-ext-desc', 
-            params: { label, extender: data.extender, days: data.days, endFmt, reason: data.reason, viewCmd } 
-        },
-        ended_early: { 
-            title: 'dm-early-title', 
-            color: 'Red', 
-            desc: 'dm-early-desc', 
-            params: { label, ender: data.ender, reason: data.reason } 
-        },
-        ended: { 
-            title: 'dm-end-title', 
-            color: 'Black', 
-            desc: 'dm-end-desc', 
-            params: { label } 
-        }
-    };
-
-    const msg = messages[dmType];
-    if (!msg) return;
-
-    const embed = new EmbedBuilder()
-        .setTitle(localize('staff-management-system', msg.title, msg.params))
-        .setDescription(localize('staff-management-system', msg.desc, msg.params))
-        .setColor(msg.color);
-    applyFooter(user.client, embed); 
-
-    try { 
-        await user.send({ 
-            embeds: [embed.toJSON()] 
-        }); 
-    } catch (e) {
-        user.client.logger.error(
-        localize('staff-management-system', 'log-stat-dm-error', {
-            e: e.message,
-            u: user.tag
-        })
-    );
-}
-}
-
-async function logStatusChange(client, type, action, data) {
-    const statusConfig = getConfig(client, 'status');
-    if (!statusConfig?.logStatusChanges) return;
-
-    const channelId = getSafeChannelId(statusConfig.statusChangeLogChannel) || getSafeChannelId(getConfig(client, 'configuration')?.generalLogChannel);
-    if (!channelId) return;
-
-    const guild = client.guilds.cache.get(client.guildID);
-    if (!guild) return;
-    const channel = await guild.channels.fetch(channelId).catch(() => null);
-    if (!channel) return;
-
-    const label = type === 'LOA' 
-    ? 'LoA' 
-    : 'RA';
-    const targetUserObj = data.targetUser || await client.users.fetch(data.userId).catch(() => null);
-    const mention = targetUserObj 
-    ? targetUserObj.toString() 
-    : `<@${data.userId}>`;
-    const username = targetUserObj 
-    ? targetUserObj.username 
-    : data.userId;
-
-    const embed = new EmbedBuilder()
-    .setThumbnail(targetUserObj
-    ?.displayAvatarURL({ dynamic: true }) || null);
-
-    if (action === 'start') {
-        embed.setTitle(localize('staff-management-system', 'log-start-title', { label, username }))
-             .setColor('Green')
-             .setDescription(localize('staff-management-system', 'log-start-desc', 
-                { label, mention, apprText: data.approverId 
-                ? ` ${localize('staff-management-system', 'label-appr-by')}: <@${data.approverId}>.` 
-                : '' 
-             }))
-             .addFields({ 
-                name: localize('staff-management-system', 'log-info-hdr', { label }), 
-                value: `**${localize('staff-management-system', 'general-start')}:** <t:${Math.floor(new Date(data.startDate).getTime() / 1000)}:F>\n**${localize('staff-management-system', 'general-end')}:** <t:${Math.floor(new Date(data.endDate).getTime() / 1000)}:F>\n**${localize('staff-management-system', 'general-rsn')}:** ${data.reason || localize('staff-management-system', 'none-provided')}` 
-             });
-    
-    } else if (action === 'end') {
-        embed.setTitle(localize('staff-management-system', 'log-end-title', { label, username }))
-             .setColor('Red')
-             .setDescription(localize('staff-management-system', 'log-end-desc', { label, mention }))
-             .addFields({ 
-                name: localize('staff-management-system', 'log-info-hdr', { label }), 
-                value: `**${localize('staff-management-system', 'general-started')}:** <t:${Math.floor(new Date(data.startDate).getTime() / 1000)}:F>\n**${localize('staff-management-system', 'general-ended')}:** <t:${Math.floor(Date.now() / 1000)}:F>\n**${localize('staff-management-system', 'general-rsn')}:** ${data.reason || localize('staff-management-system', 'none-provided')}` 
-             });
-    
-    } else if (action === 'adjusted') {
-        embed.setTitle(localize('staff-management-system', 'log-adj-title', { label, username }))
-             .setColor('Yellow')
-             .setDescription(localize('staff-management-system', 'log-adj-desc', { label, mention, executor: data.executorId }))
-             .addFields({ 
-                name: localize('staff-management-system', 'log-changes'), 
-                value: data.changesText 
-             });
-    }
-
-    applyFooter(client, embed);
-    try { 
-        await channel.send({ 
-            embeds: [embed.toJSON()] 
-        }); 
-    } catch (e) {
-        client.logger.error(
-            localize('staff-management-system', 'log-status-adj-error', { 
-                e: e.message
-            })
-        );
-    }
 }
 
 // ---------- Infractions ----------
@@ -1065,21 +947,35 @@ async function generatePanelStatus(client, targetUser, page = 1) {
 // Activity checks page
 async function generatePanelActivity(client, targetUser, page = 1) {
     const ActivityCheck = client.models['staff-management-system']['ActivityCheck'];
-    const allChecks = await ActivityCheck.findAll();
-    
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90);
+
+    const recentChecks = await ActivityCheck.findAll({
+        where: {
+            createdAt: { [Op.gte]: cutoff }
+        },
+        order: [['createdAt', 'DESC']]
+    });
+
     let userResponses = 0;
     const historyRows = [];
-    allChecks.forEach(check => {
-        const responded = JSON.parse(check.respondedUsers || '[]');
+
+    for (const check of recentChecks) {
+        let responded = [];
+        try {
+            responded = JSON.parse(check.respondedUsers || '[]');
+        } catch (e) {
+            client.logger.warn(`[Staff Management] ${e.message}`);
+            continue;
+        }
+
         if (responded.includes(targetUser.id)) {
             userResponses++;
             historyRows.push(check);
         }
-    });
-    
-    historyRows.sort((a, b) => b.createdAt - a.createdAt);
+    }
+
     const count = historyRows.length;
-    
     let totalPages = 1;
     if (count > 3) totalPages = 1 + Math.ceil((count - 3) / 5);
     const limit = page === 1 
@@ -1097,16 +993,24 @@ async function generatePanelActivity(client, targetUser, page = 1) {
         .setColor('Blue')
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
     );
-    
+
     let desc = localize('staff-management-system', 'p-act-desc', { count: userResponses });
-    
-    if (paginatedRows.length === 0) desc += localize('staff-management-system', 'p-no-hist');
-    else {
-        desc += paginatedRows.map(r => `**${localize('staff-management-system', 'label-chk')} <t:${Math.floor(new Date(r.createdAt).getTime()/1000)}:D>**\n**${localize('staff-management-system', 'label-end')}:** <t:${Math.floor(new Date(r.endTime).getTime()/1000)}:F>\n**${localize('staff-management-system', 'label-chan')}:** <#${r.channelId}>`).join('\n\n');
+
+    if (paginatedRows.length === 0) {
+        desc += localize('staff-management-system', 'p-no-hist');
+    } else {
+        desc += paginatedRows.map(r =>
+            `**${localize('staff-management-system', 'label-chk')} <t:${Math.floor(new Date(r.createdAt).getTime() / 1000)}:D>**\n` +
+            `**${localize('staff-management-system', 'label-end')}:** <t:${Math.floor(new Date(r.endTime).getTime() / 1000)}:F>\n` +
+            `**${localize('staff-management-system', 'label-chan')}:** <#${r.channelId}>`
+        ).join('\n\n');
     }
-    
+
     embed.setDescription(desc);
-    embed.addFields({ name: '\u200b', value: localize('staff-management-system', 'page-count', { page, total: totalPages }) });
+    embed.addFields({
+        name: '\u200b',
+        value: localize('staff-management-system', 'page-count', { page, total: totalPages })
+    });
 
     const menu = ActionRowBuilder.from((await generateUserPanel(client, targetUser)).components[0]);
     menu.components[0].options.find(opt => opt.data.value === 'activity').data.default = true;
@@ -1115,7 +1019,8 @@ async function generatePanelActivity(client, targetUser, page = 1) {
         `staff-mgmt_panel-act_${targetUser.id}_${page - 1}`,
         'panel_act_count',
         `staff-mgmt_panel-act_${targetUser.id}_${page + 1}`,
-        page, totalPages
+        page, 
+        totalPages
     );
 
     return { 
@@ -1296,618 +1201,90 @@ async function generatePanelDeletion(client, targetUser) {
 
 async function executeDataDeletion(client, targetId, dataType) {
     const models = client.models['staff-management-system'];
-    
-    if (['del_infractions', 'del_all'].includes(dataType)) await models['Infraction'].destroy({ 
-        where: { userId: targetId } 
-    });
-    if (['del_promotions', 'del_all'].includes(dataType)) await models['Promotion'].destroy({ 
-        where: { userId: targetId } 
-    });
-    if (['del_reviews', 'del_all'].includes(dataType)) await models['StaffReview'].destroy({ 
-        where: { targetId: targetId } 
-    }); 
-    if (['del_shifts', 'del_all'].includes(dataType)) {
-        await models['StaffShift'].destroy({ 
-            where: { userId: targetId } 
-        });
-        await models['StaffProfile'].destroy({ 
-            where: { userId: targetId } 
+
+    if (['del_infractions', 'del_all'].includes(dataType)) {
+        await models.Infraction.destroy({
+            where: { userId: targetId }
         });
     }
-    if (['del_status', 'del_all'].includes(dataType)) await models['LoaRequest'].destroy({ 
-        where: { userId: targetId } 
-    });
+
+    if (['del_promotions', 'del_all'].includes(dataType)) {
+        await models.Promotion.destroy({
+            where: { userId: targetId }
+        });
+    }
+
+    if (['del_reviews', 'del_all'].includes(dataType)) {
+        await models.StaffReview.destroy({
+            where: { targetId }
+        });
+    }
+
+    if (['del_shifts', 'del_all'].includes(dataType)) {
+        await models.StaffShift.destroy({
+            where: { userId: targetId }
+        });
+
+        const profile = await models.StaffProfile.findByPk(targetId);
+        if (profile) {
+            await profile.update({
+                onDuty: false,
+                onBreak: false,
+                breakStartTime: null,
+                lastClockIn: null
+            });
+        }
+    }
+
+    if (['del_status', 'del_all'].includes(dataType)) {
+        await models.LoaRequest.destroy({
+            where: { userId: targetId }
+        });
+
+        const profile = await models.StaffProfile.findByPk(targetId);
+        if (profile) {
+            await profile.update({
+                activityStatus: null
+            });
+        }
+    }
+
+    if (dataType === 'del_all') {
+        const profile = await models.StaffProfile.findByPk(targetId);
+        if (profile) {
+            await profile.update({
+                customNickname: null,
+                customIntro: null
+            });
+        }
+    }
+
     if (['del_activity', 'del_all'].includes(dataType)) {
-        const allChecks = await models['ActivityCheck'].findAll();
-        for (const check of allChecks) {
-            let responded = JSON.parse(check.respondedUsers || '[]');
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 365);
+
+        const checks = await models.ActivityCheck.findAll({
+            where: {
+                createdAt: { [Op.gte]: cutoff }
+            }
+        });
+
+        for (const check of checks) {
+            let responded = [];
+            try {
+                responded = JSON.parse(check.respondedUsers || '[]');
+            } catch {
+                continue;
+            }
+
             if (responded.includes(targetId)) {
                 responded = responded.filter(id => id !== targetId);
-                await check.update({ respondedUsers: JSON.stringify(responded) });
-            }
-        }
-    }
-}
-
-// ----- Status -----
-const getStatusMeta = (type) => ({
-    isLoa: type === 'LOA', 
-    label: type === 'LOA' 
-    ? 'LoA' 
-    : 'RA', 
-    enableKey: type === 'LOA' 
-    ? 'enableLoa' 
-    : 'enableRa',
-    roleKey: type === 'LOA' 
-    ? 'loaRole' 
-    : 'raRole', 
-    maxDaysKey: type === 'LOA' 
-    ? 'loaMaxDays' 
-    : 'raMaxDays', 
-    color: type === 'LOA' 
-    ? 'Green' 
-    : 'Orange',
-    activeText: localize('staff-management-system', type === 'LOA' 
-        ? 'status-active-loa' 
-        : 'status-active-ra'
-    ),
-    histTitle: localize('staff-management-system', type === 'LOA' 
-        ? 'status-hist-loa' 
-        : 'status-hist-ra'
-    ), 
-    actionPrefix: type === 'LOA' 
-    ? 'loa' 
-    : 'ra'
-});
-
-async function handleStatusRequest(client, interaction, type, durationInput, reason) {
-    const config = getConfig(client, 'status');
-    const isLoa = type === 'LOA';
-    if (!config[isLoa 
-        ? 'enableLoa' 
-        : 'enableRa']) return interaction.editReply({ 
-            content: localize('staff-management-system', 'err-status-disabled', { type }) 
-        }
-    );
-
-    const days = parseDurationToDays(durationInput?.trim());
-    if (!days || isNaN(days) || days <= 0) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-invalid-duration') 
-    });
-    
-    const maxDays = (isLoa ? config.loaMaxDays : config.raMaxDays) || (isLoa ? 60 : 30);
-    if (days > maxDays) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-duration-max', { max: maxDays }) 
-    });
-
-    const LoaRequest = client.models['staff-management-system']['LoaRequest'];
-    if (await LoaRequest.findOne({ 
-        where: { userId: interaction.user.id, type, status: { [Op.in]: ['PENDING', 'APPROVED'] }, 
-        endDate: { [Op.gt]: new Date() } } 
-    })) {
-        return interaction.editReply({ 
-            content: localize('staff-management-system', 'err-status-exists', { type }) 
-        });
-    }
-
-    const startDate = new Date();
-    const endDate = new Date(startDate.getTime() + days * 24 * 60 * 60 * 1000);
-    const needsApproval = isLoa 
-    ? config.requireLoaApproval !== false 
-    : config.requireRaApproval !== false;
-
-    const req = await LoaRequest.create({ 
-        userId: interaction.user.id, 
-        type, 
-        reason, 
-        startDate, 
-        endDate, 
-        status: needsApproval 
-        ? 'PENDING' 
-        : 'APPROVED' 
-    });
-
-    const logChannelId = getSafeChannelId(config.statusLogChannel);
-    if (logChannelId && needsApproval) {
-        const channel = await interaction.guild.channels.fetch(logChannelId).catch(() => null);
-        if (channel) {
-            const embed = new EmbedBuilder()
-                .setTitle(localize('staff-management-system', 'status-request-title', { type }))
-                .setColor('Blue')
-                .setAuthor({ name: `Request ID: ${req.id}`})
-                .addFields(
-                    { name: localize('staff-management-system', 'status-req-user'), 
-                        value: interaction.user.toString(), 
-                        inline: true 
-                    }, 
-                    { name: localize('staff-management-system', 'status-req-duration'), 
-                        value: `${days} ${localize('staff-management-system', 'label-days')}`, 
-                        inline: true 
-                    }, 
-                    { name: localize('staff-management-system', 'general-rsn'), 
-                        value: reason 
-                    }
-                );
-            
-            applyFooter(client, embed);
-            const row = new ActionRowBuilder()
-            .addComponents(new ButtonBuilder()
-            .setCustomId(`staff-mgmt_approve_${req.id}`)
-            .setLabel(localize('staff-management-system', 'btn-approve'))
-            .setStyle(ButtonStyle.Success), 
-            new ButtonBuilder()
-            .setCustomId(`staff-mgmt_deny_${req.id}`)
-            .setLabel(localize('staff-management-system', 'btn-deny'))
-            .setStyle(ButtonStyle.Danger));
-            channel.send({ embeds: [embed.toJSON()], components: [row.toJSON()] }).catch(()=>{});
-        }
-    }
-
-    if (!needsApproval) {
-        const roleId = config[isLoa ? 'loaRole' : 'raRole'];
-        if (roleId) interaction.member.roles.add(roleId).catch(()=>{});
-        await logStatusChange(client, type, 'start', { 
-            targetUser: interaction.user, 
-            startDate, 
-            endDate, 
-            reason, 
-            approverId: null 
-        });
-    }
-
-    await interaction.editReply({ 
-        content: localize('staff-management-system', 'success-status-request', { 
-            type, state: needsApproval 
-            ? localize('staff-management-system', 'state-pending') 
-            : localize('staff-management-system', 'state-auto') 
-        }) 
-    });
-}
-
-async function handleStatusView(client, interaction, type, targetUser) {
-    const user = targetUser || interaction.user;
-    const request = await client.models['staff-management-system']['LoaRequest'].findOne({ 
-        where: { userId: user.id, type, status: { [Op.in]: ['APPROVED', 'PENDING'] }, 
-        endDate: { [Op.gt]: new Date() } }, 
-        order: [['createdAt', 'DESC']] 
-    });
-
-    if (!request) return interaction.editReply({ 
-        content: localize('staff-management-system', 'no-active-status', { 
-            user: user.username, 
-            type 
-        }) 
-    });
-
-    const embed = new EmbedBuilder()
-    .setTitle(`${type} Status: ${user.username}`)
-    .setColor(request.status === 'APPROVED' 
-        ? 'Green' 
-        : 'Yellow'
-    )
-    .addFields(
-        { 
-        name: localize('staff-management-system', 'label-stat'),
-         value: request.status, 
-         inline: true }, 
-        { 
-        name: localize('staff-management-system', 'label-end'), 
-        value: formatDate(request.endDate), 
-        inline: true }, 
-        { 
-        name: localize('staff-management-system', 'general-rsn'), 
-        value: request.reason || localize('staff-management-system', 'info-none') 
-    })
-    .setThumbnail(user.displayAvatarURL({ dynamic: true }));
-    applyFooter(client, embed);
-    await interaction.editReply({ embeds: [embed.toJSON()] });
-}
-
-async function handleStatusList(client, interaction, type, filter, page = 1) {
-    const limit = 10;
-    const offset = (page - 1) * limit;
-
-    let whereClause = { type };
-    let title = `${type} List`;
-
-    if (filter === 'active') { 
-        whereClause.status = 'APPROVED'; 
-        whereClause.endDate = { [Op.gt]: new Date() }; 
-        title += localize('staff-management-system', 'filter-active'); 
-    }
-    else if (filter === 'expired') { 
-        whereClause.endDate = { [Op.lt]: new Date() }; 
-        title += localize('staff-management-system', 'filter-expired'); 
-    }
-    else { 
-        whereClause.status = { [Op.ne]: 'PENDING' }; 
-        title += localize('staff-management-system', 'filter-history'); 
-    }
-
-    const { count, rows } = await client.models['staff-management-system']['LoaRequest'].findAndCountAll({ 
-        where: whereClause, 
-        limit, 
-        offset, 
-        order: [['endDate', 'DESC']] 
-    });
-    if (count === 0) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-no-recs') 
-    });
-
-    const totalPages = Math.ceil(count / limit) || 1;
-    const embed = new EmbedBuilder()
-        .setTitle(title)
-        .setColor('Blue')
-        .setDescription(rows.map(r => `**<@${r.userId}>** ${r.status === 'APPROVED' ? '✅' : (r.status === 'DENIED' ? '❌' : '⏹️')}\nEnds: ${formatDate(r.endDate)}\nReason: ${r.reason}`).join('\n\n'))
-        .addFields(
-            { 
-                name: '\u200b', 
-                value: localize('staff-management-system', 'page-count', { page, total: totalPages }) 
-            }
-        );
-    applyFooter(client, embed);
-    await interaction.editReply({ embeds: [embed.toJSON()] });
-}
-
-async function handleStatusManage(client, interaction, targetMember, type) {
-    const config = getConfig(client, 'status');
-    const meta = getStatusMeta(type);
-    if (!config[meta.enableKey]) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-status-disabled', { type }) 
-    });
-
-    const generalConfig = getConfig(client, 'configuration');
-    const canManage = interaction.member.roles.cache.some(r => [...(generalConfig.supervisorRoles || []), ...(generalConfig.managementRoles || [])].includes(r.id)) || interaction.member.permissions.has('Administrator');
-    if (!canManage) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-gen-no-perm') 
-    });
-
-    const LoaRequest = client.models['staff-management-system']['LoaRequest'];
-    const activeRequest = await LoaRequest.findOne({ 
-        where: {
-            userId: targetMember.user.id, 
-            type, 
-            status: { [Op.in]: ['APPROVED', 'PENDING'] }, 
-            endDate: { [Op.gt]: new Date() } 
-        }, 
-            order: [['createdAt', 'DESC']] 
-        }
-    );
-    const totalCount = await LoaRequest.count({ 
-        where: { userId: targetMember.user.id, type } 
-    });
-
-    const embed = applyFooter(client, new EmbedBuilder()
-        .setTitle(localize('staff-management-system', 'manage-status-title', { 
-            label: meta.label, 
-            username: targetMember.user.username 
-        }))
-        .setThumbnail(targetMember.user.displayAvatarURL({ dynamic: true }))
-        .setColor(activeRequest 
-            ? meta.color 
-            : 'Grey'
-        )
-        .setDescription(localize('staff-management-system', 'manage-stat-desc', { 
-            status: activeRequest 
-            ? meta.activeText 
-            : localize('staff-management-system', 'no-act-stat', { 
-                label: meta.label 
-            }), 
-            label: meta.label, 
-            count: Math.max(0, totalCount - (activeRequest ? 1 : 0)) 
-        }))
-    );
-
-    embed.addFields({ 
-        name: localize('staff-management-system', 'manage-active-details', { label: meta.label }), 
-        value: activeRequest ? `**${localize('staff-management-system', 'general-start')}:** ${formatDate(activeRequest.startDate)}\n**${localize('staff-management-system', 'general-end')}:** ${formatDate(activeRequest.endDate)}\n**${localize('staff-management-system', 'label-stat')}:** ${activeRequest.status}\n**${localize('staff-management-system', 'label-appr-by')}:** ${activeRequest.approverId ? `<@${activeRequest.approverId}>` : localize('staff-management-system', 'label-auto')}\n**${localize('staff-management-system', 'general-rsn')}:** ${activeRequest.reason || localize('staff-management-system', 'info-none')}` : localize('staff-management-system', 'manage-no-active-user', { label: meta.label }) 
-    });
-
-    const p = meta.actionPrefix;
-    const rid = activeRequest?.id ?? 'none';
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-        .setCustomId(`staff-mgmt_${p}-end_${rid}`)
-        .setLabel(localize('staff-management-system', 'btn-end-early', { label: meta.label }))
-        .setEmoji('🚫').setStyle(ButtonStyle.Danger)
-        .setDisabled(!activeRequest),
-        new ButtonBuilder()
-        .setCustomId(`staff-mgmt_${p}-extend_${rid}`)
-        .setLabel(localize('staff-management-system', 'btn-extend', { label: meta.label }))
-        .setEmoji('⏳')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(!activeRequest),
-        new ButtonBuilder()
-        .setCustomId(`staff-mgmt_${p}-hist_${targetMember.user.id}_1`)
-        .setLabel(localize('staff-management-system', 'btn-view-history'))
-        .setEmoji('📜')
-        .setStyle(ButtonStyle.Secondary)
-        .setDisabled(totalCount === 0)
-    );
-    await interaction.editReply({ 
-        embeds: [embed.toJSON()], 
-        components: [row.toJSON()] 
-    });
-}
-
-async function handleStatusEnd(interaction, type) {
-    const meta = getStatusMeta(type);
-    const requestId = interaction.customId.split('_')[2];
-    if (requestId === 'none') return interaction.reply({ 
-        content: localize('staff-management-system', 'err-no-active-end', { label: meta.label }), 
-        flags: MessageFlags.Ephemeral 
-    });
-
-    const modal = new ModalBuilder()
-    .setCustomId(`staff-mgmt_${meta.actionPrefix}-end-submit_${requestId}`)
-    .setTitle(localize('staff-management-system', 'modal-end-early-title', { label: meta.label }));
-    modal.addComponents(new ActionRowBuilder()
-    .addComponents(
-        new TextInputBuilder()
-        .setCustomId('end_reason')
-        .setLabel(localize('staff-management-system', 'modal-end-early-reason'))
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true)
-    ));
-    return interaction.showModal(modal);
-}
-
-async function handleStatusEndSubmit(client, interaction, type) {
-    const meta = getStatusMeta(type);
-    const request = await client.models['staff-management-system']['LoaRequest'].findByPk(interaction.customId.split('_')[2]);
-    if (!request || request.status === 'ENDED' || request.status === 'DENIED') return interaction.reply({ 
-        content: localize('staff-management-system', 'err-stat-inact', { label: meta.label }), 
-        flags: MessageFlags.Ephemeral 
-    });
-
-    const reason = interaction.fields.getTextInputValue('end_reason');
-    const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
-    
-    if (member && getConfig(client, 'status')[meta.roleKey]) await member.roles.remove(getConfig(client, 'status')[meta.roleKey]).catch(() => {});
-
-    await request.update({ status: 'ENDED', endDate: new Date() });
-    await client.models['staff-management-system']['StaffProfile'].update({ activityStatus: 'ACTIVE' }, { 
-        where: { userId: request.userId } 
-    });
-
-    if (member) await sendStatusDm(member.user, type, 'ended_early', { 
-        ender: interaction.user.tag, 
-        reason 
-    });
-    await logStatusChange(client, type, 'end', { 
-        userId: request.userId, 
-        startDate: request.startDate, 
-        reason: request.reason 
-    });
-
-    const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-    .setColor('Grey')
-    .setDescription(localize('staff-management-system', 'status-ended-embed-desc', { 
-        label: meta.label, user: interaction.user.tag, reason 
-    }))
-    .spliceFields(0, 1, { 
-        name: localize('staff-management-system', 'manage-active-details', { label: meta.label }), 
-        value: localize('staff-management-system', 'manage-no-active-user', { label: meta.label }) 
-    });
-
-    const p = meta.actionPrefix;
-    const disabledRow = new ActionRowBuilder()
-    .addComponents(
-        new ButtonBuilder()
-        .setCustomId(`${p}-end-done`)
-        .setLabel(localize('staff-management-system', 'btn-end-early', { label: meta.label }))
-        .setEmoji('🚫')
-        .setStyle(ButtonStyle.Danger)
-        .setDisabled(true),
-        new ButtonBuilder()
-        .setCustomId(`${p}-extend-done`)
-        .setLabel(localize('staff-management-system', 'btn-extend', { label: meta.label }))
-        .setEmoji('⏳')
-        .setStyle(ButtonStyle.Primary)
-        .setDisabled(true),
-        new ButtonBuilder()
-        .setCustomId(`staff-mgmt_${p}-hist_${request.userId}_1`)
-        .setLabel(localize('staff-management-system', 'btn-view-history'))
-        .setEmoji('📜')
-        .setStyle(ButtonStyle.Secondary)
-    );
-    return interaction.update({ 
-        embeds: [updatedEmbed.toJSON()], 
-        components: [disabledRow.toJSON()] 
-    });
-}
-
-async function handleStatusExtend(interaction, type) {
-    const meta = getStatusMeta(type);
-    const requestId = interaction.customId.split('_')[2];
-    if (requestId === 'none') return interaction.reply({ 
-        content: localize('staff-management-system', 'err-no-active-extend', { label: meta.label }), 
-        flags: MessageFlags.Ephemeral 
-    });
-
-    const modal = new ModalBuilder()
-    .setCustomId(`staff-mgmt_${meta.actionPrefix}-extend-submit_${requestId}`)
-    .setTitle(localize('staff-management-system', 'modal-extend-title', { 
-        label: meta.label 
-    }));
-    modal.addComponents(
-        new ActionRowBuilder()
-        .addComponents(
-        new TextInputBuilder()
-        .setCustomId('extend_days')
-        .setLabel(localize('staff-management-system', 'modal-extend-days'))
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder("7")
-        .setRequired(true)
-        ),
-        new ActionRowBuilder()
-        .addComponents(
-        new TextInputBuilder()
-        .setCustomId('extend_reason')
-        .setLabel(localize('staff-management-system', 'modal-extend-reason'))
-        .setStyle(TextInputStyle.Paragraph)
-        .setRequired(true)
-        )
-    );
-    return interaction.showModal(modal);
-}
-
-function scheduleStatusExpiry(client, request) {
-    schedule.scheduleJob(new Date(request.endDate), async () => {
-        try {
-            const req = await client.models['staff-management-system']['LoaRequest'].findByPk(request.id);
-            if (req && req.status === 'APPROVED' && new Date(req.endDate) <= new Date()) {
-                await req.update({ status: 'ENDED' });
-                await client.models['staff-management-system']['StaffProfile'].update({ activityStatus: 'ACTIVE' }, { 
-                    where: { userId: req.userId } 
+                await check.update({
+                    respondedUsers: JSON.stringify(responded)
                 });
-
-                const member = await client.guilds.cache.get(client.guildID)?.members.fetch(req.userId).catch(() => null);
-                if (member) {
-                    const roleKey = req.type === 'LOA' 
-                    ? 'loaRole' 
-                    : 'raRole';
-                    if (getConfig(client, 'status')[roleKey]) await member.roles.remove(getConfig(client, 'status')[roleKey]).catch(() => null);
-                    await sendStatusDm(member.user, req.type, 'ended');
-                }
-                await logStatusChange(client, req.type, 'end', { userId: req.userId, startDate: req.startDate, reason: req.reason });
             }
-        } catch (e) {}
-    });
-}
-
-async function handleStatusExtendSubmit(client, interaction, type) {
-    const meta = getStatusMeta(type);
-    const request = await client.models['staff-management-system']['LoaRequest'].findByPk(interaction.customId.split('_')[2]);
-    if (!request || request.status === 'ENDED' || request.status === 'DENIED') return interaction.reply({ 
-        content: localize('staff-management-system', 'err-stat-inact', { 
-            label: meta.label 
-        }), 
-        flags: MessageFlags.Ephemeral 
-    });
-
-    const days = parseInt(interaction.fields.getTextInputValue('extend_days'), 10);
-    const reason = interaction.fields.getTextInputValue('extend_reason');
-    if (isNaN(days) || days <= 0 || days > 180) return interaction.reply({ 
-        content: localize('staff-management-system', 'err-inv-dur'), 
-        flags: MessageFlags.Ephemeral 
-    });
-
-    const oldEndDate = new Date(request.endDate);
-    const newEndDate = new Date(oldEndDate.getTime() + days * 24 * 60 * 60 * 1000);
-    await request.update({ endDate: newEndDate });
-    scheduleStatusExpiry(client, request);
-
-    const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
-    if (member) await sendStatusDm(member.user, type, 'extended', { 
-        extender: interaction.user.tag, 
-        days, 
-        endDate: newEndDate, 
-        reason 
-    });
-    await logStatusChange(client, type, 'adjusted', { 
-        userId: request.userId, 
-        executorId: interaction.user.id, 
-        changesText: localize('staff-management-system', 'status-adjusted-log', { 
-            label: meta.label, 
-            newEnd: `<t:${Math.floor(newEndDate.getTime() / 1000)}:F>`, 
-            oldEnd: `<t:${Math.floor(oldEndDate.getTime() / 1000)}:F>`,
-            reason 
-        }) 
-    });
-
-    const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])
-    .spliceFields(0, 1, { 
-        name: localize('staff-management-system', 'manage-active-details', { label: meta.label }), 
-        value: localize('staff-management-system', 'mod-stat-ext', { 
-            s: formatDate(request.startDate), 
-            e: formatDate(newEndDate), 
-            d: days, 
-            t: request.status, 
-            a: request.approverId 
-            ? `<@${request.approverId}>` 
-            : localize('staff-management-system', 'label-auto'), 
-            r: request.reason || localize('staff-management-system', 'info-none') 
-        }) 
-    });
-    return interaction.update({ 
-        embeds: [updatedEmbed.toJSON()], 
-        components: interaction.message.components.map(c => c.toJSON()) 
-    });
-}
-
-async function generateStatusHistoryResponse(client, targetUser, page = 1, type) {
-    const meta = getStatusMeta(type);
-    const limit = 5;
-    const offset = (page - 1) * limit;
-
-    const { count, rows } = await client.models['staff-management-system']['LoaRequest'].findAndCountAll({ 
-        where: { userId: targetUser.id, type }, 
-        order: [['createdAt', 'DESC']], 
-        limit, 
-        offset 
-    });
-    if (count === 0) return { 
-        content: localize('staff-management-system', 'info-no-status-history', { label: meta.label }), 
-        flags: MessageFlags.Ephemeral 
-    };
-
-    const totalPages = Math.ceil(count / limit) || 1;
-    const embed = applyFooter(client, new EmbedBuilder()
-        .setTitle(`${meta.histTitle} - ${targetUser.username}`)
-        .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
-        .setColor(meta.color)
-        .setDescription(localize('staff-management-system', 'status-history-desc', {
-             count: rows.length, 
-             total: count, 
-             label: meta.label 
-            }
-        ))
-    );
-
-    const statusIcons = { 
-        APPROVED: '✅', 
-        DENIED: '❌', 
-        ENDED: '⏹️', 
-        PENDING: '🕐' 
-    };
-    rows.forEach((req, index) => embed.addFields({ 
-        name: `${statusIcons[req.status] ?? '❓'} ${meta.label} #${offset + index + 1} - ${req.status}`, 
-        value: `**${localize('staff-management-system', 'general-start')}:** ${formatDate(req.startDate)}\n**${localize('staff-management-system', 'general-end')}:** ${formatDate(req.endDate)}\n**${localize('staff-management-system', 'label-appr-by')}:** ${req.approverId ? `<@${req.approverId}>` : localize('staff-management-system', 'label-auto')}\n**${localize('staff-management-system', 'general-rsn')}:** ${req.reason || localize('staff-management-system', 'info-none')}` }));
-    embed.addFields({ 
-        name: '\u200b', 
-        value: localize('staff-management-system', 'page-count', { page, total: totalPages }) 
-    });
-
-    const row = buildPaginationRow(
-        `staff-mgmt_${meta.actionPrefix}-hist_${targetUser.id}_${page - 1}`, 
-        `${meta.actionPrefix}_hist_page_count`, 
-        `staff-mgmt_${meta.actionPrefix}-hist_${targetUser.id}_${page + 1}`, 
-        page, 
-        totalPages
-    );
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [row.toJSON()] 
-    };
-}
-
-async function handleStatusHistPage(client, interaction, type) {
-    const parts = interaction.customId.split('_');
-    const targetUser = await client.users.fetch(parts[2]).catch(() => null);
-    if (!targetUser) return interaction.reply({ 
-        content: localize('staff-management-system', 'err-gen-no-user'), 
-        flags: MessageFlags.Ephemeral 
-    });
-
-    const payload = await generateStatusHistoryResponse(client, targetUser, parseInt(parts[3], 10), type);
-    if (payload.content) return interaction.reply({ 
-        ...payload, 
-        flags: MessageFlags.Ephemeral 
-    });
-    return interaction.message?.embeds?.[0]?.title?.startsWith(getStatusMeta(type).histTitle) 
-    ? interaction.update(payload) 
-    : interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+        }
+    }
 }
 
 // ---------- Activity Checks ----------
@@ -2079,7 +1456,11 @@ async function endActivityCheckProcess(client, activeCheck) {
     const finalMessage = { embeds: [embed.toJSON()] };
     if (pingText) finalMessage.content = pingText;
 
-    await logChannel.send(finalMessage);
+    await logChannel.send(finalMessage).catch((e) => {
+    client.logger.error(localize('staff-management-system', 'log-ac-send-fail', {
+        error: e.message
+    }));
+});
 }
 
 function initActivityCheckAutomation(client) {
@@ -2141,7 +1522,7 @@ async function submitReview(client, interaction, targetUser, stars, comment) {
 
     if (config.onlyAllowStaffReview !== false) {
         const genCfg = getConfig(client, 'configuration');
-        if (!targetMember.roles.cache.some(r => [...(genCfg?.staffRoles || []), ...(genCfg?.supervisorRoles || []), ...(genCfg?.managementRoles || [])].includes(r.id))) {
+        if (!checkStaffPermissions(targetMember, genCfg, 'staff')) {
             return interaction.reply({ 
                 content: localize('staff-management-system', 'err-staff-rate'), 
                 flags: MessageFlags.Ephemeral 
@@ -2247,9 +1628,9 @@ async function getReviewHistory(client, interaction, targetUser) {
 }
 
 module.exports = {
-    logStatusChange, 
     getConfig, 
     applyFooter, 
+    checkStaffPermissions,
     buildPaginationRow, 
     formatDuration, 
     issueInfraction, 
@@ -2270,21 +1651,10 @@ module.exports = {
     generatePanelDeletion, 
     executeDataDeletion, 
     generatePanelSubpage,
-    handleStatusRequest, 
-    handleStatusView, 
-    handleStatusList, 
-    handleStatusManage, 
-    handleStatusEnd, 
-    handleStatusEndSubmit, 
-    handleStatusExtend, 
-    handleStatusExtendSubmit, 
-    handleStatusHistPage,
     startActivityCheck, 
     initActivityCheckAutomation, 
     endActivityCheckProcess,
     submitReview, 
     getReviewHistory, 
     generateReviewHistoryResponse, 
-    sendStatusDm, 
-    scheduleStatusExpiry
 };
