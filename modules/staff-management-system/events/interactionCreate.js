@@ -74,9 +74,10 @@ module.exports.run = async (client, interaction) => {
                 flags: MessageFlags.Ephemeral 
             });
 
-            const payload = await generateReviewHistoryResponse(client, targetUser, parseInt(parts[3]));
-            if (payload.content) return interaction.reply(payload);
-            return interaction.update(payload);
+            await interaction.deferUpdate();
+            const payload = await generateReviewHistoryResponse(client, targetUser, parseInt(parts[3], 10));
+            if (payload.content) return interaction.followUp({ ...payload, flags: MessageFlags.Ephemeral });
+            return interaction.editReply(payload);
         }
 
         // ----- LOA/RA handlers -----
@@ -87,7 +88,7 @@ module.exports.run = async (client, interaction) => {
             const type = action.startsWith('loa-') ? 'LOA' : 'RA';
             const base = action.replace(/^(loa|ra)-/, '');
 
-            if (base === 'end')           return handleStatusEnd(client, interaction, type);
+            if (base === 'end')           return handleStatusEnd(interaction, type);
             if (base === 'end-submit')    return handleStatusEndSubmit(client, interaction, type);
             if (base === 'extend')        return handleStatusExtend(interaction, type);
             if (base === 'extend-submit') return handleStatusExtendSubmit(client, interaction, type);
@@ -102,9 +103,10 @@ module.exports.run = async (client, interaction) => {
                 flags: MessageFlags.Ephemeral 
             });
 
+            await interaction.deferUpdate();
             const payload = await generatePromotionHistoryResponse(client, targetUser, parseInt(parts[3], 10));
-            if (payload.content) return interaction.reply(payload);
-            return interaction.update(payload);
+            if (payload.content) return interaction.followUp({ ...payload, flags: MessageFlags.Ephemeral });
+            return interaction.editReply(payload);
         }
 
         // ----- Infraction history pagination -----
@@ -114,9 +116,11 @@ module.exports.run = async (client, interaction) => {
                 content: localize('staff-management-system', 'err-gen-no-user'), 
                 flags: MessageFlags.Ephemeral 
             });
+
+            await interaction.deferUpdate();
             const payload = await generateInfractionHistoryResponse(client, targetUser, parseInt(parts[3], 10));
-            if (payload.content) return interaction.reply(payload);
-            return interaction.update(payload);
+            if (payload.content) return interaction.followUp({ ...payload, flags: MessageFlags.Ephemeral });
+            return interaction.editReply(payload);
         }
 
         // ----- User panel dropdown -----
@@ -280,6 +284,7 @@ module.exports.run = async (client, interaction) => {
                         }).catch(()=>{});
                     }
                 });
+                return;
             }
 
             await executeDataDeletion(client, targetId, selection);
@@ -419,38 +424,65 @@ module.exports.run = async (client, interaction) => {
 
         // ----- Deny modal submission -----
         if (interaction.isModalSubmit() && action === 'loa-deny') {
-            const reason = interaction.fields.getTextInputValue('reason');
-            const request = await LoARequest.findByPk(parts[2]);
+            const configuration = getConfig(client, 'configuration');
 
-            if (request) {
-                await request.update({ 
-                    status: 'DENIED', 
-                    approverId: interaction.user.id, 
-                    rejectionReason: reason 
-                });
-                const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
-                if (member) await sendStatusDm(member.user, request.type, 'denied', { 
-                    denier: interaction.user.tag, 
-                    reason 
-                });
-
-                const embed = EmbedBuilder
-                .from(interaction.message.embeds[0])
-                .setColor('Red')
-                .addFields({ 
-                    name: localize('staff-management-system', 'general-stat'), 
-                    value: localize('staff-management-system', 'req-deny-by', { 
-                        user: interaction.user.tag 
-                    }) 
-                }, { 
-                    name: localize('staff-management-system', 'general-rsn'), 
-                    value: reason 
-                });
-                return interaction.update({ 
-                    embeds: [embed.toJSON()], 
-                    components: [] 
+            if (!checkStaffPermissions(interaction.member, configuration, 'supervisor')) {
+                return interaction.reply({
+                    content: localize('staff-management-system', 'err-gen-no-perm'),
+                    flags: MessageFlags.Ephemeral
                 });
             }
+
+            const reason = interaction.fields.getTextInputValue('reason');
+            const request = await LoARequest.findByPk(parts[2]);
+            if (!request) {
+                return interaction.reply({
+                    content: localize('staff-management-system', 'err-no-req'),
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            await request.update({
+                status: 'DENIED',
+                approverId: interaction.user.id,
+                rejectionReason: reason
+            });
+
+            const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
+            if (member) {
+                await sendStatusDm(member.user, request.type, 'denied', {
+                    denier: interaction.user.tag,
+                    reason
+                });
+            }
+
+            const embed = EmbedBuilder
+                .from(interaction.message.embeds[0])
+                .setColor('Red')
+                .addFields(
+                    {
+                        name: localize('staff-management-system', 'general-stat'),
+                        value: localize('staff-management-system', 'req-deny-by', {
+                            user: interaction.user.tag
+                        })
+                    },
+                    {
+                        name: localize('staff-management-system', 'general-rsn'),
+                        value: reason
+                    }
+                );
+
+            await interaction.message.edit({
+                embeds: [embed.toJSON()],
+                components: []
+            }).catch(() => {});
+
+            return interaction.reply({
+                content: localize('staff-management-system', 'req-deny-by', {
+                    user: interaction.user.tag
+                }),
+                flags: MessageFlags.Ephemeral
+            });
         }
 
         // ----- Profile edit submission -----
@@ -473,6 +505,8 @@ module.exports.run = async (client, interaction) => {
         // ----- Activity checks button -----
         if (action === 'ac-respond') {
             const ActivityCheck = client.models['staff-management-system']['ActivityCheck'];
+            const ActivityCheckResponse = client.models['staff-management-system']['ActivityCheckResponse'];
+
             const activeCheck = await ActivityCheck.findOne({ 
                 where: { 
                     status: 'ACTIVE', 
@@ -492,19 +526,36 @@ module.exports.run = async (client, interaction) => {
                 flags: MessageFlags.Ephemeral 
             });
 
-            let responded = JSON.parse(activeCheck.respondedUsers || '[]');
-            if (responded.includes(interaction.user.id)) return interaction.reply({ 
-                content: localize('staff-management-system', 'info-ac-alr-conf'), 
-                flags: MessageFlags.Ephemeral 
+            const existingResponse = await ActivityCheckResponse.findOne({
+                where: {
+                    activityCheckId: activeCheck.id,
+                    userId: interaction.user.id
+                }
             });
 
-            responded.push(interaction.user.id);
-            await activeCheck.update({ 
-                respondedUsers: JSON.stringify(responded) 
+            if (existingResponse) return interaction.reply({
+                content: localize('staff-management-system', 'info-ac-alr-conf'),
+                flags: MessageFlags.Ephemeral
             });
-            return interaction.reply({ 
-                content: localize('staff-management-system', 'succ-ac-log'), 
-                flags: MessageFlags.Ephemeral 
+
+            try {
+                await ActivityCheckResponse.create({
+                    activityCheckId: activeCheck.id,
+                    userId: interaction.user.id
+                });
+            } catch (e) {
+                if (e.name === 'SequelizeUniqueConstraintError') {
+                    return interaction.reply({
+                        content: localize('staff-management-system', 'info-ac-alr-conf'),
+                        flags: MessageFlags.Ephemeral
+                    });
+                }
+                throw e;
+            }
+
+            return interaction.reply({
+                content: localize('staff-management-system', 'succ-ac-log'),
+                flags: MessageFlags.Ephemeral
             });
         }
 

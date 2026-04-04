@@ -2,6 +2,7 @@ const { MessageFlags, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputSty
 const { embedTypeV2 } = require('../../../src/functions/helpers');
 const { localize } = require('../../../src/functions/localize');
 const { 
+    applyFooter,
     issueInfraction, 
     getInfractionHistory,
     issueSuspension,
@@ -355,6 +356,7 @@ module.exports.subcommands = {
             });
             
             const ActivityCheck = i.client.models['staff-management-system']['ActivityCheck'];
+            const ActivityCheckResponse = i.client.models['staff-management-system']['ActivityCheckResponse'];
             const activeCheck = await ActivityCheck.findOne({ 
                 where: { status: 'ACTIVE' } 
             });
@@ -367,24 +369,27 @@ module.exports.subcommands = {
                 if (Array.isArray(logChannelId)) logChannelId = logChannelId[0];
 
                 const channelPing = logChannelId 
-                ? `<#${logChannelId}>`
-                 : localize('staff-management-system', 'lbl-log-chan');
-                return i.editReply({ 
+                    ? `<#${logChannelId}>`
+                    : localize('staff-management-system', 'lbl-log-chan');
+
+                return i.editReply({
                     content: localize('staff-management-system', 'info-ac-none', { c: channelPing }) 
                 });
             }
 
-            const responded = JSON.parse(activeCheck.respondedUsers || '[]');
-            const embed = new EmbedBuilder()
+            const responseCount = await ActivityCheckResponse.count({
+                where: { activityCheckId: activeCheck.id }
+            });
+
+            const embed = applyFooter(i.client, new EmbedBuilder()
                 .setTitle(localize('staff-management-system', 'ac-live-title'))
                 .setColor('Blue')
-                .setDescription(`**${localize('staff-management-system', 'general-ends')}:** <t:${Math.floor(new Date(activeCheck.endTime).getTime() / 1000)}:R>\n**${localize('staff-management-system', 'general-chan')}:** <#${activeCheck.channelId}>\n**${localize('staff-management-system', 'ac-tot-res')}:** ${responded.length}`)
-                .setFooter({ 
-                    text: `${i.client.strings.footer}`, 
-                    iconURL: i.client.strings.footerImgUrl 
-                });
-            
-            if (!i.client.strings.disableFooterTimestamp) embed.setTimestamp();
+                .setDescription(
+                    `**${localize('staff-management-system', 'general-ends')}:** <t:${Math.floor(new Date(activeCheck.endTime).getTime() / 1000)}:R>\n` +
+                    `**${localize('staff-management-system', 'general-chan')}:** <#${activeCheck.channelId}>\n` +
+                    `**${localize('staff-management-system', 'ac-tot-res')}:** ${responseCount}`
+                )
+            );
             await i.editReply({ 
                 embeds: [embed] 
             });

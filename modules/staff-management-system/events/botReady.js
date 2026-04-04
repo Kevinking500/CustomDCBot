@@ -2,6 +2,7 @@ const schedule = require('node-schedule');
 const { localize } = require('../../../src/functions/localize');
 const { Op } = require('sequelize');
 const { scheduleStatusExpiry } = require('../commands/status.js');
+const { initActivityCheckAutomation } = require('../staff-management');
 const suspension_check_job = 'staff-management-checks';
 
 module.exports.run = async (client) => {
@@ -23,20 +24,20 @@ module.exports.run = async (client) => {
 
     if (guild) {
         try {
-            await recoverActiveBreaks(client);
-        } catch (e) {
-            client.logger.error(localize('staff-management-system', 'log-err-break-recov', {
-                error: e.message
-            }));
-        }
-
-        try {
             await checkExpiredSuspensions(client, guild);
         } catch (e) {
             client.logger.error(localize('staff-management-system', 'log-err-exp-susp', {
                 error: e.message
             }));
         }
+    }
+
+    try {
+        initActivityCheckAutomation(client);
+    } catch (e) {
+        client.logger.error(localize('staff-management-system', 'log-sched-fail', {
+            error: e.message
+        }));
     }
 
     const existingJob = schedule.scheduledJobs[suspension_check_job];
@@ -57,61 +58,6 @@ module.exports.run = async (client) => {
         }
     });
 };
-
-async function recoverActiveBreaks(client) {
-    const StaffProfile = client.models['staff-management-system']['StaffProfile'];
-    const Shift = client.models['staff-management-system']['StaffShift'];
-    const now = new Date();
-
-    const profilesOnBreak = await StaffProfile.findAll({
-        where: {
-            onDuty: true,
-            onBreak: true,
-            breakStartTime: { [Op.not]: null }
-        }
-    });
-
-    if (!profilesOnBreak.length) return;
-
-    const userIds = profilesOnBreak.map(profile => profile.userId);
-
-    const activeShifts = await Shift.findAll({
-        where: {
-            userId: { [Op.in]: userIds },
-            endTime: null
-        }
-    });
-
-    const activeShiftMap = new Map(activeShifts.map(shift => [shift.userId, shift]));
-
-    for (const profile of profilesOnBreak) {
-        const activeShift = activeShiftMap.get(profile.userId);
-
-        if (!activeShift) {
-            await profile.update({
-                onBreak: false,
-                breakStartTime: null
-            });
-            continue;
-        }
-
-        const breakStartedAt = new Date(profile.breakStartTime);
-        if (Number.isNaN(breakStartedAt.getTime()) || breakStartedAt > now) {
-            await profile.update({ breakStartTime: now });
-            continue;
-        }
-
-        const elapsedBreakMs = now.getTime() - breakStartedAt.getTime();
-
-        await activeShift.update({
-            startTime: new Date(new Date(activeShift.startTime).getTime() + elapsedBreakMs)
-        });
-
-        await profile.update({
-            breakStartTime: now
-        });
-    }
-}
 
 async function checkExpiredSuspensions(client, guild) {
     const Infraction = client.models['staff-management-system']['Infraction'];

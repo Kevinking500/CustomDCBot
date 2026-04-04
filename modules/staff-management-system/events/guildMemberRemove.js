@@ -8,27 +8,41 @@ module.exports.run = async (client, member) => {
     const StaffProfile = client.models['staff-management-system']['StaffProfile'];
 
     try {
-        const openShift = await StaffShift.findOne({
+        const profile = await StaffProfile.findByPk(member.id);
+        const openShifts = await StaffShift.findAll({
             where: {
                 userId: member.id,
                 endTime: null
             }
         });
 
-        if (openShift) {
+        for (const openShift of openShifts) {
             const now = new Date();
-            const duration = Math.floor((now - openShift.startTime) / 1000);
+            let effectiveStart = new Date(openShift.startTime);
+
+            if (profile?.onBreak && profile.breakStartTime) {
+                const breakStartedAt = new Date(profile.breakStartTime);
+                if (!Number.isNaN(breakStartedAt.getTime()) && breakStartedAt <= now) {
+                    effectiveStart = new Date(
+                        effectiveStart.getTime() + (now.getTime() - breakStartedAt.getTime())
+                    );
+                }
+            }
+
+            const duration = Math.max(0, Math.floor((now.getTime() - effectiveStart.getTime()) / 1000));
 
             await openShift.update({
                 endTime: now,
-                duration: duration
+                duration
             });
-
-            client.logger.info(localize('staff-management-system', 'log-shift-leave', { tag: member.user.tag }));
         }
 
         await StaffProfile.update(
-            { onDuty: false },
+            {
+                onDuty: false,
+                onBreak: false,
+                breakStartTime: null
+            },
             { where: { userId: member.id } }
         );
 

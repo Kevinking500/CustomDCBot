@@ -21,7 +21,7 @@ module.exports = class StaffManagementShift extends Model {
             },
             type: {
                 type: DataTypes.STRING,
-                defaultValue: "General"
+                defaultValue: "Staff"
             }
         }, {
             tableName: 'staff_management_shifts',

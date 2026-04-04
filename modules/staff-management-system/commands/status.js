@@ -27,8 +27,8 @@ async function sendStatusDm(user, type, dmType, data = {}) {
     ? 'LoA' 
     : 'RA';
     const viewCmd = type === 'LOA' 
-    ? '`/loa view`' 
-    : '`/ra view`';
+    ? '`/status loa view`' 
+    : '`/status ra view`';
     const endFmt = data.endDate 
     ? `<t:${Math.floor(new Date(data.endDate).getTime() / 1000)}:F>` 
     : '';
@@ -337,10 +337,7 @@ async function handleStatusView(client, interaction, type, targetUser) {
     await interaction.editReply({ embeds: [embed.toJSON()] });
 }
 
-async function handleStatusList(client, interaction, type, filter, page = 1) {
-    const limit = 10;
-    const offset = (page - 1) * limit;
-
+async function handleStatusList(client, interaction, type, filter) {
     let whereClause = { type };
     let title = `${type} List`;
 
@@ -360,25 +357,17 @@ async function handleStatusList(client, interaction, type, filter, page = 1) {
 
     const { count, rows } = await client.models['staff-management-system']['LoaRequest'].findAndCountAll({ 
         where: whereClause, 
-        limit, 
-        offset, 
         order: [['endDate', 'DESC']] 
     });
     if (count === 0) return interaction.editReply({ 
         content: localize('staff-management-system', 'err-no-recs') 
     });
 
-    const totalPages = Math.ceil(count / limit) || 1;
     const embed = new EmbedBuilder()
         .setTitle(title)
         .setColor('Blue')
-        .setDescription(rows.map(r => `**<@${r.userId}>** ${r.status === 'APPROVED' ? '✅' : (r.status === 'DENIED' ? '❌' : '⏹️')}\nEnds: ${formatDate(r.endDate)}\nReason: ${r.reason}`).join('\n\n'))
-        .addFields(
-            { 
-                name: '\u200b', 
-                value: localize('staff-management-system', 'page-count', { page, total: totalPages }) 
-            }
-        );
+        .setDescription(rows.map(r => `**<@${r.userId}>** ${r.status === 'APPROVED' ? '✅' : (r.status === 'DENIED' ? '❌' : '⏹️')}\nEnds: ${formatDate(r.endDate)}\nReason: ${r.reason}`).join('\n\n'));
+
     applyFooter(client, embed);
     await interaction.editReply({ embeds: [embed.toJSON()] });
 }
@@ -487,6 +476,14 @@ async function handleStatusEnd(interaction, type) {
 }
 
 async function handleStatusEndSubmit(client, interaction, type) {
+    const generalConfig = getConfig(client, 'configuration');
+    if (!checkStaffPermissions(interaction.member, generalConfig, 'supervisor')) {
+        return interaction.reply({
+            content: localize('staff-management-system', 'err-gen-no-perm'),
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
     const meta = getStatusMeta(type);
     const request = await client.models['staff-management-system']['LoaRequest'].findByPk(interaction.customId.split('_')[2]);
     if (!request || request.status === 'ENDED' || request.status === 'DENIED') return interaction.reply({ 
@@ -545,9 +542,10 @@ async function handleStatusEndSubmit(client, interaction, type) {
         .setEmoji('📜')
         .setStyle(ButtonStyle.Secondary)
     );
-    return interaction.update({ 
-        embeds: [updatedEmbed.toJSON()], 
-        components: [disabledRow.toJSON()] 
+    return interaction.reply({
+        embeds: [updatedEmbed.toJSON()],
+        components: [disabledRow.toJSON()],
+        flags: MessageFlags.Ephemeral
     });
 }
 
@@ -624,6 +622,14 @@ function scheduleStatusExpiry(client, request) {
 }
 
 async function handleStatusExtendSubmit(client, interaction, type) {
+    const generalConfig = getConfig(client, 'configuration');
+    if (!checkStaffPermissions(interaction.member, generalConfig, 'supervisor')) {
+        return interaction.reply({
+            content: localize('staff-management-system', 'err-gen-no-perm'),
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
     const meta = getStatusMeta(type);
     const request = await client.models['staff-management-system']['LoaRequest'].findByPk(interaction.customId.split('_')[2]);
     if (!request || request.status === 'ENDED' || request.status === 'DENIED') return interaction.reply({ 
@@ -643,6 +649,7 @@ async function handleStatusExtendSubmit(client, interaction, type) {
     const oldEndDate = new Date(request.endDate);
     const newEndDate = new Date(oldEndDate.getTime() + days * 24 * 60 * 60 * 1000);
     await request.update({ endDate: newEndDate });
+    request.endDate = newEndDate;
     scheduleStatusExpiry(client, request);
 
     const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
@@ -677,9 +684,10 @@ async function handleStatusExtendSubmit(client, interaction, type) {
             r: request.reason || localize('staff-management-system', 'info-none') 
         }) 
     });
-    return interaction.update({ 
-        embeds: [updatedEmbed.toJSON()], 
-        components: interaction.message.components.map(c => c.toJSON()) 
+    return interaction.reply({
+        embeds: [updatedEmbed.toJSON()],
+        components: interaction.message.components.map(c => c.toJSON()),
+        flags: MessageFlags.Ephemeral
     });
 }
 

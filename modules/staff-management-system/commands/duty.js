@@ -1,6 +1,6 @@
 const { MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { Op, fn, col, literal } = require('sequelize');
-const { getConfig, applyFooter, formatDuration, buildPaginationRow } = require('../staff-management');
+const { getConfig, applyFooter, formatDuration, buildPaginationRow, checkStaffPermissions } = require('../staff-management');
 const { localize } = require('../../../src/functions/localize');
 
 function getLookbackDate(config) {
@@ -10,6 +10,25 @@ function getLookbackDate(config) {
     if (lookback === 'Weekly') date.setDate(date.getDate() - 7);
     else if (lookback === 'Monthly') date.setMonth(date.getMonth() - 1);
     return date;
+}
+
+function canUseDutyAdmin(client, member) {
+    const generalConfig = getConfig(client, 'configuration');
+    return checkStaffPermissions(member, generalConfig, 'supervisor');
+}
+
+function checkDutyAdminPermission(client, interaction) {
+    if (canUseDutyAdmin(client, interaction.member)) return null;
+
+    const payload = {
+        content: localize('staff-management-system', 'err-no-perm'),
+        flags: MessageFlags.Ephemeral
+    };
+
+    if (interaction.deferred || interaction.replied) {
+        return interaction.followUp(payload);
+    }
+    return interaction.reply(payload);
 }
 
 async function applyBreakElapsedToShift(activeShift, breakStartTime, now = new Date()) {
@@ -532,6 +551,7 @@ async function handleDutyEndButton(client, interaction) {
 
     const activeShifts = await Shift.findAll({ where: { userId, endTime: null } });
     const shiftType = activeShifts.length > 0 ? activeShifts[0].type : 'Staff';
+    let discardedForMinimum = false;
 
     for (const activeShift of activeShifts) {
         if (profile.onBreak && profile.breakStartTime) {
@@ -545,6 +565,7 @@ async function handleDutyEndButton(client, interaction) {
 
         if (config.minShiftDuration && (durationSeconds / 60) < config.minShiftDuration) {
             await activeShift.destroy();
+            discardedForMinimum = true;
         } else {
             await activeShift.update({ endTime, duration: durationSeconds });
         }
@@ -562,7 +583,17 @@ async function handleDutyEndButton(client, interaction) {
     }
 
     const payload = await buildDutyManagePayload(client, userId, interaction.guild, shiftType);
-    return interaction.editReply(payload);
+    await interaction.editReply(payload);
+
+    if (discardedForMinimum) {
+        await interaction.followUp({
+            content: localize('staff-management-system', 'err-shift-too-short', {
+                min: config.minShiftDuration
+            }),
+            flags: MessageFlags.Ephemeral
+        });
+    }
+    return;
 }
 
 async function handleDutyHistPageButton(client, interaction) {
@@ -605,6 +636,9 @@ async function handleDutyLbPageButton(client, interaction) {
 
 // ----- Admin handler -----
 async function handleDutyAdminForceEnd(client, interaction) {
+    const permCheck = checkDutyAdminPermission(client, interaction);
+    if (permCheck) return permCheck;
+
     const targetUserId = interaction.customId.split('_')[2];
     const config = getConfig(client, 'shifts');
     const Profile = client.models['staff-management-system']['StaffProfile'];
@@ -647,6 +681,9 @@ async function handleDutyAdminForceEnd(client, interaction) {
 }
 
 async function handleDutyAdminVoidActive(client, interaction) {
+    const permCheck = checkDutyAdminPermission(client, interaction);
+    if (permCheck) return permCheck;
+
     const targetUserId = interaction.customId.split('_')[2];
     const config = getConfig(client, 'shifts');
     const Profile = client.models['staff-management-system']['StaffProfile'];
@@ -674,26 +711,36 @@ async function handleDutyAdminVoidActive(client, interaction) {
 }
 
 async function handleDutyAdminVoidAll(client, interaction) {
+    const permCheck = checkDutyAdminPermission(client, interaction);
+    if (permCheck) return permCheck;
+
     const targetUserId = interaction.customId.split('_')[2];
+    const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
     const modal = new ModalBuilder()
-    .setCustomId(`duty-mgmt_admin-voidall-submit_${targetUserId}`)
-    .setTitle(localize('staff-management-system', 'mod-v-all-title'));
+        .setCustomId(`duty-mgmt_admin-voidall-submit_${targetUserId}`)
+        .setTitle(localize('staff-management-system', 'mod-v-all-title'));
+
     modal.addComponents(
-        new ActionRowBuilder()
-        .addComponents(new TextInputBuilder()
-        .setCustomId('confirm')
-        .setLabel(localize('staff-management-system', 'mod-v-all-lbl'))
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('CONFIRM')
-        .setRequired(true))
+        new ActionRowBuilder().addComponents(
+            new TextInputBuilder()
+                .setCustomId('confirm')
+                .setLabel(localize('staff-management-system', 'mod-v-all-lbl'))
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder(confirmPhrase)
+                .setRequired(true)
+        )
     );
     return interaction.showModal(modal);
 }
 
 async function handleDutyAdminVoidAllSubmit(client, interaction) {
+    const permCheck = checkDutyAdminPermission(client, interaction);
+    if (permCheck) return permCheck;
+
     const targetUserId = interaction.customId.split('_')[2];
+    const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
     
-    if (interaction.fields.getTextInputValue('confirm') !== 'CONFIRM') {
+    if (interaction.fields.getTextInputValue('confirm').trim() !== confirmPhrase) {
         return interaction.reply({ 
             content: localize('staff-management-system', 'err-conf-fail'), 
             flags: MessageFlags.Ephemeral 
@@ -732,6 +779,9 @@ async function handleDutyAdminVoidAllSubmit(client, interaction) {
 }
 
 async function handleDutyAdminAddTimeButton(client, interaction) {
+    const permCheck = checkDutyAdminPermission(client, interaction);
+    if (permCheck) return permCheck;
+    
     const targetUserId = interaction.customId.split('_')[2];
     const config = getConfig(client, 'shifts');
     const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0 
@@ -770,11 +820,13 @@ async function handleDutyAdminAddTimeSubmit(client, interaction) {
     const minutesRaw = interaction.fields.getTextInputValue('minutes');
     const shiftType = interaction.fields.getTextInputValue('type');
     
-    const minutes = parseInt(minutesRaw);
-    if (isNaN(minutes) || minutes <= 0) {
-        return interaction.reply({ 
-            content: localize('staff-management-system', 'err-inv-min'), 
-            flags: MessageFlags.Ephemeral 
+    const maxMinutes = 10080;
+    const minutes = parseInt(minutesRaw, 10);
+
+    if (isNaN(minutes) || minutes <= 0 || minutes > maxMinutes) {
+        return interaction.reply({
+            content: localize('staff-management-system', 'err-inv-min'),
+            flags: MessageFlags.Ephemeral
         });
     }
 
@@ -816,7 +868,10 @@ async function handleDutyAdminAddTimeSubmit(client, interaction) {
     const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
     const payload = await buildDutyAdminPayload(client, targetMember, interaction.member);
     
-    return interaction.update(payload);
+    return interaction.reply({
+        ...payload,
+        flags: MessageFlags.Ephemeral
+    });
 }
 
 // ----- Dropdown handler -----

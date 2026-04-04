@@ -230,18 +230,23 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
     const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
     const durationString = `${durationDays} ${localize('staff-management-system', 'label-days')}`;
 
+    let rolesToRemove = [];
     const hierarchyRole = interaction.guild.roles.cache.get(config.suspensionHierarchyRole);
     if (hierarchyRole) {
-        const rolesToRemove = targetMember.roles.cache.filter(r => r.position >= hierarchyRole.position && r.id !== interaction.guild.id && !r.managed).map(r => r.id);
+        rolesToRemove = targetMember.roles.cache
+            .filter(r => r.position >= hierarchyRole.position && r.id !== interaction.guild.id && !r.managed)
+            .map(r => r.id);
+
         if (rolesToRemove.length) {
             await targetMember.roles.remove(rolesToRemove).catch(() => {});
-            await client.models['staff-management-system']['StaffProfile'].upsert({ 
-                userId: targetMember.id, 
-                isSuspended: true, 
-                suspendedRoles: JSON.stringify(rolesToRemove) 
-            });
         }
     }
+
+    await client.models['staff-management-system']['StaffProfile'].upsert({
+        userId: targetMember.id,
+        isSuspended: true,
+        suspendedRoles: JSON.stringify(rolesToRemove)
+    });
     if (config.suspensionRole) await targetMember.roles.add(config.suspensionRole).catch(() => {});
 
     const record = await client.models['staff-management-system']['Infraction'].create({
@@ -947,6 +952,8 @@ async function generatePanelStatus(client, targetUser, page = 1) {
 // Activity checks page
 async function generatePanelActivity(client, targetUser, page = 1) {
     const ActivityCheck = client.models['staff-management-system']['ActivityCheck'];
+    const ActivityCheckResponse = client.models['staff-management-system']['ActivityCheckResponse'];
+
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
 
@@ -957,23 +964,36 @@ async function generatePanelActivity(client, targetUser, page = 1) {
         order: [['createdAt', 'DESC']]
     });
 
-    let userResponses = 0;
-    const historyRows = [];
+    if (recentChecks.length === 0) {
+        const embed = applyFooter(client, new EmbedBuilder()
+            .setTitle(localize('staff-management-system', 'p-act-title', {
+                username: targetUser.username
+            }))
+            .setColor('Blue')
+            .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
+            .setDescription(localize('staff-management-system', 'p-act-desc', { count: 0 }) + localize('staff-management-system', 'p-no-hist'))
+        );
 
-    for (const check of recentChecks) {
-        let responded = [];
-        try {
-            responded = JSON.parse(check.respondedUsers || '[]');
-        } catch (e) {
-            client.logger.warn(`[Staff Management] ${e.message}`);
-            continue;
-        }
+        const menu = ActionRowBuilder.from((await generateUserPanel(client, targetUser)).components[0]);
+        menu.components[0].options.find(opt => opt.data.value === 'activity').data.default = true;
 
-        if (responded.includes(targetUser.id)) {
-            userResponses++;
-            historyRows.push(check);
-        }
+        return {
+            embeds: [embed.toJSON()],
+            components: [menu.toJSON()]
+        };
     }
+
+    const checkIds = recentChecks.map(check => check.id);
+    const responses = await ActivityCheckResponse.findAll({
+        where: {
+            activityCheckId: { [Op.in]: checkIds },
+            userId: targetUser.id
+        },
+        attributes: ['activityCheckId']
+    });
+
+    const respondedCheckIds = new Set(responses.map(response => response.activityCheckId));
+    const historyRows = recentChecks.filter(check => respondedCheckIds.has(check.id));
 
     const count = historyRows.length;
     let totalPages = 1;
@@ -994,7 +1014,7 @@ async function generatePanelActivity(client, targetUser, page = 1) {
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
     );
 
-    let desc = localize('staff-management-system', 'p-act-desc', { count: userResponses });
+    let desc = localize('staff-management-system', 'p-act-desc', { count });
 
     if (paginatedRows.length === 0) {
         desc += localize('staff-management-system', 'p-no-hist');
@@ -1254,36 +1274,17 @@ async function executeDataDeletion(client, targetId, dataType) {
         if (profile) {
             await profile.update({
                 customNickname: null,
-                customIntro: null
+                customIntro: null,
+                isSuspended: false,
+                suspendedRoles: null
             });
         }
     }
 
     if (['del_activity', 'del_all'].includes(dataType)) {
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - 365);
-
-        const checks = await models.ActivityCheck.findAll({
-            where: {
-                createdAt: { [Op.gte]: cutoff }
-            }
+        await models.ActivityCheckResponse.destroy({
+            where: { userId: targetId }
         });
-
-        for (const check of checks) {
-            let responded = [];
-            try {
-                responded = JSON.parse(check.respondedUsers || '[]');
-            } catch {
-                continue;
-            }
-
-            if (responded.includes(targetId)) {
-                responded = responded.filter(id => id !== targetId);
-                await check.update({
-                    respondedUsers: JSON.stringify(responded)
-                });
-            }
-        }
     }
 }
 
@@ -1356,7 +1357,6 @@ async function startActivityCheck(client, interactionOrChannel, isAutomated = fa
             channelId: targetChannel.id, 
             endTime, 
             targetRoles: JSON.stringify(rolesToCheck), 
-            respondedUsers: '[]', 
             status: 'ACTIVE' 
         });
         schedule.scheduleJob(endTime, async () => {
@@ -1395,14 +1395,20 @@ async function endActivityCheckProcess(client, activeCheck) {
     if (!logChannel) return;
 
     const targetRoles = JSON.parse(activeCheck.targetRoles || '[]');
-    const respondedUsers = JSON.parse(activeCheck.respondedUsers || '[]');
+    const ActivityCheckResponse = client.models['staff-management-system']['ActivityCheckResponse'];
+    const responses = await ActivityCheckResponse.findAll({
+        where: { activityCheckId: activeCheck.id },
+        attributes: ['userId']
+    });
+
+    const respondedUserIds = new Set(responses.map(response => response.userId));
     
     const expectedMembers = guild.members.cache.filter(m => !m.user.bot && m.roles.cache.some(r => targetRoles.includes(r.id)));
     const [responded, exceptions, failed] = [[], [], []];
     const profiles = await client.models['staff-management-system']['StaffProfile'].findAll();
 
     expectedMembers.forEach(member => {
-        if (respondedUsers.includes(member.id)) return responded.push(member);
+        if (respondedUserIds.has(member.id)) return responded.push(member);
         
         let isException = false;
         const prof = profiles.find(p => p.userId === member.id);
@@ -1629,6 +1635,8 @@ async function getReviewHistory(client, interaction, targetUser) {
 
 module.exports = {
     getConfig, 
+    getSafeChannelId,
+    parseDurationToDays,
     applyFooter, 
     checkStaffPermissions,
     buildPaginationRow, 
