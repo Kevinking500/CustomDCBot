@@ -522,7 +522,7 @@ module.exports.run = async (client, interaction) => {
             const targetRoles = JSON.parse(activeCheck.targetRoles || '[]');
             const hasRole = targetRoles.length === 0 || interaction.member.roles.cache.some(r => targetRoles.includes(r.id));
             if (!hasRole) return interaction.reply({ 
-                content: localize('staff-management-system', 'err-ac-notreq'), 
+                content: localize('staff-management-system', 'err-not-req'), 
                 flags: MessageFlags.Ephemeral 
             });
 

@@ -676,6 +676,14 @@ async function handleDutyAdminForceEnd(client, interaction) {
     }
 
     const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
+    if (!targetMember) {
+        return interaction.editReply({
+            content: localize('staff-management-system', 'duty-admin-target-left'),
+            embeds: [],
+            components: []
+        });
+    }
+
     const payload = await buildDutyAdminPayload(client, targetMember, interaction.member);
     return interaction.editReply(payload);
 }
@@ -706,6 +714,14 @@ async function handleDutyAdminVoidActive(client, interaction) {
     }
 
     const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
+    if (!targetMember) {
+        return interaction.editReply({
+            content: localize('staff-management-system', 'duty-admin-target-left'),
+            embeds: [],
+            components: []
+        });
+    }
+
     const payload = await buildDutyAdminPayload(client, targetMember, interaction.member);
     return interaction.editReply(payload);
 }
@@ -816,6 +832,9 @@ async function handleDutyAdminAddTimeButton(client, interaction) {
 }
 
 async function handleDutyAdminAddTimeSubmit(client, interaction) {
+    const permCheck = checkDutyAdminPermission(client, interaction);
+    if (permCheck) return permCheck;
+
     const targetUserId = interaction.customId.split('_')[2];
     const minutesRaw = interaction.fields.getTextInputValue('minutes');
     const shiftType = interaction.fields.getTextInputValue('type');
@@ -866,8 +885,14 @@ async function handleDutyAdminAddTimeSubmit(client, interaction) {
     }));
 
     const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
+    if (!targetMember) {
+        return interaction.reply({
+            content: localize('staff-management-system', 'duty-admin-target-left'),
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
     const payload = await buildDutyAdminPayload(client, targetMember, interaction.member);
-    
     return interaction.reply({
         ...payload,
         flags: MessageFlags.Ephemeral
