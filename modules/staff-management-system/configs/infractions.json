@@ -117,10 +117,10 @@
       "name": "suspensionMessage",
       "category": "suspensions",
       "humanName": {
-        "en": "Suspension Announcement Embed"
+        "en": "Suspension Announcement Message"
       },
       "description": {
-        "en": "The embed sent to the log channel when a staff member is suspended."
+        "en": "The message sent to the log channel when a staff member is suspended."
       },
       "type": "string",
       "allowEmbed": true,
@@ -185,6 +185,7 @@
       ],
       "default": {
         "en": {
+          "_schema": "v3",
           "content": "%user%",
           "embeds": [
             {
@@ -223,10 +224,10 @@
       "name": "infractionMessage",
       "category": "messages",
       "humanName": {
-        "en": "Infraction Announcement Embed"
+        "en": "Infraction Announcement Message"
       },
       "description": {
-        "en": "The embed sent to the log channel for regular infractions."
+        "en": "The message sent to the log channel for regular infractions."
       },
       "type": "string",
       "allowEmbed": true,
@@ -257,22 +258,15 @@
           } 
         },
         { 
-          "name": "issuerPfp", 
+          "name": "type", 
           "description": { 
-            "en": "Avatar of the issuer" 
-            }, 
-          "isImage": true 
-        },
-        { 
-          "name": "duration", 
-          "description": { 
-            "en": "Duration of suspension" 
+            "en": "Type of infraction (e.g., Warning, Strike)" 
           } 
         },
         { 
           "name": "endDate", 
           "description": { 
-            "en": "Timestamp of when the suspension ends" 
+            "en": "Timestamp of when this infraction expires" 
           } 
         },
         { 
@@ -290,6 +284,7 @@
       ],
       "default": {
         "en": {
+          "_schema": "v3",
           "content": "%user%",
           "embeds": [
             {
@@ -297,7 +292,7 @@
                 "name": "Signed, %issuerName% • Case #%caseId%",
                 "iconURL": "%issuerPfp%"
               },
-              "title": "⚠️ New %type%",
+              "title": "⚠️ New infraction",
               "description": "**Staff Member:** %user%\n**Action Taken:** %type%\n**Expires:** %endDate%\n**Reason:** %reason%",
               "color": "#e67e22",
               "thumbnailURL": "%userPfp%"
@@ -310,7 +305,7 @@
       "name": "dmInfractedUser",
       "category": "messages",
       "humanName": {
-        "en": "DM User on Infraction?"
+        "en": "DM User on infraction?"
       },
       "description": {
         "en": "If enabled, the bot will DM the staff member when they receive an infraction or suspension."
@@ -324,7 +319,7 @@
       "name": "infractionDmMessage",
       "category": "messages",
       "humanName": {
-        "en": "Infraction DM Embed"
+        "en": "Infraction DM Message"
       },
       "description": {
         "en": "The message sent directly to the staff member."
@@ -372,13 +367,14 @@
       ],
       "default": {
         "en": {
+          "_schema": "v3",
           "embeds": [
             {
               "author": {
                 "name": "Signed, %issuerName% • Case #%caseId%"
               },
-              "title": "⚠️ Staff Notice: %type%",
-              "description": "You have received a formal **%type%** from the management team.\n\n**Reason:** %reason%\n**Expires:** %endDate%",
+              "title": "⚠️ You have been infracted",
+              "description": "**Type:** %type%\n**Reason:** %reason%\n**Expires:** %endDate%",
               "color": "#e67e22"
             }
           ]
@@ -389,7 +385,7 @@
       "name": "suspensionDmMessage",
       "category": "messages",
       "humanName": {
-        "en": "Suspension DM Embed"
+        "en": "Suspension DM Message1"
       },
       "description": {
         "en": "The message sent directly to the staff member when suspended."
@@ -437,13 +433,14 @@
       ],
       "default": {
         "en": {
+          "_schema": "v3",
           "embeds": [
             {
               "author": {
                 "name": "Signed, %issuerName% • Case #%caseId%"
               },
               "title": "⛔ Staff Suspension",
-              "description": "Your staff privileges have been temporarily suspended.\n\n**Duration:** %duration%\n**Returns:** %endDate%\n**Reason:** %reason%\n\nDuring this time, your roles have been removed and you are expected to step away from all staff duties.",
+              "description": "You have been temporarily suspended.\n\n**Duration:** %duration%\n**Returns:** %endDate%\n**Reason:** %reason%",
               "color": "#ed4245"
             }
           ]

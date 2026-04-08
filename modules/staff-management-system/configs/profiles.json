@@ -121,20 +121,25 @@
       ],
       "default": {
         "en": {
-          "title": "Staff Profile: %nickname%",
-          "description": "%intro%",
-          "color": "#2b2d31",
-          "thumbnail": "%pfp%",
-          "fields": [
+          "_schema": "v3",
+          "embeds": [
             {
-              "name": "Status",
-              "value": "%status%",
-              "inline": true
-            },
-            {
-              "name": "Average Rating",
-              "value": "%rating%",
-              "inline": true
+              "title": "Staff Profile: %nickname%",
+              "description": "%intro%",
+              "color": "#2b2d31",
+              "thumbnailURL": "%pfp%",
+              "fields": [
+                {
+                  "name": "Status",
+                  "value": "%status%",
+                  "inline": true
+                },
+                {
+                  "name": "Average Rating",
+                  "value": "%rating%",
+                  "inline": true
+                }
+              ]
             }
           ]
         }

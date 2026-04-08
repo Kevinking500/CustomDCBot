@@ -133,6 +133,7 @@
       ],
       "default": {
         "en": {
+          "_schema": "v3",
           "content": "%user%",
           "embeds": [
             {
@@ -227,6 +228,7 @@
       ],
       "default": {
         "en": {
+          "_schema": "v3",
           "content": "%user%",
           "embeds": [
             {

@@ -72,7 +72,8 @@
       "type": "integer",
       "default": {
         "en": 60
-      }
+      },
+      "minValue": 1
     },
     {
       "name": "requireLoaApproval",
@@ -130,7 +131,8 @@
       "type": "integer",
       "default": {
         "en": 30
-      }
+      },
+      "minValue": 1
     },
     {
       "name": "requireRaApproval",

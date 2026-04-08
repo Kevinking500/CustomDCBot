@@ -144,7 +144,7 @@ async function handleProfileView(client, interaction, targetUser) {
 
     let msgOpts = await embedTypeV2(embedTemplate, placeholders);
     
-    if (!msgOpts || (!msgOpts.content && (!msgOpts.embeds || msgOpts.embeds.length === 0))) {
+    if (!msgOpts) {
         return interaction.editReply({ 
             content: localize('staff-management-system', 'err-prof-empty') 
         });

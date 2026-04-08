@@ -136,10 +136,16 @@
       ],
       "default": {
         "en": {
-          "title": "🌟 New Staff Rating",
-          "description": "**Staff:** %target%\n**Rated by:** %author%\n\n**Rating:** %stars% (%rating%/5)\n**Comment:**\n%comment%",
-          "color": "#f1c40f",
-          "thumbnail": "%staff-profile-picture%"
+          "_schema": "v3",
+          "content": "%user%",
+          "embeds": [
+            {
+              "title": "🌟 New Staff Rating",
+              "description": "**Staff:** %target%\n**Rated by:** %author%\n\n**Rating:** %stars% (%rating%/5)\n**Comment:**\n%comment%",
+              "color": "#f1c40f",
+              "thumbnailURL": "%staff-profile-picture%"
+            }
+          ]
         }
       }
     }
