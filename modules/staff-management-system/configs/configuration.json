@@ -78,6 +78,10 @@
         "en": "The default channel where logs happen such as status changes/request and more. This can be overridden in some features."
       },
       "type": "channelID",
+      "channelTypes": [
+        "GUILD_TEXT",
+        "GUILD_NEWS"
+      ],
       "default": {
         "en": ""
       }

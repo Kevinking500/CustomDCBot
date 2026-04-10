@@ -110,6 +110,14 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         content: localize('staff-management-system', 'err-feat-disabled', { feature: 'Infractions' }), 
         flags: MessageFlags.Ephemeral 
     });
+
+    if (targetMember.id === interaction.user.id) {
+        return interaction.reply({
+            content: localize('staff-management-system', 'err-self-infract'),
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
     if (type.toLowerCase() === 'suspension') {
         return interaction.reply({ 
             content: localize('staff-management-system', 'err-use-susp'), 
@@ -136,14 +144,14 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
 
     const placeholders = {
         '%user%': targetMember.user.toString(),
-        '%userPfp%': targetMember.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
-        '%issuerMention%': interaction.user.toString(),
-        '%issuerName%': interaction.user.username,
-        '%issuerPfp%': interaction.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
+        '%user-avatar%': targetMember.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
+        '%issuer-mention%': interaction.user.toString(),
+        '%issuer-name%': interaction.user.username,
+        '%issuer-avatar%': interaction.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
         '%type%': type,
         '%reason%': reason,
-        '%caseId%': record.caseId.toString(),
-        '%endDate%': expiresAt 
+        '%case-id%': record.caseId.toString(),
+        '%end-date%': expiresAt 
             ? `<t:${Math.floor(expiresAt.getTime() / 1000)}:F>` 
             : localize('staff-management-system', 'label-never')
     };
@@ -176,21 +184,30 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         }
     }
 
-    if (config.dmInfractedUser) {
+    if (config.dmInfractedUser && config.infractionDmMessage) {
         let dmTemplate = config.infractionDmMessage;
-        if (typeof dmTemplate === 'string') { 
-            try { dmTemplate = JSON.parse(dmTemplate); } 
-            catch (e) {} 
-        } 
-        else if (typeof dmTemplate === 'object') { 
-            dmTemplate = JSON.parse(JSON.stringify(dmTemplate)); 
+        if (typeof dmTemplate === 'string') {
+            try {
+                dmTemplate = JSON.parse(dmTemplate);
+            } catch (e) {} 
+        } else if (typeof dmTemplate === 'object') {
+            dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
         }
-        
+
         if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
-        let dmOpts = await embedTypeV2(dmTemplate, placeholders);
+        const dmOpts = await embedTypeV2(dmTemplate, placeholders);
         if (dmOpts?.content?.trim() === '') delete dmOpts.content;
-        if (dmOpts && (dmOpts.content || dmOpts.embeds?.length > 0)) 
-            await targetMember.send(dmOpts).catch(()=>{});
+
+        if (dmOpts) {
+            try {
+                await targetMember.user.send(dmOpts);
+            } catch (e) {
+                client.logger.warn(localize('staff-management-system', 'log-infract-dm-fail', {
+                    user: targetMember.user.tag,
+                    error: e.message
+                }));
+            }
+        }
     }
 
     await interaction.reply({ 
@@ -219,6 +236,13 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
         }), 
         flags: MessageFlags.Ephemeral 
     });
+
+    if (targetMember.id === interaction.user.id) {
+        return interaction.reply({
+            content: localize('staff-management-system', 'err-self-infract'),
+            flags: MessageFlags.Ephemeral
+        });
+    }
 
     const durationDays = parseDurationToDays(durationInput);
     if (!durationDays) 
@@ -259,14 +283,14 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
 
     const placeholders = {
         '%user%': targetMember.user.toString(),
-        '%userPfp%': targetMember.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
-        '%issuerMention%': interaction.user.toString(),
-        '%issuerName%': interaction.user.username,
-        '%issuerPfp%': interaction.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
+        '%user-avatar%': targetMember.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
+        '%issuer-mention%': interaction.user.toString(),
+        '%issuer-name%': interaction.user.username,
+        '%issuer-avatar%': interaction.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
         '%duration%': durationString,
         '%reason%': reason,
-        '%caseId%': record.caseId.toString(),
-        '%endDate%': `<t:${Math.floor(expiresAt.getTime() / 1000)}:F>`
+        '%case-id%': record.caseId.toString(),
+        '%end-date%': `<t:${Math.floor(expiresAt.getTime() / 1000)}:F>`
     };
 
     const channelId = getSafeChannelId(config.infractionLogChannel);
@@ -299,7 +323,7 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
         }
     }
 
-    if (config.dmInfractedUser) {
+    if (config.dmInfractedUser && config.suspensionDmMessage) {
         let dmTemplate = config.suspensionDmMessage;
         if (typeof dmTemplate === 'string') { 
             try { 
@@ -310,11 +334,21 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
         else if (typeof dmTemplate === 'object') { 
             dmTemplate = JSON.parse(JSON.stringify(dmTemplate)); 
         }
-        
+
         if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
-        let dmOpts = await embedTypeV2(dmTemplate, placeholders);
+        const dmOpts = await embedTypeV2(dmTemplate, placeholders);
         if (dmOpts?.content?.trim() === '') delete dmOpts.content;
-        if (dmOpts && (dmOpts.content || dmOpts.embeds?.length > 0)) await targetMember.send(dmOpts).catch(()=>{});
+
+        if (dmOpts) {
+            try {
+                await targetMember.user.send(dmOpts);
+            } catch (e) {
+                client.logger.warn(localize('staff-management-system', 'log-susp-dm-fail', {
+                    user: targetMember.user.tag,
+                    error: e.message
+                }));
+            }
+        }
     }
 
     await interaction.reply({ 
@@ -327,8 +361,35 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
     });
 }
 
+async function resolveInfractionReference(client, reference) {
+    const Infraction = client.models['staff-management-system']['Infraction'];
+    const value = reference?.trim();
+
+    if (!value) return null;
+
+    if (/^\d+$/.test(value)) {
+        return await Infraction.findByPk(parseInt(value, 10));
+    }
+
+    try {
+        const parsed = new URL(value);
+        const validHosts = ['discord.com', 'canary.discord.com', 'ptb.discord.com'];
+
+        if (!validHosts.includes(parsed.hostname)) return null;
+
+        const parts = parsed.pathname.split('/').filter(Boolean);
+        if (parts.length !== 4 || parts[0] !== 'channels') return null;
+
+        return await Infraction.findOne({
+            where: { messageUrl: value }
+        });
+    } catch (e) {
+        return null;
+    }
+}
+
 // ----- Infractions voiding -----
-async function voidInfraction(client, interaction, caseId) {
+async function voidInfraction(client, interaction, reference) {
     const config = getConfig(client, 'infractions');
     if (!config?.enableInfractions) return interaction.reply({ 
         content: localize('staff-management-system', 'err-feat-disabled', { 
@@ -344,15 +405,19 @@ async function voidInfraction(client, interaction, caseId) {
         flags: MessageFlags.Ephemeral 
     });
 
-    const record = await client.models['staff-management-system']['Infraction'].findByPk(caseId);
-    if (!record) return interaction.reply({ 
-        content: localize('staff-management-system', 'err-no-case', { caseId }), 
-        flags: MessageFlags.Ephemeral 
-    });
-    if (!record.active) return interaction.reply({ 
-        content: localize('staff-management-system', 'err-case-inact', { caseId }), 
-        flags: MessageFlags.Ephemeral 
-    });
+    const record = await resolveInfractionReference(client, reference);
+    if (!record) { 
+        return interaction.reply({ 
+            content: localize('staff-management-system', 'err-no-case-ref', { reference }), 
+            flags: MessageFlags.Ephemeral 
+        }); 
+    }
+    if (!record.active) { 
+        return interaction.reply({ 
+            content: localize('staff-management-system', 'err-case-inact', { caseId: record.caseId }), 
+            flags: MessageFlags.Ephemeral 
+        }); 
+    }
 
     await record.update({ active: false });
 
@@ -371,14 +436,14 @@ async function voidInfraction(client, interaction, caseId) {
                 await profile.update({ isSuspended: false, suspendedRoles: '[]' });
             } catch (e) {
                 return interaction.reply({ 
-                    content: localize('staff-management-system', 'succ-void-fail', { caseId }), 
+                    content: localize('staff-management-system', 'succ-void-fail', { caseId: record.caseId }), 
                     flags: MessageFlags.Ephemeral 
                 });
             }
         }
     }
     await interaction.reply({ 
-        content: localize('staff-management-system', 'succ-void', { caseId }), 
+        content: localize('staff-management-system', 'succ-void', { caseId: record.caseId }), 
         flags: MessageFlags.Ephemeral 
     });
 }
@@ -456,6 +521,13 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
         flags: MessageFlags.Ephemeral 
     });
 
+    if (targetMember.id === interaction.user.id) {
+        return interaction.reply({
+            content: localize('staff-management-system', 'err-self-promo'),
+            flags: MessageFlags.Ephemeral
+        });
+    }
+
     const finalReason = reason && reason.trim() !== '' 
     ? reason 
     : localize('staff-management-system', 'none-provided');
@@ -486,14 +558,14 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
     });
 
     const placeholders = {
-        '%user%': targetMember.user.toString(), 
-        '%newRoleName%': newRole.name, 
-        '%newRoleMention%': newRole.toString(),
-        '%promoterMention%': interaction.user.toString(), 
-        '%promoterName%': interaction.user.username, 
+        '%user-mention%': targetMember.user.toString(), 
+        '%new-role-name%': newRole.name, 
+        '%new-role-mention%': newRole.toString(),
+        '%promoter-mention%': interaction.user.toString(), 
+        '%promoter-name%': interaction.user.username, 
         '%reason%': finalReason,
-        '%userPfp%': targetMember.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
-        '%promoterPfp%': interaction.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || ''
+        '%user-avatar%': targetMember.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
+        '%promoter-avatar%': interaction.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || ''
     };
 
     const targetChannelId = channelOverride 
@@ -538,24 +610,31 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
     }
 
     if (config.dmPromotedUser && config.promotionDmMessage) {
-        try {
-            let dmTemplate = config.promotionDmMessage;
-            if (typeof dmTemplate === 'string') { 
-                try { 
-                    dmTemplate = JSON.parse(dmTemplate); 
-                } catch (e) {} }
-            else if (typeof dmTemplate === 'object') { 
-                dmTemplate = JSON.parse(JSON.stringify(dmTemplate)); 
-            }
+        let dmTemplate = config.promotionDmMessage;
+        if (typeof dmTemplate === 'string') {
+            try {
+                dmTemplate = JSON.parse(dmTemplate);
+            } 
+            catch (e) {}
+        } 
+        else if (typeof dmTemplate === 'object') {
+            dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
+        }
 
-            if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
-            let dmOpts = await embedTypeV2(dmTemplate, placeholders);
-            if (dmOpts?.content?.trim() === '') delete dmOpts.content;
-            
-            if (dmOpts && (dmOpts.content || (dmOpts.embeds && dmOpts.embeds.length > 0))) {
-                await targetMember.send(dmOpts).catch(()=>{});
+        if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
+        const dmOpts = await embedTypeV2(dmTemplate, placeholders);
+        if (dmOpts?.content?.trim() === '') delete dmOpts.content;
+
+        if (dmOpts) {
+            try {
+                await targetMember.user.send(dmOpts);
+            } catch (e) {
+                client.logger.warn(localize('staff-management-system', 'log-promo-dm-fail', {
+                    user: targetMember.user.tag,
+                    error: e.message
+                }));
             }
-        } catch (e) {} 
+        }
     }
     
     await interaction.reply({ 
@@ -1527,11 +1606,19 @@ async function submitReview(client, interaction, targetUser, stars, comment) {
     });
 
     if (config.onlyAllowStaffReview !== false) {
-        const genCfg = getConfig(client, 'configuration');
-        if (!checkStaffPermissions(targetMember, genCfg, 'staff')) {
-            return interaction.reply({ 
-                content: localize('staff-management-system', 'err-staff-rate'), 
-                flags: MessageFlags.Ephemeral 
+        const generalConfig = getConfig(client, 'configuration') || {};
+        const staffRoles = Array.isArray(generalConfig.staffRoles)
+            ? generalConfig.staffRoles
+            : (generalConfig.staffRoles ? [generalConfig.staffRoles] : []);
+
+        const hasStaffRole = staffRoles.length > 0 && targetMember.roles.cache.some(role =>
+            staffRoles.includes(role.id)
+        );
+
+        if (!hasStaffRole) {
+            return interaction.reply({
+                content: localize('staff-management-system', 'err-staff-rate'),
+                flags: MessageFlags.Ephemeral
             });
         }
     }
@@ -1548,13 +1635,13 @@ async function submitReview(client, interaction, targetUser, stars, comment) {
         const channel = interaction.guild.channels.cache.get(channelId);
         if (channel) {
             let msgOpts = await embedTypeV2(config.ratingMessage, { 
-                '%target%': targetUser.toString(), 
-                '%author%': interaction.user.toString(), 
+                '%staff-mention%': targetUser.toString(), 
+                '%reviewer-mention%': interaction.user.toString(), 
                 '%stars%': "⭐".repeat(stars), 
                 '%rating%': stars.toString(), 
                 '%comment%': comment, 
-                '%staff-profile-picture%': targetUser.displayAvatarURL({ dynamic: true }), 
-                '%reviewer-profile-picture%': interaction.user.displayAvatarURL({ dynamic: true }) 
+                '%staff-avatar%': targetUser.displayAvatarURL({ dynamic: true }), 
+                '%reviewer-avatar%': interaction.user.displayAvatarURL({ dynamic: true }) 
             });
             if (msgOpts?.content?.trim() === '') delete msgOpts.content;
             const sentMessage = await channel.send(msgOpts).catch(()=>{});

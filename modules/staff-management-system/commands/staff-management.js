@@ -124,13 +124,13 @@ async function handleProfileView(client, interaction, targetUser) {
     const nicknameText = profile.customNickname || user.username;
 
     const placeholders = {
-        '%user%': user.toString(),
+        '%user-mention%': user.toString(),
         '%username%': user.username,
         '%nickname%': nicknameText,
         '%intro%': introText,
         '%status%': statusLines.join('\n'),
         '%rating%': ratingDisplay, 
-        '%pfp%': user.displayAvatarURL({ 
+        '%avatar%': user.displayAvatarURL({ 
             dynamic: true, 
             format: 'png', 
             size: 1024 
@@ -325,7 +325,7 @@ module.exports.subcommands = {
             await getInfractionHistory(i.client, i, user);
         },
         'void': async (i) => {
-            const caseId = i.options.getInteger('case_id');
+            const caseId = i.options.getString('reference');
             await voidInfraction(i.client, i, caseId);
         }
     },
@@ -452,8 +452,16 @@ module.exports.config = {
     usage: '/staff-management',
     type: 'slash',
     defaultPermission: false,
-    options: [
-        {
+    options: function (client) {
+        const array = [];
+
+        const infractionsConfig = client.configurations['staff-management-system']['infractions'] || {};
+        const promotionsConfig = client.configurations['staff-management-system']['promotions'] || {};
+        const activityChecksConfig = client.configurations['staff-management-system']['activity-checks'] || {};
+        const profilesConfig = client.configurations['staff-management-system']['profiles'] || {};
+        const reviewsConfig = client.configurations['staff-management-system']['reviews'] || {};
+
+        array.push({
             type: 'SUB_COMMAND',
             name: 'panel',
             description: localize('staff-management-system', 'cmd-desc-panel'),
@@ -465,258 +473,286 @@ module.exports.config = {
                     required: true 
                 }
             ]
-        },
-        {
-            type: 'SUB_COMMAND_GROUP',
-            name: 'infraction',
-            description: localize('staff-management-system', 'cmd-desc-infractions'),
-            options: [
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'issue',
-                    description: localize('staff-management-system', 'cmd-desc-issue'),
-                    options: [
-                        { 
-                            type: 'USER', 
-                            name: 'user', 
-                            description: localize('staff-management-system', 'cmd-desc-issue-user'), 
-                            required: true 
-                        },
-                        { 
-                            type: 'STRING', 
-                            name: 'type', 
-                            description: localize('staff-management-system', 'cmd-desc-issue-type'), 
-                            required: true, 
-                            autocomplete: true 
-                        },
-                        { 
-                            type: 'STRING', 
-                            name: 'reason', 
-                            description: localize('staff-management-system', 'cmd-desc-issue-reason'), 
-                            required: true 
-                        },
-                        { 
-                            type: 'STRING', 
-                            name: 'expiry', 
-                            description: localize('staff-management-system', 'cmd-desc-issue-expiry'), 
-                            required: false 
-                        }
-                    ]
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'suspend',
-                    description: localize('staff-management-system', 'cmd-desc-suspend'),
-                    options: [
-                        { 
-                            type: 'USER', 
-                            name: 'user', 
-                            description: localize('staff-management-system', 'cmd-desc-suspend-user'), 
-                            required: true 
-                        },
-                        { 
-                            type: 'STRING', 
-                            name: 'duration', 
-                            description: localize('staff-management-system', 'cmd-desc-suspend-duration'), 
-                            required: true 
-                        },
-                        { 
-                            type: 'STRING', 
-                            name: 'reason', 
-                            description: localize('staff-management-system', 'cmd-desc-suspend-reason'), 
-                            required: true 
-                        }
-                    ]
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'history',
-                    description: localize('staff-management-system', 'cmd-desc-history'),
-                    options: [
-                        { 
-                            type: 'USER', 
-                            name: 'user', 
-                            description: localize('staff-management-system', 'cmd-desc-history-user'), 
-                            required: true 
-                        }
-                    ]
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'void',
-                    description: localize('staff-management-system', 'cmd-desc-void'),
-                    options: [
-                        { 
-                            type: 'INTEGER', 
-                            name: 'case_id', 
-                            description: localize('staff-management-system', 'cmd-desc-void-case-id'), 
-                            required: true 
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            type: 'SUB_COMMAND_GROUP',
-            name: 'promotion',
-            description: localize('staff-management-system', 'cmd-desc-promotion'),
-            options: [
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'promote',
-                    description: localize('staff-management-system', 'cmd-desc-promote'),
-                    options: [
-                        { 
-                            type: 'USER', 
-                            name: 'user', 
-                            description: localize('staff-management-system', 'cmd-desc-promote-user'), 
-                            required: true 
-                        },
-                        { 
-                            type: 'ROLE', 
-                            name: 'rank', 
-                            description: localize('staff-management-system', 'cmd-desc-promote-rank'),  
-                            required: true 
-                        },
-                        { 
-                            type: 'STRING', 
-                            name: 'reason', 
-                            description: localize('staff-management-system', 'cmd-desc-promote-reason'), 
-                            required: false 
-                        },
-                        { 
-                            type: 'CHANNEL', 
-                            name: 'channel', 
-                            description: localize('staff-management-system', 'cmd-desc-promote-channel'), 
-                            required: false, 
-                            channelTypes: [0, 5] 
-                        }
-                    ]
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'history',
-                    description: localize('staff-management-system', 'cmd-desc-history'),
-                    options: [{ 
-                        type: 'USER', 
-                        name: 'user', 
-                        description: localize('staff-management-system', 'cmd-desc-history-user'), 
-                        required: true 
-                    }]
-                }
-            ]
-        },
-        {
-            type: 'SUB_COMMAND_GROUP',
-            name: 'activity-check',
-            description: localize('staff-management-system', 'cmd-desc-ac'),
-            options: [
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'start',
-                    description: localize('staff-management-system', 'cmd-desc-ac-start'),
-                    options: [
-                        { 
-                            type: 'CHANNEL', 
-                            name: 'channel', 
-                            description: localize('staff-management-system', 'cmd-desc-ac-start-channel'), 
-                            required: false, 
-                            channelTypes: [0] 
-                        }
-                    ]
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'view',
-                    description: localize('staff-management-system', 'cmd-desc-ac-view') 
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'end',
-                    description: localize('staff-management-system', 'cmd-desc-ac-end')
-                }
-            ]
-        },
-        {
-            type: 'SUB_COMMAND_GROUP',
-            name: 'profile',
-            description: localize('staff-management-system', 'cmd-desc-profile'),
-            options: [
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'view',
-                    description: localize('staff-management-system', 'cmd-desc-profile-view'),
-                    options: [{ 
-                        type: 'USER', 
-                        name: 'user', 
-                        description: localize('staff-management-system', 'cmd-desc-profile-view-user'), 
-                        required: false 
-                    }]
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'edit',
-                    description: localize('staff-management-system', 'cmd-desc-profile-edit')
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'wipe',
-                    description: localize('staff-management-system', 'cmd-desc-profile-wipe'),
-                    options: [
-                        { 
-                            type: 'USER', 
-                            name: 'user', 
-                            description: localize('staff-management-system', 'cmd-desc-profile-wipe-user'), 
-                            required: true 
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            type: 'SUB_COMMAND_GROUP',
-            name: 'review',
-            description: localize('staff-management-system', 'cmd-desc-review'),
-            options: [
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'submit',
-                    description: localize('staff-management-system', 'cmd-desc-submit'),
-                    options: [
-                        { 
-                            type: 'USER', 
-                            name: 'user', 
-                            description: localize('staff-management-system', 'cmd-desc-submit-user'), 
-                            required: true 
-                        },
-                        { 
-                            type: 'INTEGER', 
-                            name: 'stars', 
-                            description: localize('staff-management-system', 'cmd-desc-submit-stars'), 
-                            required: true, 
-                            minValue: 1, 
-                            maxValue: 5 
-                        },
-                        { 
-                            type: 'STRING', 
-                            name: 'comment', 
-                            description: localize('staff-management-system', 'cmd-desc-submit-comment'), 
-                            required: true 
-                        }
-                    ]
-                },
-                {
-                    type: 'SUB_COMMAND',
-                    name: 'history',
-                    description: localize('staff-management-system', 'cmd-desc-history'),
-                    options: [{ 
-                        type: 'USER', 
-                        name: 'user', 
-                        description: localize('staff-management-system', 'cmd-desc-history-user'), 
-                        required: false 
-                    }]
-                }
-            ]
+        });
+
+        if (infractionsConfig.enableInfractions) {
+            array.push({
+                type: 'SUB_COMMAND_GROUP',
+                name: 'infraction',
+                description: localize('staff-management-system', 'cmd-desc-infractions'),
+                options: [
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'issue',
+                        description: localize('staff-management-system', 'cmd-desc-issue'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                description: localize('staff-management-system', 'cmd-desc-issue-user'),
+                                required: true
+                            },
+                            {
+                                type: 'STRING',
+                                name: 'type',
+                                description: localize('staff-management-system', 'cmd-desc-issue-type'),
+                                required: true,
+                                autocomplete: true
+                            },
+                            {
+                                type: 'STRING',
+                                name: 'reason',
+                                description: localize('staff-management-system', 'cmd-desc-issue-reason'),
+                                required: true
+                            },
+                            {
+                                type: 'STRING',
+                                name: 'expiry',
+                                description: localize('staff-management-system', 'cmd-desc-issue-expiry'),
+                                required: false
+                            }
+                        ]
+                    },
+                    ...(infractionsConfig.enableSuspensions ? [{
+                        type: 'SUB_COMMAND',
+                        name: 'suspend',
+                        description: localize('staff-management-system', 'cmd-desc-suspend'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                description: localize('staff-management-system', 'cmd-desc-suspend-user'),
+                                required: true
+                            },
+                            {
+                                type: 'STRING',
+                                name: 'duration',
+                                description: localize('staff-management-system', 'cmd-desc-suspend-duration'),
+                                required: true
+                            },
+                            {
+                                type: 'STRING',
+                                name: 'reason',
+                                description: localize('staff-management-system', 'cmd-desc-suspend-reason'),
+                                required: true
+                            }
+                        ]
+                    }] : []),
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'history',
+                        description: localize('staff-management-system', 'cmd-desc-history'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                description: localize('staff-management-system', 'cmd-desc-history-user'),
+                                required: true
+                            }
+                        ]
+                    },
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'void',
+                        description: localize('staff-management-system', 'cmd-desc-void'),
+                        options: [
+                            {
+                                type: 'STRING',
+                                name: 'reference',
+                                description: localize('staff-management-system', 'cmd-desc-void-case-ref'),
+                                required: true
+                            }
+                        ]
+                    }
+                ]
+            });
         }
-    ]
+
+        if (promotionsConfig.enablePromotions) {
+            array.push({
+                type: 'SUB_COMMAND_GROUP',
+                name: 'promotion',
+                description: localize('staff-management-system', 'cmd-desc-promotion'),
+                options: [
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'promote',
+                        description: localize('staff-management-system', 'cmd-desc-promote'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                description: localize('staff-management-system', 'cmd-desc-promote-user'),
+                                required: true
+                            },
+                            {
+                                type: 'ROLE',
+                                name: 'rank',
+                                description: localize('staff-management-system', 'cmd-desc-promote-rank'),
+                                required: true
+                            },
+                            {
+                                type: 'STRING',
+                                name: 'reason',
+                                description: localize('staff-management-system', 'cmd-desc-promote-reason'),
+                                required: true
+                            },
+                            { 
+                                type: 'CHANNEL', 
+                                name: 'channel', 
+                                description: localize('staff-management-system', 'cmd-desc-promote-channel'), 
+                                required: false, 
+                                channelTypes: [0, 5] 
+                            }
+                        ]
+                    },
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'history',
+                        description: localize('staff-management-system', 'cmd-desc-prom-history'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                description: localize('staff-management-system', 'cmd-desc-prom-history-user'),
+                                required: true
+                            }
+                        ]
+                    }
+                ]
+            });
+        }
+
+        if (activityChecksConfig.enableActivityChecks) {
+            array.push({
+                type: 'SUB_COMMAND_GROUP',
+                name: 'activity-check',
+                description: localize('staff-management-system', 'cmd-desc-ac'),
+                options: [
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'start',
+                        description: localize('staff-management-system', 'cmd-desc-ac-start'),
+                        options: [
+                            {
+                                type: 'CHANNEL',
+                                name: 'channel',
+                                description: localize('staff-management-system', 'cmd-desc-ac-start-channel'),
+                                required: false,
+                                channelTypes: [0]
+                            }
+                        ]
+                    },
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'view',
+                        description: localize('staff-management-system', 'cmd-desc-ac-view')
+                    },
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'end',
+                        description: localize('staff-management-system', 'cmd-desc-ac-end')
+                    }
+                ]
+            });
+        }
+
+        if (profilesConfig.enableProfiles) {
+            array.push({
+                type: 'SUB_COMMAND_GROUP',
+                name: 'profile',
+                description: localize('staff-management-system', 'cmd-desc-profile'),
+                options: [
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'view',
+                        description: localize('staff-management-system', 'cmd-desc-profile-view'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                description: localize('staff-management-system', 'cmd-desc-profile-view-user'),
+                                required: false
+                            }
+                        ]
+                    },
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'edit',
+                        description: localize('staff-management-system', 'cmd-desc-profile-edit')
+                    },
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'wipe',
+                        description: localize('staff-management-system', 'cmd-desc-profile-wipe'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                description: localize('staff-management-system', 'cmd-desc-profile-wipe-user'),
+                                required: true
+                            }
+                        ]
+                    }
+                ]
+            });
+        }
+
+        if (reviewsConfig.enableReviews) {
+            array.push({
+                type: 'SUB_COMMAND_GROUP',
+                name: 'review',
+                description: localize('staff-management-system', 'cmd-desc-review'),
+                options: [
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'submit',
+                        description: localize('staff-management-system', 'cmd-desc-review-submit'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                description: localize('staff-management-system', 'cmd-desc-review-submit-user'),
+                                required: true
+                            },
+                            {
+                                type: 'INTEGER',
+                                name: 'stars',
+                                description: localize('staff-management-system', 'cmd-desc-review-submit-stars'),
+                                required: true,
+                                choices: [
+                                    { name: '1 ⭐', value: 1 },
+                                    { name: '2 ⭐⭐', value: 2 },
+                                    { name: '3 ⭐⭐⭐', value: 3 },
+                                    { name: '4 ⭐⭐⭐⭐', value: 4 },
+                                    { name: '5 ⭐⭐⭐⭐⭐', value: 5 }
+                                ]
+                            },
+                            {
+                                type: 'STRING',
+                                name: 'comment',
+                                description: localize('staff-management-system', 'cmd-desc-review-submit-comment'),
+                                required: true
+                            }
+                        ]
+                    },
+                    {
+                        type: 'SUB_COMMAND',
+                        name: 'history',
+                        description: localize('staff-management-system', 'cmd-desc-review-history'),
+                        options: [
+                            {
+                                type: 'USER',
+                                name: 'user',
+                                description: localize('staff-management-system', 'cmd-desc-review-history-user'),
+                                required: false
+                            }
+                        ]
+                    }
+                ]
+            });
+        }
+
+        return array;
+    }
 };

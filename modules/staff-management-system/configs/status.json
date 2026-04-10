@@ -8,6 +8,13 @@
   },
   "categories": [
     {
+      "id": "base",
+      "icon": "fas fa-gears",
+      "displayName": {
+        "en": "Base Settings"
+      }
+    },
+    {
       "id": "loa",
       "icon": "fas fa-door-open",
       "displayName": {
@@ -31,6 +38,21 @@
   ],
   "content": [
     {
+      "name": "enableStatusSystem",
+      "category": "base",
+      "humanName": {
+        "en": "Enable Status System"
+      },
+      "description": {
+        "en": "Enabling this unlocks the Leave of Absence (LoA) and Reduced Activity (RA) system, allowing staff to request these statuses and have them tracked."
+      },
+      "type": "boolean",
+      "default": {
+        "en": false
+      },
+      "elementToggle": true
+    },
+    {
       "name": "enableLoa",
       "category": "loa",
       "humanName": {
@@ -41,9 +63,8 @@
       },
       "type": "boolean",
       "default": {
-        "en": false
-      },
-      "elementToggle": true
+        "en": true
+      }
     },
     {
       "name": "loaRole",
@@ -58,7 +79,8 @@
       "allowNull": true,
       "default": {
         "en": ""
-      }
+      },
+      "dependsOn": "enableLoa"
     },
     {
       "name": "loaMaxDays",
@@ -73,7 +95,8 @@
       "default": {
         "en": 60
       },
-      "minValue": 1
+      "minValue": 1,
+      "dependsOn": "enableLoa"
     },
     {
       "name": "requireLoaApproval",
@@ -87,7 +110,8 @@
       "type": "boolean",
       "default": {
         "en": true
-      }
+      },
+      "dependsOn": "enableLoa"
     },
     {
       "name": "enableRa",
@@ -100,9 +124,8 @@
       },
       "type": "boolean",
       "default": {
-        "en": false
-      },
-      "elementToggle": true
+        "en": true
+      }
     },
     {
       "name": "raRole",
@@ -117,7 +140,8 @@
       "allowNull": true,
       "default": {
         "en": ""
-      }
+      },
+      "dependsOn": "enableRa"
     },
     {
       "name": "raMaxDays",
@@ -132,7 +156,8 @@
       "default": {
         "en": 30
       },
-      "minValue": 1
+      "minValue": 1,
+      "dependsOn": "enableRa"
     },
     {
       "name": "requireRaApproval",
@@ -146,7 +171,8 @@
       "type": "boolean",
       "default": {
         "en": true
-      }
+      },
+      "dependsOn": "enableRa"
     },
     {
       "name": "statusLogChannel",
@@ -159,6 +185,10 @@
       },
       "type": "channelID",
       "allowNull": true,
+      "channelTypes": [
+        "GUILD_TEXT",
+        "GUILD_NEWS"
+      ],
       "default": {
         "en": ""
       }
@@ -188,6 +218,10 @@
       },
       "type": "channelID",
       "allowNull": true,
+      "channelTypes": [
+        "GUILD_TEXT",
+        "GUILD_NEWS"
+      ],
       "default": {
         "en": ""
       },

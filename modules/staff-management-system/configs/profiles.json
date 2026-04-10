@@ -76,7 +76,7 @@
       "allowEmbed": true,
       "params": [
         {
-          "name": "user",
+          "name": "user-mention",
           "description": {
             "en": "The user's mention."
           }
@@ -90,7 +90,7 @@
         {
           "name": "nickname",
           "description": {
-            "en": "The user's custom profile nickname (or default username if not set)."
+            "en": "The user's custom profile nickname (uses default username if not set)."
           }
         },
         {
@@ -102,7 +102,7 @@
         {
           "name": "status",
           "description": {
-            "en": "The user's current status (On Duty, Off Duty, LoA, etc.)."
+            "en": "The user's current status (LoA, RA, etc.)."
           }
         },
         {
@@ -112,7 +112,7 @@
           }
         },
         {
-          "name": "pfp",
+          "name": "avatar",
           "description": {
             "en": "The user's avatar URL."
           },
@@ -127,7 +127,7 @@
               "title": "Staff Profile: %nickname%",
               "description": "%intro%",
               "color": "#2b2d31",
-              "thumbnailURL": "%pfp%",
+              "thumbnailURL": "%avatar%",
               "fields": [
                 {
                   "name": "Status",

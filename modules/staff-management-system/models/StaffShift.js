@@ -22,6 +22,11 @@ module.exports = class StaffManagementShift extends Model {
             type: {
                 type: DataTypes.STRING,
                 defaultValue: "Staff"
+            },
+            breakCount: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 0
             }
         }, {
             tableName: 'staff_management_shifts',

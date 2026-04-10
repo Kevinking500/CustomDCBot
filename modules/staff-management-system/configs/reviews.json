@@ -1,7 +1,7 @@
 {
   "filename": "reviews.json",
   "humanName": {
-    "en": "Staff Ratings"
+    "en": "Staff Reviews"
   },
   "description": {
     "en": "Configure the staff rating system and feedback channels."
@@ -47,6 +47,10 @@
         "en": "Channel where new reviews are posted."
       },
       "type": "channelID",
+      "channelTypes": [
+        "GUILD_TEXT",
+        "GUILD_NEWS"
+      ],
       "default": {
         "en": ""
       }
@@ -92,58 +96,60 @@
       "allowEmbed": true,
       "params": [
         { 
-          "name": "target", 
+          "name": "staff-mention", 
           "description": { 
-            "en": "The staff member" 
+            "en": "Mention of the staff member" 
           } 
         },
         { 
-          "name": "author", 
+          "name": "reviewer-mention", 
           "description": { 
-            "en": "The reviewer" 
+            "en": "Mention of the reviewer" 
           } 
         },
         { 
           "name": "stars", 
           "description": { 
-            "en": "Star emoji string (⭐⭐⭐⭐⭐)" 
+            "en": "Amount of stars rated in emoji's (⭐⭐⭐⭐⭐)" 
           } 
         },
         { 
           "name": "rating", 
           "description": { 
-            "en": "Number (1-5)" 
+            "en": "Amount of stars rated in text (1-5)" 
           } 
         },
         { 
           "name": "comment", 
           "description": { 
-            "en": "The review text" 
+            "en": "The review's text" 
           } 
         },
         { 
-          "name": "staff-profile-picture", 
+          "name": "staff-avatar", 
           "description": { 
             "en": "The staff member's profile picture (URL)" 
-          } 
+          },
+          "isImage": true
         },
         { 
-          "name": "reviewer-profile-picture", 
+          "name": "reviewer-avatar", 
           "description": { 
             "en": "The reviewer's profile picture (URL)" 
-          } 
+          },
+          "isImage": true
         }
       ],
       "default": {
         "en": {
           "_schema": "v3",
-          "content": "%user%",
+          "content": "%staff%",
           "embeds": [
             {
               "title": "🌟 New Staff Rating",
-              "description": "**Staff:** %target%\n**Rated by:** %author%\n\n**Rating:** %stars% (%rating%/5)\n**Comment:**\n%comment%",
+              "description": "**Staff:** %staff-mention%\n**Rated by:** %reviewer-mention%\n\n**Rating:** %stars% (%rating%/5)\n**Comment:**\n%comment%",
               "color": "#f1c40f",
-              "thumbnailURL": "%staff-profile-picture%"
+              "thumbnailURL": "%staff-avatar%"
             }
           ]
         }

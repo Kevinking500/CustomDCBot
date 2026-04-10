@@ -27,6 +27,13 @@
       "displayName": {
         "en": "Quotas"
       }
+    },
+    {
+      "id": "logging",
+      "icon": "fas fa-message-lines",
+      "displayName": {
+        "en": "Logging"
+      }
     }
   ],
   "content": [
@@ -87,7 +94,8 @@
       "type": "integer",
       "default": {
         "en": 0
-      }
+      },
+      "minValue": 0
     },
     {
       "name": "enableLeaderboard",
@@ -174,6 +182,40 @@
         "en": {}
       },
       "dependsOn": "enableQuotas"
+    },
+    {
+      "name": "logShiftChanges",
+      "category": "logging",
+      "humanName": {
+        "en": "Log Shift Changes"
+      },
+      "description":{
+        "en": "When enabled, shift changes (such as going on-duty, on break, or off-duty) will be logged in a custom channel."
+      },
+      "type": "boolean",
+      "default": {
+        "en": true
+      }
+    },
+    {
+      "name": "logShiftChangesChannel",
+      "category": "logging",
+      "humanName": {
+        "en": "Channel for shift change logs"
+      },
+      "description": {
+        "en": "The channel where shift changes will be logged. You can set this empty to use the general log channel."
+      },
+      "type": "channelID",
+      "channelTypes": [
+        "GUILD_TEXT",
+        "GUILD_NEWS"
+      ],
+      "default": {
+        "en": ""
+      },
+      "allowNull": true,
+      "dependsOn": "logShiftChanges"
     }
   ]
 }

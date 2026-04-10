@@ -87,7 +87,13 @@ async function sendStatusDm(user, type, dmType, data = {}) {
             u: user.tag
         })
     );
-}
+}}
+
+function isStatusTypeEnabled(config, type) {
+    if (!config?.enableStatusSystem) return false;
+    return type === 'LOA' 
+    ? !!config.enableLoa 
+    : !!config.enableRa;
 }
 
 async function logStatusChange(client, type, action, data) {
@@ -197,9 +203,8 @@ const getStatusMeta = (type) => ({
 async function handleStatusRequest(client, interaction, type, durationInput, reason) {
     const config = getConfig(client, 'status');
     const isLoa = type === 'LOA';
-    if (!config[isLoa 
-        ? 'enableLoa' 
-        : 'enableRa']) return interaction.editReply({ 
+    if (!isStatusTypeEnabled(config, type)) 
+        return interaction.editReply({ 
             content: localize('staff-management-system', 'err-status-disabled', { type }) 
         }
     );
@@ -375,8 +380,9 @@ async function handleStatusList(client, interaction, type, filter) {
 async function handleStatusManage(client, interaction, targetMember, type) {
     const config = getConfig(client, 'status');
     const meta = getStatusMeta(type);
-    if (!config[meta.enableKey]) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-status-disabled', { type }) 
+    if (!isStatusTypeEnabled(config, type)) 
+        return interaction.editReply({ 
+            content: localize('staff-management-system', 'err-status-disabled', { type }) 
     });
 
     const generalConfig = getConfig(client, 'configuration');
@@ -826,12 +832,22 @@ module.exports.config = {
     usage: '/status',
     type: 'slash',
     defaultPermission: false,
-    options: [
-        {
-            type: 'SUB_COMMAND_GROUP',
-            name: 'loa',
-            description: localize('staff-management-system', 'cmd-desc-loa'),
-            options: [
+    disabled: function (client) {
+        return !client.configurations['staff-management-system']['status']?.enableStatusSystem;
+    },
+
+    options: function (client) {
+        const config = getConfig(client, 'status');
+        const array = [];
+
+        if (!config?.enableStatusSystem) return array;
+
+        if (config.enableLoa) {
+            array.push({
+                type: 'SUB_COMMAND_GROUP',
+                name: 'loa',
+                description: localize('staff-management-system', 'cmd-desc-loa'),
+                options: [
                 { 
                     type: 'SUB_COMMAND', 
                     name: 'request', 
@@ -901,9 +917,11 @@ module.exports.config = {
                         }
                     ] 
                 }
-            ]
-        },
-        {
+            ]});
+        }
+
+        if (config.enableRa) {
+            array.push({
             type: 'SUB_COMMAND_GROUP',
             name: 'ra',
             description: localize('staff-management-system', 'cmd-desc-ra'),
@@ -978,9 +996,11 @@ module.exports.config = {
                         }
                     ] 
                 }
-            ]
+            ]});
         }
-    ]
+
+        return array;
+    }
 };
 
 module.exports.sendStatusDm = sendStatusDm;

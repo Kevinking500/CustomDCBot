@@ -64,7 +64,7 @@
       "type": "channelID",
       "channelTypes": [
         "GUILD_TEXT",
-        "GUILD_ANNOUNCEMENT"
+        "GUILD_NEWS"
       ],
       "default": {
         "en": ""
@@ -83,31 +83,31 @@
       "allowEmbed": true,
       "params": [
         {
-          "name": "user",
+          "name": "user-mention",
           "description": {
             "en": "Pings the promoted user."
           }
         },
         {
-          "name": "newRoleName",
+          "name": "new-role-name",
           "description": {
             "en": "The plain text name of the new role."
           }
         },
         {
-          "name": "newRoleMention",
+          "name": "new-role-mention",
           "description": {
             "en": "The pingable mention of the new role."
           }
         },
         {
-          "name": "promoterMention",
+          "name": "promoter-mention",
           "description": {
             "en": "Pings the staff member who issued the promotion."
           }
         },
         {
-          "name": "promoterName",
+          "name": "promoter-name",
           "description": {
             "en": "The username of the staff member who issued the promotion."
           }
@@ -119,13 +119,13 @@
           }
         },
         {
-          "name": "userPfp",
+          "name": "user-avatar",
           "description": {
             "en": "The avatar URL of the promoted user."
           }
         },
         {
-          "name": "promoterPfp",
+          "name": "promoter-avatar",
           "description": {
             "en": "The avatar URL of the promoter."
           }
@@ -134,17 +134,17 @@
       "default": {
         "en": {
           "_schema": "v3",
-          "content": "%user%",
+          "content": "%user-mention%",
           "embeds": [
             {
               "author": {
-                "name": "Signed, %promoterName%",
-                "imageURL": "%promoterPfp%"
+                "name": "Signed, %promoter-name%",
+                "imageURL": "%promoter-avatar%"
               },
               "title": "🎉 New promotion!",
-              "description": "Congratulations, you have been promoted to **%newRoleName%**!\n\n**Promoted to:** %newRoleMention%\n**On behalf of:** %promoterMention%\n**Reason:** %reason%",
+              "description": "Congratulations, you have been promoted to **%new-role-name%**!\n\n**Promoted to:** %new-role-mention%\n**On behalf of:** %promoter-mention%\n**Reason:** %reason%",
               "color": "#f1c40f",
-              "thumbnailURL": "%userPfp%"
+              "thumbnailURL": "%user-avatar%"
             }
           ]
         }
@@ -178,31 +178,31 @@
       "dependsOn": "dmPromotedUser",
       "params": [
         {
-          "name": "user",
+          "name": "user-mention",
           "description": {
             "en": "Pings the promoted user."
           }
         },
         {
-          "name": "newRoleName",
+          "name": "new-role-name",
           "description": {
             "en": "The plain text name of the new role."
           }
         },
         {
-          "name": "newRoleMention",
+          "name": "new-role-mention",
           "description": {
             "en": "The pingable mention of the new role."
           }
         },
         {
-          "name": "promoterMention",
+          "name": "promoter-mention",
           "description": {
             "en": "Pings the staff member who issued the promotion."
           }
         },
         {
-          "name": "promoterName",
+          "name": "promoter-name",
           "description": {
             "en": "The username of the staff member who issued the promotion."
           }
@@ -214,13 +214,13 @@
           }
         },
         {
-          "name": "userPfp",
+          "name": "user-avatar",
           "description": {
             "en": "The avatar URL of the promoted user."
           }
         },
         {
-          "name": "promoterPfp",
+          "name": "promoter-avatar",
           "description": {
             "en": "The avatar URL of the promoter."
           }
@@ -229,17 +229,17 @@
       "default": {
         "en": {
           "_schema": "v3",
-          "content": "%user%",
+          "content": "%user-mention%",
           "embeds": [
             {
               "author": {
-                "name": "Signed, %promoterName%",
-                "imageURL": "%promoterPfp%"
+                "name": "Signed, %promoter-name%",
+                "imageURL": "%promoter-avatar%"
               },
               "title": "🎉 New promotion!",
-              "description": "Congratulations, you have been promoted to **%newRoleName%**!\n\n**Promoted to:** %newRoleMention%\n**On behalf of:** %promoterMention%\n**Reason:** %reason%",
+              "description": "Congratulations, you have been promoted to **%new-role-name%**!\n\n**Promoted to:** %new-role-mention%\n**On behalf of:** %promoter-mention%\n**Reason:** %reason%",
               "color": "#f1c40f",
-              "thumbnailURL": "%userPfp%"
+              "thumbnailURL": "%user-avatar%"
             }
           ]
         }

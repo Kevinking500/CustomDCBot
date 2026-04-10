@@ -133,26 +133,26 @@
           } 
         },
         { 
-          "name": "userPfp", 
+          "name": "user-avatar", 
           "description": { 
             "en": "Avatar of the staff member" 
             }, 
           "isImage": true 
         },
         { 
-          "name": "issuerMention", 
+          "name": "issuer-mention", 
           "description": { 
             "en": "Mention of the manager issuing it" 
           } 
         },
         { 
-          "name": "issuerName", 
+          "name": "issuer-name", 
           "description": { 
             "en": "Name of the issuer" 
           } 
         },
         { 
-          "name": "issuerPfp", 
+          "name": "issuer-avatar", 
           "description": { 
             "en": "Avatar of the issuer" 
             }, 
@@ -165,7 +165,7 @@
           } 
         },
         { 
-          "name": "endDate", 
+          "name": "end-date", 
           "description": { 
             "en": "Timestamp of when the suspension ends" 
           } 
@@ -177,7 +177,7 @@
           } 
         },
         { 
-          "name": "caseId", 
+          "name": "case-id", 
           "description": { 
             "en": "Database Case ID" 
           } 
@@ -190,13 +190,13 @@
           "embeds": [
             {
               "author": {
-                "name": "Signed, %issuerName% • Case #%caseId%",
-                "iconURL": "%issuerPfp%"
+                "name": "Signed, %issuer-name% • Case #%case-id%",
+                "iconURL": "%issuer-avatar%"
               },
               "title": "⛔ Staff Suspension",
-              "description": "**Staff Member:** %user%\n**Duration:** %duration%\n**Ends:** %endDate%\n**Reason:** %reason%",
+              "description": "**Staff Member:** %user%\n**Duration:** %duration%\n**Ends:** %end-date%\n**Reason:** %reason%",
               "color": "#ed4245",
-              "thumbnailURL": "%userPfp%"
+              "thumbnailURL": "%user-avatar%"
             }
           ]
         }
@@ -239,23 +239,30 @@
           } 
         },
         { 
-          "name": "userPfp", 
+          "name": "user-avatar", 
           "description": { 
             "en": "Avatar of the staff member" 
             }, 
           "isImage": true 
         },
         { 
-          "name": "issuerMention", 
+          "name": "issuer-mention", 
           "description": { 
             "en": "Mention of the manager issuing it" 
           } 
         },
         { 
-          "name": "issuerName", 
+          "name": "issuer-name", 
           "description": { 
             "en": "Name of the issuer" 
           } 
+        },
+        { 
+          "name": "issuer-avatar", 
+          "description": { 
+            "en": "Avatar of the issuer" 
+            }, 
+          "isImage": true 
         },
         { 
           "name": "type", 
@@ -289,13 +296,13 @@
           "embeds": [
             {
               "author": {
-                "name": "Signed, %issuerName% • Case #%caseId%",
-                "iconURL": "%issuerPfp%"
+                "name": "Signed, %issuer-name% • Case #%case-id%",
+                "iconURL": "%issuer-avatar%"
               },
               "title": "⚠️ New infraction",
-              "description": "**Staff Member:** %user%\n**Action Taken:** %type%\n**Expires:** %endDate%\n**Reason:** %reason%",
+              "description": "**Staff Member:** %user%\n**Action Taken:** %type%\n**Expires:** %end-date%\n**Reason:** %reason%",
               "color": "#e67e22",
-              "thumbnailURL": "%userPfp%"
+              "thumbnailURL": "%user-avatar%"
             }
           ]
         }
@@ -335,7 +342,7 @@
           } 
         },
         { 
-          "name": "issuerName", 
+          "name": "issuer-name", 
           "description": { 
             "en": "Name of the issuer" 
           } 
@@ -347,7 +354,7 @@
           } 
         },
         { 
-          "name": "endDate", 
+          "name": "end-date", 
           "description": { 
             "en": "Timestamp of when this infraction expires" 
           } 
@@ -359,7 +366,7 @@
           } 
         },
         { 
-          "name": "caseId", 
+          "name": "case-id", 
           "description": { 
             "en": "Database Case ID" 
           } 
@@ -371,10 +378,10 @@
           "embeds": [
             {
               "author": {
-                "name": "Signed, %issuerName% • Case #%caseId%"
+                "name": "Signed, %issuer-name% • Case #%case-id%"
               },
               "title": "⚠️ You have been infracted",
-              "description": "**Type:** %type%\n**Reason:** %reason%\n**Expires:** %endDate%",
+              "description": "**Type:** %type%\n**Reason:** %reason%\n**Expires:** %end-date%",
               "color": "#e67e22"
             }
           ]
@@ -401,7 +408,7 @@
           } 
         },
         { 
-          "name": "issuerName", 
+          "name": "issuer-name", 
           "description": { 
             "en": "Name of the issuer" 
           } 
@@ -413,7 +420,7 @@
           } 
         },
         { 
-          "name": "endDate", 
+          "name": "end-date", 
           "description": { 
             "en": "Timestamp of when this infraction expires" 
           } 
@@ -425,7 +432,7 @@
           } 
         },
         { 
-          "name": "caseId", 
+          "name": "case-id", 
           "description": { 
             "en": "Database Case ID" 
           } 
@@ -437,10 +444,10 @@
           "embeds": [
             {
               "author": {
-                "name": "Signed, %issuerName% • Case #%caseId%"
+                "name": "Signed, %issuer-name% • Case #%case-id%"
               },
               "title": "⛔ Staff Suspension",
-              "description": "You have been temporarily suspended.\n\n**Duration:** %duration%\n**Returns:** %endDate%\n**Reason:** %reason%",
+              "description": "You have been temporarily suspended.\n\n**Duration:** %duration%\n**Returns:** %end-date%\n**Reason:** %reason%",
               "color": "#ed4245"
             }
           ]

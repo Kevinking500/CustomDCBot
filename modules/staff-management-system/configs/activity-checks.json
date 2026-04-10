@@ -128,7 +128,8 @@
       },
       "type": "channelID",
       "channelTypes": [
-        "GUILD_TEXT"
+        "GUILD_TEXT",
+        "GUILD_NEWS"
       ],
       "default": {
         "en": ""
@@ -278,7 +279,8 @@
         "en": ""
       },
       "channelTypes": [
-        "GUILD_TEXT"
+        "GUILD_TEXT",
+        "GUILD_NEWS"
       ],
       "allowNull": true
     },
