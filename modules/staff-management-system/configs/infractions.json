@@ -76,7 +76,6 @@
         "en": "Suspensions temporarily strip a staff member of their roles."
       },
       "type": "boolean",
-      "elementToggle": true,
       "default": {
         "en": true
       }

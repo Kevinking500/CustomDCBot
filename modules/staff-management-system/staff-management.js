@@ -398,8 +398,7 @@ async function voidInfraction(client, interaction, reference) {
         flags: MessageFlags.Ephemeral 
     });
 
-    const generalConfig = getConfig(client, 'configuration');
-    const canManage = interaction.member.roles.cache.some(r => [...(generalConfig.supervisorRoles || []), ...(generalConfig.managementRoles || [])].includes(r.id)) || interaction.member.permissions.has('Administrator');
+    const canManage = checkStaffPermissions(member, config, 'supervisor')
     if (!canManage) return interaction.reply({ 
         content: localize('staff-management-system', 'err-gen-no-perm'), 
         flags: MessageFlags.Ephemeral 
@@ -418,8 +417,6 @@ async function voidInfraction(client, interaction, reference) {
             flags: MessageFlags.Ephemeral 
         }); 
     }
-
-    await record.update({ active: false });
 
     if (record.type.toLowerCase() === 'suspension') {
         const Profile = client.models['staff-management-system']['StaffProfile'];
@@ -442,6 +439,7 @@ async function voidInfraction(client, interaction, reference) {
             }
         }
     }
+    await record.update({ active: false });
     await interaction.reply({ 
         content: localize('staff-management-system', 'succ-void', { caseId: record.caseId }), 
         flags: MessageFlags.Ephemeral 
@@ -1319,45 +1317,28 @@ async function executeDataDeletion(client, targetId, dataType) {
         });
     }
 
+    const profileUpdates = {};
     if (['del_shifts', 'del_all'].includes(dataType)) {
-        await models.StaffShift.destroy({
-            where: { userId: targetId }
-        });
-
-        const profile = await models.StaffProfile.findByPk(targetId);
-        if (profile) {
-            await profile.update({
-                onDuty: false,
-                onBreak: false,
-                breakStartTime: null,
-                lastClockIn: null
-            });
-        }
+        profileUpdates.onDuty = false;
+        profileUpdates.onBreak = false;
+        profileUpdates.breakStartTime = null;
+        profileUpdates.lastClockIn = null;
     }
 
     if (['del_status', 'del_all'].includes(dataType)) {
-        await models.LoaRequest.destroy({
-            where: { userId: targetId }
-        });
-
-        const profile = await models.StaffProfile.findByPk(targetId);
-        if (profile) {
-            await profile.update({
-                activityStatus: null
-            });
-        }
+        profileUpdates.activityStatus = null;
     }
 
     if (dataType === 'del_all') {
+        profileUpdates.customNickname = null;
+        profileUpdates.customIntro = null;
+        profileUpdates.isSuspended = false;
+        profileUpdates.suspendedRoles = null;
+    }
+
+    if (Object.keys(profileUpdates).length > 0) {
         const profile = await models.StaffProfile.findByPk(targetId);
-        if (profile) {
-            await profile.update({
-                customNickname: null,
-                customIntro: null,
-                isSuspended: false,
-                suspendedRoles: null
-            });
-        }
+        if (profile) await profile.update(profileUpdates);
     }
 
     if (['del_activity', 'del_all'].includes(dataType)) {
@@ -1482,9 +1463,12 @@ async function endActivityCheckProcess(client, activeCheck) {
 
     const respondedUserIds = new Set(responses.map(response => response.userId));
     
-    const expectedMembers = guild.members.cache.filter(m => !m.user.bot && m.roles.cache.some(r => targetRoles.includes(r.id)));
-    const [responded, exceptions, failed] = [[], [], []];
-    const profiles = await client.models['staff-management-system']['StaffProfile'].findAll();
+    const expectedIds = [...expectedMembers.keys()];
+    const profiles = await StaffProfile.findAll({
+        where: {
+            userId: { [Op.in]: expectedIds }
+        }
+    });
 
     expectedMembers.forEach(member => {
         if (respondedUserIds.has(member.id)) return responded.push(member);

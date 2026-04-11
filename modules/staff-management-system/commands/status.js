@@ -142,7 +142,7 @@ async function logStatusChange(client, type, action, data) {
              .setDescription(localize('staff-management-system', 'log-end-desc', { label, mention }))
              .addFields({ 
                 name: localize('staff-management-system', 'log-info-hdr', { label }), 
-                value: `**${localize('staff-management-system', 'general-started')}:** <t:${Math.floor(new Date(data.startDate).getTime() / 1000)}:F>\n**${localize('staff-management-system', 'general-ended')}:** <t:${Math.floor(Date.now() / 1000)}:F>\n**${localize('staff-management-system', 'general-rsn')}:** ${data.reason || localize('staff-management-system', 'none-provided')}` 
+                value: `**${localize('staff-management-system', 'general-started')}:** <t:${Math.floor(new Date(data.startDate).getTime() / 1000)}:F>\n**${localize('staff-management-system', 'general-ended')}:** <t:${Math.floor(Date.now() / 1000)}:F>\n**${localize('staff-management-system','general-req-reason')}:** ${data.reqReason}\n**${localize('staff-management-system', 'general-rsn')}:** ${data.reason || localize('staff-management-system', 'none-provided')}` 
              });
     
     } else if (action === 'adjusted') {
@@ -343,35 +343,51 @@ async function handleStatusView(client, interaction, type, targetUser) {
 }
 
 async function handleStatusList(client, interaction, type, filter) {
+    const LoaRequest = client.models['staff-management-system']['LoaRequest'];
+    const now = new Date();
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 60);
+
     let whereClause = { type };
     let title = `${type} List`;
 
     if (filter === 'active') { 
         whereClause.status = 'APPROVED'; 
-        whereClause.endDate = { [Op.gt]: new Date() }; 
+        whereClause.endDate = { [Op.gt]: now }; 
         title += localize('staff-management-system', 'filter-active'); 
     }
     else if (filter === 'expired') { 
-        whereClause.endDate = { [Op.lt]: new Date() }; 
+        whereClause.status = { [Op.in]: ['APPROVED', 'ENDED'] }; 
+        whereClause.endDate = { [Op.between]: [cutoff, now] }; 
         title += localize('staff-management-system', 'filter-expired'); 
     }
     else { 
-        whereClause.status = { [Op.ne]: 'PENDING' }; 
+        whereClause.status = { [Op.in]: ['APPROVED', 'ENDED'] }; 
+        whereClause.endDate = { [Op.between]: [cutoff, now] }; 
         title += localize('staff-management-system', 'filter-history'); 
     }
 
-    const { count, rows } = await client.models['staff-management-system']['LoaRequest'].findAndCountAll({ 
-        where: whereClause, 
-        order: [['endDate', 'DESC']] 
+    const rows = await LoaRequest.findAll({
+        where: whereClause,
+        order: [['endDate', 'DESC']],
+        limit: 25
     });
-    if (count === 0) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-no-recs') 
-    });
+    if (rows.length === 0) {
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-no-recs')
+        });
+    }
 
     const embed = new EmbedBuilder()
         .setTitle(title)
         .setColor('Blue')
-        .setDescription(rows.map(r => `**<@${r.userId}>** ${r.status === 'APPROVED' ? '✅' : (r.status === 'DENIED' ? '❌' : '⏹️')}\nEnds: ${formatDate(r.endDate)}\nReason: ${r.reason}`).join('\n\n'));
+        .setDescription(
+            rows.map(r =>
+                `**<@${r.userId}>** ${r.status === 'APPROVED' ? '✅' : '⏹️'}\n` +
+                `${localize('staff-management-system', 'label-end')}: ${formatDate(r.endDate)}\n` +
+                `${localize('staff-management-system', 'general-rsn')}: ${r.reason || localize('staff-management-system', 'info-none')}`
+            ).join('\n\n')
+        );
 
     applyFooter(client, embed);
     await interaction.editReply({ embeds: [embed.toJSON()] });
@@ -514,7 +530,8 @@ async function handleStatusEndSubmit(client, interaction, type) {
     await logStatusChange(client, type, 'end', { 
         userId: request.userId, 
         startDate: request.startDate, 
-        reason: request.reason 
+        reason: reason,
+        reqReason: request.reason
     });
 
     const updatedEmbed = EmbedBuilder.from(interaction.message.embeds[0])

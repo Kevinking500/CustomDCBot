@@ -126,6 +126,7 @@ module.exports.run = async (client, interaction) => {
         // ----- User panel dropdown -----
         if (interaction.customId.startsWith('staff-mgmt_panel-menu_')) {
             const targetId = interaction.customId.split('_')[2];
+            await interaction.deferUpdate();
             const targetUser = await client.users.fetch(targetId).catch(() => null);
             if (!targetUser) return interaction.reply({ 
                 content: localize('staff-management-system', 'err-gen-no-user'), 
@@ -143,7 +144,7 @@ module.exports.run = async (client, interaction) => {
             else if (selection === 'shifts') payload = await generatePanelShifts(client, targetUser);
             else if (selection === 'deletion') payload = await generatePanelDeletion(client, targetUser);
 
-            return interaction.update(payload);
+            return interaction.editReply(payload);
         }
 
         // ----- User panel deletion dropdown -----
@@ -376,6 +377,7 @@ module.exports.run = async (client, interaction) => {
             }
 
             if (action === 'approve') {
+                await interaction.deferUpdate();
                 await request.update({ 
                     status: 'APPROVED', 
                     approverId: interaction.user.id 
@@ -415,7 +417,7 @@ module.exports.run = async (client, interaction) => {
                         user: interaction.user.tag 
                     }) 
                 });
-                return interaction.update({ 
+                return interaction.editReply({ 
                     embeds: [embed.toJSON()], 
                     components: [] 
                 });
@@ -438,6 +440,12 @@ module.exports.run = async (client, interaction) => {
             if (!request) {
                 return interaction.reply({
                     content: localize('staff-management-system', 'err-no-req'),
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+            if (request.status !== 'PENDING') {
+                return interaction.reply({
+                    content: localize('staff-management-system', 'err-req-hndl', { status: request.status }),
                     flags: MessageFlags.Ephemeral
                 });
             }

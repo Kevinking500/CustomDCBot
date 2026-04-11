@@ -642,7 +642,7 @@ async function handleDutyStartButton(client, interaction) {
     const userId = parts[2];
     const shiftType = parts[3] || 'Staff'; 
 
-    if (interaction.user.id !== userId) return interaction.followUp({ 
+    if (interaction.user.id !== userId) return interaction.editReply({ 
         content: localize('staff-management-system', 'err-not-yours'), 
         flags: MessageFlags.Ephemeral 
     });
@@ -688,7 +688,7 @@ async function handleDutyStartButton(client, interaction) {
 
 async function handleDutyBreakButton(client, interaction) {
     const userId = interaction.customId.split('_')[2];
-    if (interaction.user.id !== userId) return interaction.followUp({ 
+    if (interaction.user.id !== userId) return interaction.editReply({ 
         content: localize('staff-management-system', 'err-not-yours'), 
         flags: MessageFlags.Ephemeral 
     });
@@ -765,7 +765,7 @@ async function handleDutyBreakButton(client, interaction) {
 
 async function handleDutyEndButton(client, interaction) {
     const userId = interaction.customId.split('_')[2];
-    if (interaction.user.id !== userId) return interaction.followUp({ 
+    if (interaction.user.id !== userId) return interaction.editReply({ 
         content: localize('staff-management-system', 'err-not-yours'), 
         flags: MessageFlags.Ephemeral 
     });
