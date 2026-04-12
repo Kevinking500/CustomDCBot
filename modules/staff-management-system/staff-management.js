@@ -398,7 +398,7 @@ async function voidInfraction(client, interaction, reference) {
         flags: MessageFlags.Ephemeral 
     });
 
-    const canManage = checkStaffPermissions(member, config, 'supervisor')
+    const canManage = checkStaffPermissions(interaction.member, getConfig(client, 'configuration'), 'supervisor');
     if (!canManage) return interaction.reply({ 
         content: localize('staff-management-system', 'err-gen-no-perm'), 
         flags: MessageFlags.Ephemeral 
@@ -1462,7 +1462,9 @@ async function endActivityCheckProcess(client, activeCheck) {
     });
 
     const respondedUserIds = new Set(responses.map(response => response.userId));
-    
+    const StaffProfile = client.models['staff-management-system']['StaffProfile'];
+    const expectedMembers = guild.members.cache.filter(m => !m.user.bot && m.roles.cache.some(r => targetRoles.includes(r.id)));
+    const [responded, exceptions, failed] = [[], [], []];
     const expectedIds = [...expectedMembers.keys()];
     const profiles = await StaffProfile.findAll({
         where: {
