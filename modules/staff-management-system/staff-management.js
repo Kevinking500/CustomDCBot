@@ -492,11 +492,11 @@ async function generateInfractionHistoryResponse(client, targetUser, page = 1) {
 
 // ----- Gets infraction history -----
 async function getInfractionHistory(client, interaction, targetUser) {
+    await interaction.deferReply({ ephemeral: true });
     const response = await generateInfractionHistoryResponse(client, targetUser, 1);
     if (response.content && response.content.startsWith('ℹ️')) return interaction.reply(response);
-    await interaction.reply({ 
-        ...response, 
-        flags: MessageFlags.Ephemeral 
+    await interaction.editReply({ 
+        ...response
     });
 }
 
@@ -677,9 +677,13 @@ async function generatePromotionHistoryResponse(client, targetUser, page = 1) {
 }
 
 async function getPromotionHistory(client, interaction, targetUser) {
+    await interaction.deferReply({ ephemeral: true });
     const response = await generatePromotionHistoryResponse(client, targetUser, 1);
-    if (response.content && response.content.startsWith('ℹ️')) return interaction.reply(response);
-    await interaction.reply({ ...response, flags: MessageFlags.Ephemeral });
+    if (response.content && response.content.startsWith('ℹ️')) return interaction.editReply(response);
+
+    await interaction.editReply({ 
+        ...response 
+    });
 }
 
 // ---------- User Panel ----------
@@ -1693,11 +1697,12 @@ async function generateReviewHistoryResponse(client, targetUser, page = 1) {
 }
 
 async function getReviewHistory(client, interaction, targetUser) {
+    await interaction.deferReply({ ephemeral: true });
     const response = await generateReviewHistoryResponse(client, targetUser, 1);
     if (response.content && response.content.startsWith('❌')) return interaction.reply(response);
+    
     await interaction.reply({ 
-        ...response, 
-        flags: MessageFlags.Ephemeral 
+        ...response
     });
 }
 
