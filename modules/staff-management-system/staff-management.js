@@ -105,32 +105,29 @@ function formatDuration(seconds) {
 
 // ---------- Infractions ----------
 async function issueInfraction(client, interaction, targetMember, type, reason, expiryInput) {
+    await interaction.deferReply({ ephemeral: true });
     const config = getConfig(client, 'infractions');
-    if (!config?.enableInfractions) return interaction.reply({ 
-        content: localize('staff-management-system', 'err-feat-disabled', { feature: 'Infractions' }), 
-        flags: MessageFlags.Ephemeral 
+    if (!config?.enableInfractions) return interaction.editReply({ 
+        content: localize('staff-management-system', 'err-feat-disabled', { feature: 'Infractions' })
     });
 
     if (targetMember.id === interaction.user.id) {
-        return interaction.reply({
-            content: localize('staff-management-system', 'err-self-infract'),
-            flags: MessageFlags.Ephemeral
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-self-infract')
         });
     }
 
     if (type.toLowerCase() === 'suspension') {
-        return interaction.reply({ 
-            content: localize('staff-management-system', 'err-use-susp'), 
-            flags: MessageFlags.Ephemeral 
+        return interaction.editReply({ 
+            content: localize('staff-management-system', 'err-use-susp')
         });
     }
 
     let expiresAt = null;
     if (expiryInput) {
         const days = parseDurationToDays(expiryInput);
-        if (!days) return interaction.reply({ 
-            content: localize('staff-management-system', 'err-inv-dur'), 
-            flags: MessageFlags.Ephemeral 
+        if (!days) return interaction.editReply({ 
+            content: localize('staff-management-system', 'err-inv-dur') 
         });
         expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     }
@@ -210,45 +207,43 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         }
     }
 
-    await interaction.reply({ 
+    await interaction.editReply({ 
         content: localize('staff-management-system', 'succ-infract', { 
-            type, caseId: record.caseId, user: targetMember.user.tag 
-        }), 
-        flags: MessageFlags.Ephemeral 
+            type, 
+            caseId: record.caseId, 
+            user: targetMember.user.tag 
+        })
     });
 }
 
 // ---------- Suspensions ----------
 async function issueSuspension(client, interaction, targetMember, durationInput, reason) {
+    await interaction.deferReply({ ephemeral: true });
     const config = getConfig(client, 'infractions');
     if (!config?.enableInfractions) 
-        return interaction.reply({ 
+        return interaction.editReply({ 
         content: localize('staff-management-system', 'err-feat-disabled', { 
         feature: 'Infractions' 
-        }), 
-        flags: MessageFlags.Ephemeral 
+        }) 
     });
 
     if (!config?.enableSuspensions) 
-        return interaction.reply({ 
+        return interaction.editReply({ 
         content: localize('staff-management-system', 'err-feat-disabled', { 
             feature: 'Suspensions' 
-        }), 
-        flags: MessageFlags.Ephemeral 
+        }) 
     });
 
     if (targetMember.id === interaction.user.id) {
-        return interaction.reply({
-            content: localize('staff-management-system', 'err-self-infract'),
-            flags: MessageFlags.Ephemeral
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-self-infract')
         });
     }
 
     const durationDays = parseDurationToDays(durationInput);
     if (!durationDays) 
-        return interaction.reply({ 
-        content: localize('staff-management-system', 'err-inv-dur'), 
-        flags: MessageFlags.Ephemeral 
+        return interaction.editReply({ 
+        content: localize('staff-management-system', 'err-inv-dur') 
     });
     
     const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
@@ -351,13 +346,12 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
         }
     }
 
-    await interaction.reply({ 
+    await interaction.editReply({ 
         content: localize('staff-management-system', 'succ-susp', { 
             caseId: record.caseId, 
             user: targetMember.user.tag, 
             duration: durationString 
-        }), 
-        flags: MessageFlags.Ephemeral 
+        })
     });
 }
 
@@ -390,31 +384,28 @@ async function resolveInfractionReference(client, reference) {
 
 // ----- Infractions voiding -----
 async function voidInfraction(client, interaction, reference) {
+    await interaction.deferReply({ ephemeral: true });
     const config = getConfig(client, 'infractions');
-    if (!config?.enableInfractions) return interaction.reply({ 
+    if (!config?.enableInfractions) return interaction.editReply({ 
         content: localize('staff-management-system', 'err-feat-disabled', { 
             feature: 'Infractions' 
-        }), 
-        flags: MessageFlags.Ephemeral 
+        })
     });
 
     const canManage = checkStaffPermissions(interaction.member, getConfig(client, 'configuration'), 'supervisor');
-    if (!canManage) return interaction.reply({ 
-        content: localize('staff-management-system', 'err-gen-no-perm'), 
-        flags: MessageFlags.Ephemeral 
+    if (!canManage) return interaction.editReply({ 
+        content: localize('staff-management-system', 'err-gen-no-perm') 
     });
 
     const record = await resolveInfractionReference(client, reference);
     if (!record) { 
-        return interaction.reply({ 
-            content: localize('staff-management-system', 'err-no-case-ref', { reference }), 
-            flags: MessageFlags.Ephemeral 
+        return interaction.editReply({ 
+            content: localize('staff-management-system', 'err-no-case-ref', { reference })
         }); 
     }
     if (!record.active) { 
-        return interaction.reply({ 
-            content: localize('staff-management-system', 'err-case-inact', { caseId: record.caseId }), 
-            flags: MessageFlags.Ephemeral 
+        return interaction.editReply({ 
+            content: localize('staff-management-system', 'err-case-inact', { caseId: record.caseId })
         }); 
     }
 
@@ -432,17 +423,15 @@ async function voidInfraction(client, interaction, reference) {
                 if (config.suspensionRole) await member.roles.remove(config.suspensionRole);
                 await profile.update({ isSuspended: false, suspendedRoles: '[]' });
             } catch (e) {
-                return interaction.reply({ 
-                    content: localize('staff-management-system', 'succ-void-fail', { caseId: record.caseId }), 
-                    flags: MessageFlags.Ephemeral 
+                return interaction.editReply({ 
+                    content: localize('staff-management-system', 'succ-void-fail', { caseId: record.caseId })
                 });
             }
         }
     }
     await record.update({ active: false });
-    await interaction.reply({ 
-        content: localize('staff-management-system', 'succ-void', { caseId: record.caseId }), 
-        flags: MessageFlags.Ephemeral 
+    await interaction.editReply({ 
+        content: localize('staff-management-system', 'succ-void', { caseId: record.caseId })
     });
 }
 
@@ -513,16 +502,15 @@ async function getInfractionHistory(client, interaction, targetUser) {
 
 // ---------- Promotions ----------
 async function promoteUser(client, interaction, targetMember, newRole, reason) {
+    await interaction.deferReply({ ephemeral: true });
     const config = getConfig(client, 'promotions');
-    if (!config?.enablePromotions) return interaction.reply({ 
-        content: localize('staff-management-system', 'err-feat-disabled', { feature: 'Promotions' }), 
-        flags: MessageFlags.Ephemeral 
+    if (!config?.enablePromotions) return interaction.editReply({ 
+        content: localize('staff-management-system', 'err-feat-disabled', { feature: 'Promotions' })
     });
 
     if (targetMember.id === interaction.user.id) {
-        return interaction.reply({
-            content: localize('staff-management-system', 'err-self-promo'),
-            flags: MessageFlags.Ephemeral
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-self-promo')
         });
     }
 
@@ -533,18 +521,16 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
 
     if (config.autoAddRole) {
         if (interaction.guild.members.me.roles.highest.position <= newRole.position) {
-            return interaction.reply({ 
-                content: localize('staff-management-system', 'err-role-hier'), 
-                flags: MessageFlags.Ephemeral 
+            return interaction.editReply({ 
+                content: localize('staff-management-system', 'err-role-hier')
             });
         }
         try { 
             await targetMember.roles.add(newRole); 
         } 
         catch (e) { 
-            return interaction.reply({ 
-            content: localize('staff-management-system', 'err-add-role', { e: e.message }), 
-            flags: MessageFlags.Ephemeral 
+            return interaction.editReply({ 
+            content: localize('staff-management-system', 'err-add-role', { e: e.message })
         }); }
     }
 
@@ -635,12 +621,11 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
         }
     }
     
-    await interaction.reply({ 
+    await interaction.editReply({ 
         content: localize('staff-management-system', 'succ-promo', { 
             user: targetMember.user.tag, 
             role: newRole.name 
-        }), 
-        flags: MessageFlags.Ephemeral 
+        })
     });
 }
 
@@ -1587,22 +1572,20 @@ function initActivityCheckAutomation(client) {
 
 // ---------- Reviews ----------
 async function submitReview(client, interaction, targetUser, stars, comment) {
+    await interaction.deferReply({ ephemeral: true });
     const config = getConfig(client, 'reviews');
-    if (!config?.enableReviews) return interaction.reply({ 
+    if (!config?.enableReviews) return interaction.editReply({ 
         content: localize('staff-management-system', 'err-feat-disabled', { 
             feature: 'Reviews' 
-        }), 
-        flags: MessageFlags.Ephemeral 
+        })
     });
 
     const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
-    if (!targetMember) return interaction.reply({ 
-        content: localize('staff-management-system', 'err-not-mem'), 
-        flags: MessageFlags.Ephemeral 
+    if (!targetMember) return interaction.editReply({ 
+        content: localize('staff-management-system', 'err-not-mem') 
     });
-    if (!config.allowSelfRating && targetUser.id === interaction.user.id) return interaction.reply({ 
-        content: localize('staff-management-system', 'err-self-rate'), 
-        flags: MessageFlags.Ephemeral 
+    if (!config.allowSelfRating && targetUser.id === interaction.user.id) return interaction.editReply({ 
+        content: localize('staff-management-system', 'err-self-rate')
     });
 
     if (config.onlyAllowStaffReview !== false) {
@@ -1616,9 +1599,8 @@ async function submitReview(client, interaction, targetUser, stars, comment) {
         );
 
         if (!hasStaffRole) {
-            return interaction.reply({
-                content: localize('staff-management-system', 'err-staff-rate'),
-                flags: MessageFlags.Ephemeral
+            return interaction.editReply({
+                content: localize('staff-management-system', 'err-staff-rate')
             });
         }
     }
@@ -1648,12 +1630,11 @@ async function submitReview(client, interaction, targetUser, stars, comment) {
             if (sentMessage) await review.update({ messageUrl: sentMessage.url });
         }
     }
-    await interaction.reply({ 
+    await interaction.editReply({ 
         content: localize('staff-management-system', 'succ-review', { 
             tag: targetUser.tag, 
             stars 
-        }), 
-        flags: MessageFlags.Ephemeral 
+        })
     });
 }
 
