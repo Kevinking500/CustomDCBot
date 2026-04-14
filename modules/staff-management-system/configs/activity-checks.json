@@ -97,7 +97,7 @@
       "allowEmbed": true,
       "params": [
         { 
-          "name": "endtime", 
+          "name": "end-time", 
           "description": { 
             "en": "The Discord timestamp when the check ends." 
           }

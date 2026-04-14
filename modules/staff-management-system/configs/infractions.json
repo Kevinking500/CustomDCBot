@@ -160,7 +160,7 @@
         { 
           "name": "duration", 
           "description": { 
-            "en": "Duration of suspension" 
+            "en": "Duration of the suspension" 
           } 
         },
         { 
@@ -270,7 +270,7 @@
           } 
         },
         { 
-          "name": "endDate", 
+          "name": "end-date", 
           "description": { 
             "en": "Timestamp of when this infraction expires" 
           } 
@@ -282,7 +282,7 @@
           } 
         },
         { 
-          "name": "caseId", 
+          "name": "case-id", 
           "description": { 
             "en": "Database Case ID" 
           } 
@@ -416,6 +416,12 @@
           "name": "type", 
           "description": { 
             "en": "Type of infraction (e.g., Warning, Strike)" 
+          } 
+        },
+        { 
+          "name": "duration", 
+          "description": { 
+            "en": "Duration of the suspension" 
           } 
         },
         { 

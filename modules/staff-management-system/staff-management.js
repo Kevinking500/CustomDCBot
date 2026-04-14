@@ -1386,7 +1386,7 @@ async function startActivityCheck(client, interactionOrChannel, isAutomated = fa
     ? JSON.parse(config.checkMessage) 
     : config.checkMessage;
     let msgOpts = await embedTypeV2(embedTemplate, { 
-        '%endtime%': `<t:${Math.floor(endTime.getTime() / 1000)}:F>`, 
+        '%end-time%': `<t:${Math.floor(endTime.getTime() / 1000)}:F>`, 
         '%duration%': durationHours.toString() 
     });
     
