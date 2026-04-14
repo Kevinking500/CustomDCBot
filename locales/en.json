@@ -1161,7 +1161,7 @@
         "succ-infract": "✅ Issued **%type** (Case #%caseId) to %user.",
         "label-days": "days",
         "succ-susp": "✅ Issued Suspension (Case #%caseId) to %user for %duration.",
-        "err-no-case": "❌ Case #%caseId does not exist.",
+        "err-no-case-ref": "❌ No case found for %reference.",
         "err-case-inact": "⚠️ Case #%caseId is inactive.",
         "succ-void-fail": "✅ Case #%caseId voided, role restore failed.",
         "succ-void": "✅ Voided Case #%caseId.",
@@ -1412,6 +1412,7 @@
         "label-ended-by": "Ended by",
         "log-duty-log-fail": "[Staff Management] Failed to log duty change (%action): %error",
         "err-self-infract": "That's not in the code... well, it's more of a guideline anyway. Still no.\n-# You cannot infract yourself",
-        "err-self-promo": "You can't promote yourself through a black hole of audacity and expect it to work."
+        "err-self-promo": "You can't promote yourself through a black hole of audacity and expect it to work.",
+        "general-req-reason": "Reason for request"
     }
 }

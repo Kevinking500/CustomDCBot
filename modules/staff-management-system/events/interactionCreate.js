@@ -182,12 +182,12 @@ module.exports.run = async (client, interaction) => {
 
         // ----- Data deletion modal submission -----
         if (interaction.isModalSubmit() && interaction.customId.startsWith('staff-mgmt_del-confirm_')) {
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
             const configuration = getConfig(client, 'configuration');
 
             if (!checkStaffPermissions(interaction.member, configuration, 'management')) {
-                return interaction.reply({
-                    content: localize('staff-management-system', 'del-no-perm'),
-                    flags: MessageFlags.Ephemeral
+                return interaction.editReply({
+                    content: localize('staff-management-system', 'del-no-perm')
                 });
             }
             
@@ -198,9 +198,8 @@ module.exports.run = async (client, interaction) => {
             const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
             
             if (interaction.fields.getTextInputValue('confirm').trim() !== confirmPhrase) {
-                return interaction.reply({ 
-                    content: localize('staff-management-system', 'err-conf-fail'), 
-                    flags: MessageFlags.Ephemeral 
+                return interaction.editReply({ 
+                    content: localize('staff-management-system', 'err-conf-fail') 
                 });
             }
 
@@ -223,10 +222,9 @@ module.exports.run = async (client, interaction) => {
                     .setStyle(ButtonStyle.Secondary)
                 );
 
-                await interaction.reply({ 
+                await interaction.editReply({ 
                     embeds: [embed.toJSON()], 
-                    components: [row.toJSON()], 
-                    flags: MessageFlags.Ephemeral 
+                    components: [row.toJSON()]
                 });
 
                 const reply = await interaction.fetchReply();
@@ -530,7 +528,7 @@ module.exports.run = async (client, interaction) => {
             const targetRoles = JSON.parse(activeCheck.targetRoles || '[]');
             const hasRole = targetRoles.length === 0 || interaction.member.roles.cache.some(r => targetRoles.includes(r.id));
             if (!hasRole) return interaction.reply({ 
-                content: localize('staff-management-system', 'err-not-req'), 
+                content: localize('staff-management-system', 'err-ac-not-req'), 
                 flags: MessageFlags.Ephemeral 
             });
 

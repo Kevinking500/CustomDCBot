@@ -634,7 +634,8 @@ function scheduleStatusExpiry(client, request) {
             await logStatusChange(client, req.type, 'end', {
                 userId: req.userId,
                 startDate: req.startDate,
-                reason: req.reason
+                reason: reason,
+                reqReason: req.reason
             });
         } catch (e) {
             client.logger.error(localize('staff-management-system', 'log-status-expiry-fail', {
@@ -655,7 +656,7 @@ async function handleStatusExtendSubmit(client, interaction, type) {
 
     const meta = getStatusMeta(type);
     const request = await client.models['staff-management-system']['LoaRequest'].findByPk(interaction.customId.split('_')[2]);
-    if (!request || request.status === 'ENDED' || request.status === 'DENIED') return interaction.reply({ 
+    if (!request || request.status === 'EN                    flags: MessageFlags.Ephemeral DED' || request.status === 'DENIED') return interaction.reply({ 
         content: localize('staff-management-system', 'err-stat-inact', { 
             label: meta.label 
         }), 

@@ -1534,6 +1534,16 @@ async function endActivityCheckProcess(client, activeCheck) {
 });
 }
 
+function getIsoWeekNumber(date = new Date()) {
+    const tmp = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const day = tmp.getUTCDay() || 7;
+
+    tmp.setUTCDate(tmp.getUTCDate() + 4 - day);
+
+    const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+    return Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+}
+
 function initActivityCheckAutomation(client) {
     const config = getConfig(client, 'activity-checks');
     if (!config?.enableActivityChecks || !config?.automatedChecks) return;
@@ -1559,10 +1569,14 @@ function initActivityCheckAutomation(client) {
     }
     if (!cronString) return;
 
-    let toggleWeek = false; 
-    schedule.scheduleJob('automated-activity-check', cronString, async () => {
-        if (config.automatedCheckInterval === 'Biweekly' && (toggleWeek = !toggleWeek, !toggleWeek)) return;
-        
+    const jobName = 'automated-activity-check';
+    const existingJob = schedule.scheduledJobs[jobName];
+    if (existingJob) existingJob.cancel();
+    schedule.scheduleJob(jobName, cronString, async () => {
+        if (config.automatedCheckInterval === 'Biweekly' && getIsoWeekNumber(new Date()) % 2 !== 0) {
+            return;
+        }
+
         const channel = client.guilds.cache.get(client.guildID)?.channels.cache.get(getSafeChannelId(config.sendingChannel));
         if (channel) {
             client.logger.info(`[Activity Checks] Starting automated check.`);
