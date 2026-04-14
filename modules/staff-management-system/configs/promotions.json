@@ -122,13 +122,15 @@
           "name": "user-avatar",
           "description": {
             "en": "The avatar URL of the promoted user."
-          }
+          },
+          "isImage": true
         },
         {
           "name": "promoter-avatar",
           "description": {
             "en": "The avatar URL of the promoter."
-          }
+          },
+          "isImage": true
         }
       ],
       "default": {
@@ -217,13 +219,15 @@
           "name": "user-avatar",
           "description": {
             "en": "The avatar URL of the promoted user."
-          }
+          },
+          "isImage": true
         },
         {
           "name": "promoter-avatar",
           "description": {
             "en": "The avatar URL of the promoter."
-          }
+          },
+          "isImage": true
         }
       ],
       "default": {
