@@ -634,7 +634,7 @@ function scheduleStatusExpiry(client, request) {
             await logStatusChange(client, req.type, 'end', {
                 userId: req.userId,
                 startDate: req.startDate,
-                reason: reason,
+                reason: localize('staff-management-system', 'status-expired-auto'),
                 reqReason: req.reason
             });
         } catch (e) {
@@ -656,12 +656,14 @@ async function handleStatusExtendSubmit(client, interaction, type) {
 
     const meta = getStatusMeta(type);
     const request = await client.models['staff-management-system']['LoaRequest'].findByPk(interaction.customId.split('_')[2]);
-    if (!request || request.status === 'EN                    flags: MessageFlags.Ephemeral DED' || request.status === 'DENIED') return interaction.reply({ 
-        content: localize('staff-management-system', 'err-stat-inact', { 
-            label: meta.label 
-        }), 
-        flags: MessageFlags.Ephemeral 
-    });
+    if (!request || request.status === 'ENDED' || request.status === 'DENIED') {
+        return interaction.reply({
+            content: localize('staff-management-system', 'err-stat-inact', {
+                label: meta.label
+            }),
+            flags: MessageFlags.Ephemeral
+        });
+    }
 
     const days = parseInt(interaction.fields.getTextInputValue('extend_days'), 10);
     const reason = interaction.fields.getTextInputValue('extend_reason');

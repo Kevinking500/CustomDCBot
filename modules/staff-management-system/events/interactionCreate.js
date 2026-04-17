@@ -68,13 +68,13 @@ module.exports.run = async (client, interaction) => {
         
         // ----- Review history pagination -----
         if (action === 'rev-page') {
+            await interaction.deferUpdate();
             const targetUser = await client.users.fetch(parts[2]).catch(() => null);
-            if (!targetUser) return interaction.reply({ 
+            if (!targetUser) return interaction.followUp({ 
                 content: localize('staff-management-system', 'err-gen-no-user'), 
                 flags: MessageFlags.Ephemeral 
             });
 
-            await interaction.deferUpdate();
             const payload = await generateReviewHistoryResponse(client, targetUser, parseInt(parts[3], 10));
             if (payload.content) return interaction.followUp({ ...payload, flags: MessageFlags.Ephemeral });
             return interaction.editReply(payload);
@@ -97,13 +97,13 @@ module.exports.run = async (client, interaction) => {
 
         // ----- Promotion history pagination -----
         if (action === 'prom-hist') {
+            await interaction.deferUpdate();
             const targetUser = await client.users.fetch(parts[2]).catch(() => null);
-            if (!targetUser) return interaction.reply({ 
+            if (!targetUser) return interaction.followUp({ 
                 content: localize('staff-management-system', 'err-gen-no-user'), 
                 flags: MessageFlags.Ephemeral 
             });
 
-            await interaction.deferUpdate();
             const payload = await generatePromotionHistoryResponse(client, targetUser, parseInt(parts[3], 10));
             if (payload.content) return interaction.followUp({ ...payload, flags: MessageFlags.Ephemeral });
             return interaction.editReply(payload);
@@ -111,13 +111,13 @@ module.exports.run = async (client, interaction) => {
 
         // ----- Infraction history pagination -----
         if (action === 'inf-hist') {
+            await interaction.deferUpdate();
             const targetUser = await client.users.fetch(parts[2]).catch(() => null);
-            if (!targetUser) return interaction.reply({ 
+            if (!targetUser) return interaction.followUp({ 
                 content: localize('staff-management-system', 'err-gen-no-user'), 
                 flags: MessageFlags.Ephemeral 
             });
 
-            await interaction.deferUpdate();
             const payload = await generateInfractionHistoryResponse(client, targetUser, parseInt(parts[3], 10));
             if (payload.content) return interaction.followUp({ ...payload, flags: MessageFlags.Ephemeral });
             return interaction.editReply(payload);
@@ -128,7 +128,7 @@ module.exports.run = async (client, interaction) => {
             const targetId = interaction.customId.split('_')[2];
             await interaction.deferUpdate();
             const targetUser = await client.users.fetch(targetId).catch(() => null);
-            if (!targetUser) return interaction.reply({ 
+            if (!targetUser) return interaction.followUp({ 
                 content: localize('staff-management-system', 'err-gen-no-user'), 
                 flags: MessageFlags.Ephemeral 
             });

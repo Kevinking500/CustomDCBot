@@ -1413,6 +1413,7 @@
         "log-duty-log-fail": "[Staff Management] Failed to log duty change (%action): %error",
         "err-self-infract": "That's not in the code... well, it's more of a guideline anyway. Still no.\n-# You cannot infract yourself",
         "err-self-promo": "You can't promote yourself through a black hole of audacity and expect it to work.",
-        "general-req-reason": "Reason for request"
+        "general-req-reason": "Reason for request",
+        "status-expired-auto": "Ended automatically because the status expired."
     }
 }

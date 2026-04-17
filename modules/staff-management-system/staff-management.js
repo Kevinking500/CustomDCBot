@@ -494,7 +494,7 @@ async function generateInfractionHistoryResponse(client, targetUser, page = 1) {
 async function getInfractionHistory(client, interaction, targetUser) {
     await interaction.deferReply({ ephemeral: true });
     const response = await generateInfractionHistoryResponse(client, targetUser, 1);
-    if (response.content && response.content.startsWith('ℹ️')) return interaction.reply(response);
+    if (response.content && response.content.startsWith('ℹ️')) return interaction.editReply(response);
     await interaction.editReply({ 
         ...response
     });
@@ -1699,9 +1699,9 @@ async function generateReviewHistoryResponse(client, targetUser, page = 1) {
 async function getReviewHistory(client, interaction, targetUser) {
     await interaction.deferReply({ ephemeral: true });
     const response = await generateReviewHistoryResponse(client, targetUser, 1);
-    if (response.content && response.content.startsWith('❌')) return interaction.reply(response);
+    if (response.content && response.content.startsWith('❌')) return interaction.editReply(response);
     
-    await interaction.reply({ 
+    await interaction.editReply({ 
         ...response
     });
 }
