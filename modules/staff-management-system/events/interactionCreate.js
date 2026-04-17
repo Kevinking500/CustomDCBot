@@ -298,7 +298,7 @@ module.exports.run = async (client, interaction) => {
                 await interaction.message.edit(payload).catch(()=>{});
             }
             
-            return interaction.reply({ 
+            return interaction.editReply({ 
                 content: localize('staff-management-system', 'succ-del-tgt'), 
                 flags: MessageFlags.Ephemeral 
             });
