@@ -135,29 +135,6 @@ instance). The open-source version does not contact SCNX or share any data.
 * **Custom modules** - add your own modules with commands, events, and database models
 * **Auto-generated configs** - every config field has a description and default value
 
-### Modules
-
-The bot ships with 30+ modules including:
-
-| Module                | Description                                                                                                                                     |
-|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Moderation**        | Auto-mod (bad words, invite blocking with smart resolution, scam links), lockdown with configurable notification channels, warnings, quarantine |
-| **Levels**            | XP system with role rewards, leaderboard, multipliers per role/channel, custom formulas                                                         |
-| **Birthdays**         | Birthday tracking with admin management (`/manage-birthday`), lock/unlock, auto-announcements                                                   |
-| **Tickets**           | Multi-category ticket system with transcripts                                                                                                   |
-| **Giveaways**         | Giveaway creation and management                                                                                                                |
-| **Activity Streaks**  | Daily/weekly/monthly streak tracking with nickname display, milestone roles, leaderboard, hide option, staff-managed or automatic mode          |
-| **Guess the Number**  | Number guessing game with leaderboard and player statistics                                                                                     |
-| **Welcome/Leave**     | Customizable welcome and leave messages                                                                                                         |
-| **Logging**           | Audit log forwarding to Discord channels                                                                                                        |
-| **Auto-React**        | Automatic reactions per channel, role, or user                                                                                                  |
-| **Temp Channels**     | Temporary voice channels                                                                                                                        |
-| **RSS Notifications** | RSS feed monitoring with notifications                                                                                                          |
-| **Status Roles**      | Roles based on user presence/status                                                                                                             |
-| **Applications**      | Application/form system with approval workflow                                                                                                  |
-| **Economy**           | Virtual currency with shop system                                                                                                               |
-| **And more**          | Team list, team goals, polls, partner list, invite tracking, starboard, live messages, etc.                                                     |
-
 ## Configuration
 
 All configuration files live in your `config` folder. Each enabled module gets its own subfolder with config files.
@@ -171,13 +148,38 @@ For full details on writing config files, see [developer-docs/configuration.md](
 
 ## Developer Documentation
 
-Detailed guides for module developers:
+Full guides live in [developer-docs/](developer-docs/) (start with the [index](developer-docs/README.md)). The
+short version:
 
-| Document                                                     | Description                                                                                                                |
-|--------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| [Configuration](developer-docs/configuration.md)             | How to write `config.json` files - field types, categories, conditional fields, parameters, config elements                |
-| [Migrations](developer-docs/migration.md)                    | How to write safe database migrations - the `DatabaseSchemeVersion` pattern, shutdown protection, multi-version migrations |
-| [Config Localization](developer-docs/config-localization.md) | How config translations work - external localization files, what gets localized, extraction script                         |
+**Module authors - start here:**
+
+| Document                                               | Covers                                                                                                                |
+|--------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| [Writing a module](developer-docs/writing-a-module.md) | File layout, `module.json`, lifecycle, end-to-end example                                                             |
+| [Events](developer-docs/events.md)                     | Handler shape, `botReadyAt` / `allowPartial` / `ignoreBotReadyCheck` gates, custom `botReady` / `configReload` events |
+| [Slash commands](developer-docs/commands.md)           | `config` / `run` / `subcommands` / `autocomplete`, options, permissions, deferring                                    |
+| [Database models](developer-docs/database-models.md)   | Sequelize `Model.init` pattern, conventions, `sequelize.sync()` behavior, associations                                |
+| [Localization](developer-docs/localization.md)         | Adding strings to `locales/en.json`, using `localize()`, runtime fallback                                             |
+
+**Configuration schema:**
+
+| Document                                                      | Covers                                                                            |
+|---------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| [Configuration files](developer-docs/configuration.md)        | Schema reference: field types, defaults, `dependsOn`, `elementToggle`, validation |
+| [Country localization](developer-docs/config-localization.md) | How user-facing config strings are extracted and translated                       |
+
+**Operations:**
+
+| Document                                 | Covers                               |
+|------------------------------------------|--------------------------------------|
+| [Migration](developer-docs/migration.md) | Upgrading between major bot versions |
+
+**Message schemas** (canonical reference at docs.scnx.xyz):
+
+* [V2 schema](https://docs.scnx.xyz/docs/scnx-api/reference/message-schema-v2/) - legacy, parsed when `_schema` is
+  absent
+* [V3 schema](https://docs.scnx.xyz/docs/scnx-api/reference/message-schema-v3/) - tag with `"_schema": "v3"`
+* [V4 schema](https://docs.scnx.xyz/docs/scnx-api/reference/message-schema-v4/) - tag with `"_schema": "v4"`
 
 ## Creating modules
 
@@ -292,3 +294,7 @@ Translations live separately in `config-localizations/<lang>.json` and are extra
 
 Check `src/functions/helpers.js` for utilities: `embedType()`, `formatDiscordUserName()`, `parseEmbedColor()`,
 `formatDate()`, `truncate()`, and more.
+
+---
+
+Copyright © 2026 ScootKit UG (haftungsbeschränkt). [BUSL-1.1](LICENSE) applies.
