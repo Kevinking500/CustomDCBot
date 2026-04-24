@@ -1,7 +1,7 @@
 const schedule = require('node-schedule');
 const { localize } = require('../../../src/functions/localize');
 const { Op } = require('sequelize');
-const { scheduleStatusExpiry } = require('../commands/status.js');
+const {scheduleStatusExpiry} = require('../commands/staff-status.js');
 const { initActivityCheckAutomation } = require('../staff-management');
 const suspension_check_job = 'staff-management-checks';
 

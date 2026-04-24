@@ -25,7 +25,7 @@ const {
     handleStatusHistPage,
     sendStatusDm,
     logStatusChange
-} = require('../commands/status.js');
+} = require('../commands/staff-status.js');
 const { localize } = require('../../../src/functions/localize');
 const dutyHandlers = require('../commands/duty.js').buttonHandlers;
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder, MessageFlags, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
@@ -65,14 +65,14 @@ module.exports.run = async (client, interaction) => {
             if (dutyAction === 'admin-addtime-submit') return await dutyHandlers.handleDutyAdminAddTimeSubmit(client, interaction);
             return;
         }
-        
+
         // ----- Review history pagination -----
         if (action === 'rev-page') {
             await interaction.deferUpdate();
             const targetUser = await client.users.fetch(parts[2]).catch(() => null);
-            if (!targetUser) return interaction.followUp({ 
-                content: localize('staff-management-system', 'err-gen-no-user'), 
-                flags: MessageFlags.Ephemeral 
+            if (!targetUser) return interaction.followUp({
+                content: localize('staff-management-system', 'err-gen-no-user'),
+                flags: MessageFlags.Ephemeral
             });
 
             const payload = await generateReviewHistoryResponse(client, targetUser, parseInt(parts[3], 10));
@@ -93,15 +93,15 @@ module.exports.run = async (client, interaction) => {
             if (base === 'extend')        return handleStatusExtend(interaction, type);
             if (base === 'extend-submit') return handleStatusExtendSubmit(client, interaction, type);
             if (base === 'hist')          return handleStatusHistPage(client, interaction, type);
-        }   
+        }
 
         // ----- Promotion history pagination -----
         if (action === 'prom-hist') {
             await interaction.deferUpdate();
             const targetUser = await client.users.fetch(parts[2]).catch(() => null);
-            if (!targetUser) return interaction.followUp({ 
-                content: localize('staff-management-system', 'err-gen-no-user'), 
-                flags: MessageFlags.Ephemeral 
+            if (!targetUser) return interaction.followUp({
+                content: localize('staff-management-system', 'err-gen-no-user'),
+                flags: MessageFlags.Ephemeral
             });
 
             const payload = await generatePromotionHistoryResponse(client, targetUser, parseInt(parts[3], 10));
@@ -113,9 +113,9 @@ module.exports.run = async (client, interaction) => {
         if (action === 'inf-hist') {
             await interaction.deferUpdate();
             const targetUser = await client.users.fetch(parts[2]).catch(() => null);
-            if (!targetUser) return interaction.followUp({ 
-                content: localize('staff-management-system', 'err-gen-no-user'), 
-                flags: MessageFlags.Ephemeral 
+            if (!targetUser) return interaction.followUp({
+                content: localize('staff-management-system', 'err-gen-no-user'),
+                flags: MessageFlags.Ephemeral
             });
 
             const payload = await generateInfractionHistoryResponse(client, targetUser, parseInt(parts[3], 10));
@@ -128,9 +128,9 @@ module.exports.run = async (client, interaction) => {
             const targetId = interaction.customId.split('_')[2];
             await interaction.deferUpdate();
             const targetUser = await client.users.fetch(targetId).catch(() => null);
-            if (!targetUser) return interaction.followUp({ 
-                content: localize('staff-management-system', 'err-gen-no-user'), 
-                flags: MessageFlags.Ephemeral 
+            if (!targetUser) return interaction.followUp({
+                content: localize('staff-management-system', 'err-gen-no-user'),
+                flags: MessageFlags.Ephemeral
             });
 
             const selection = interaction.values[0];
@@ -154,9 +154,9 @@ module.exports.run = async (client, interaction) => {
 
             if (selection === 'back') {
                 const targetUser = await client.users.fetch(targetId).catch(() => null);
-                if (!targetUser) return interaction.reply({ 
-                    content: localize('staff-management-system', 'err-gen-no-user'), 
-                    flags: MessageFlags.Ephemeral 
+                if (!targetUser) return interaction.reply({
+                    content: localize('staff-management-system', 'err-gen-no-user'),
+                    flags: MessageFlags.Ephemeral
                 });
 
                 const payload = await generateUserPanel(client, targetUser);
@@ -182,7 +182,7 @@ module.exports.run = async (client, interaction) => {
 
         // ----- Data deletion modal submission -----
         if (interaction.isModalSubmit() && interaction.customId.startsWith('staff-mgmt_del-confirm_')) {
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            await interaction.deferReply({flags: MessageFlags.Ephemeral});
             const configuration = getConfig(client, 'configuration');
 
             if (!checkStaffPermissions(interaction.member, configuration, 'management')) {
@@ -190,16 +190,16 @@ module.exports.run = async (client, interaction) => {
                     content: localize('staff-management-system', 'del-no-perm')
                 });
             }
-            
+
             const parts = interaction.customId.split('_');
             const targetId = parts[2];
-            const selection = parts.slice(3).join('_'); 
-            
+            const selection = parts.slice(3).join('_');
+
             const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
-            
+
             if (interaction.fields.getTextInputValue('confirm').trim() !== confirmPhrase) {
-                return interaction.editReply({ 
-                    content: localize('staff-management-system', 'err-conf-fail') 
+                return interaction.editReply({
+                    content: localize('staff-management-system', 'err-conf-fail')
                 });
             }
 
@@ -222,8 +222,8 @@ module.exports.run = async (client, interaction) => {
                     .setStyle(ButtonStyle.Secondary)
                 );
 
-                await interaction.editReply({ 
-                    embeds: [embed.toJSON()], 
+                await interaction.editReply({
+                    embeds: [embed.toJSON()],
                     components: [row.toJSON()]
                 });
 
@@ -242,12 +242,12 @@ module.exports.run = async (client, interaction) => {
                             flags: MessageFlags.Ephemeral
                         });
                     }
-                    
+
                     if (btnInt.customId.includes('cancel')) {
-                        await btnInt.update({ 
-                            content: localize('staff-management-system', 'succ-del-canc'), 
-                            embeds: [], 
-                            components: [] 
+                        await btnInt.update({
+                            content: localize('staff-management-system', 'succ-del-canc'),
+                            embeds: [],
+                            components: []
                         });
                         return;
                     }
@@ -255,9 +255,9 @@ module.exports.run = async (client, interaction) => {
                     if (btnInt.customId.includes('confirm')) {
                         await executeDataDeletion(client, targetId, 'del_all');
 
-                        client.logger.info(localize('staff-management-system', 'log-del-all', { 
-                            target: targetId, 
-                            admin: btnInt.user.id 
+                        client.logger.info(localize('staff-management-system', 'log-del-all', {
+                            target: targetId,
+                            admin: btnInt.user.id
                         }));
 
                         const targetUser = await client.users.fetch(targetId).catch(() => null);
@@ -277,9 +277,9 @@ module.exports.run = async (client, interaction) => {
                 collector.on('end', async (_collected, reason) => {
                     if (reason === 'time') {
                         await interaction.editReply({
-                            content: localize('staff-management-system', 'err-del-time'), 
-                            embeds: [], 
-                            components: [] 
+                            content: localize('staff-management-system', 'err-del-time'),
+                            embeds: [],
+                            components: []
                         }).catch(()=>{});
                     }
                 });
@@ -287,20 +287,19 @@ module.exports.run = async (client, interaction) => {
             }
 
             await executeDataDeletion(client, targetId, selection);
-            client.logger.info(localize('staff-management-system', 'log-del-type', { 
-                type: selection, 
-                target: targetId, 
-                admin: interaction.user.id 
+            client.logger.info(localize('staff-management-system', 'log-del-type', {
+                type: selection,
+                target: targetId,
+                admin: interaction.user.id
             }));
             const targetUser = await client.users.fetch(targetId).catch(() => null);
             if (targetUser) {
                 const payload = await generateUserPanel(client, targetUser);
                 await interaction.message.edit(payload).catch(()=>{});
             }
-            
-            return interaction.editReply({ 
-                content: localize('staff-management-system', 'succ-del-tgt'), 
-                flags: MessageFlags.Ephemeral 
+
+            return interaction.editReply({
+                content: localize('staff-management-system', 'succ-del-tgt')
             });
         }
 
@@ -309,19 +308,19 @@ module.exports.run = async (client, interaction) => {
             const parts = interaction.customId.split('_');
             const targetId = parts[2];
             const page = parseInt(parts[3], 10);
-            
+
             const targetUser = await client.users.fetch(targetId).catch(() => null);
-            if (!targetUser) return interaction.reply({ 
-                content: localize('staff-management-system', 'err-gen-no-user'), 
-                flags: MessageFlags.Ephemeral 
+            if (!targetUser) return interaction.reply({
+                content: localize('staff-management-system', 'err-gen-no-user'),
+                flags: MessageFlags.Ephemeral
             });
-            
-            const typeMap = { 
-                'inf': 'infractions', 
-                'prom': 'promotions', 
-                'rev': 'reviews', 
-                'stat': 'status', 
-                'act': 'activity' 
+
+            const typeMap = {
+                'inf': 'infractions',
+                'prom': 'promotions',
+                'rev': 'reviews',
+                'stat': 'status',
+                'act': 'activity'
             };
             const fullType = typeMap[parts[1].split('-')[1]];
 
@@ -338,23 +337,23 @@ module.exports.run = async (client, interaction) => {
         const statusConfig = client.configurations['staff-management-system']['status'];
 
         if (action === 'approve' || action === 'deny') {
-            const isSupervisor = interaction.member.roles.cache.some(r => config.supervisorRoles.includes(r.id)) || 
+            const isSupervisor = interaction.member.roles.cache.some(r => config.supervisorRoles.includes(r.id)) ||
                                  interaction.member.roles.cache.some(r => config.managementRoles.includes(r.id)) ||
                                  interaction.member.permissions.has('Administrator');
 
-            if (!isSupervisor) return interaction.reply({ 
-                content: localize('staff-management-system', 'err-gen-no-perm'), 
-                flags: MessageFlags.Ephemeral 
+            if (!isSupervisor) return interaction.reply({
+                content: localize('staff-management-system', 'err-gen-no-perm'),
+                flags: MessageFlags.Ephemeral
             });
 
             const request = await LoARequest.findByPk(parts[2]);
-            if (!request) return interaction.reply({ 
-                content: localize('staff-management-system', 'err-no-req'), 
-                flags: MessageFlags.Ephemeral 
+            if (!request) return interaction.reply({
+                content: localize('staff-management-system', 'err-no-req'),
+                flags: MessageFlags.Ephemeral
             });
-            if (request.status !== 'PENDING') return interaction.reply({ 
-                content: localize('staff-management-system', 'err-req-hndl', { status: request.status }), 
-                flags: MessageFlags.Ephemeral 
+            if (request.status !== 'PENDING') return interaction.reply({
+                content: localize('staff-management-system', 'err-req-hndl', {status: request.status}),
+                flags: MessageFlags.Ephemeral
             });
 
             if (action === 'deny') {
@@ -376,48 +375,48 @@ module.exports.run = async (client, interaction) => {
 
             if (action === 'approve') {
                 await interaction.deferUpdate();
-                await request.update({ 
-                    status: 'APPROVED', 
-                    approverId: interaction.user.id 
+                await request.update({
+                    status: 'APPROVED',
+                    approverId: interaction.user.id
                 });
-                await StaffProfile.upsert({ 
-                    userId: request.userId, 
-                    activityStatus: request.type 
+                await StaffProfile.upsert({
+                    userId: request.userId,
+                    activityStatus: request.type
                 });
                 scheduleStatusExpiry(client, request);
 
                 const member = await interaction.guild.members.fetch(request.userId).catch(() => null);
                 if (member) {
-                    const roleId = request.type === 'LOA' 
-                    ? statusConfig.loaRole 
+                    const roleId = request.type === 'LOA'
+                        ? statusConfig.loaRole
                     : statusConfig.raRole;
                     if (roleId) await member.roles.add(roleId).catch(() => {});
-                    await sendStatusDm(member.user, request.type, 'approved', { 
-                        approver: interaction.user.tag, 
-                        endDate: request.endDate 
+                    await sendStatusDm(member.user, request.type, 'approved', {
+                        approver: interaction.user.tag,
+                        endDate: request.endDate
                     });
                 }
 
                 await logStatusChange(client, request.type, 'start', {
-                    userId: request.userId, 
-                    startDate: request.startDate, 
+                    userId: request.userId,
+                    startDate: request.startDate,
                     endDate: request.endDate,
-                    reason: request.reason, 
+                    reason: request.reason,
                     approverId: interaction.user.id
                 });
 
                 const embed = EmbedBuilder
                 .from(interaction.message.embeds[0])
                 .setColor('Green')
-                .addFields({ 
-                    name: localize('staff-management-system', 'general-stat'), 
-                    value: localize('staff-management-system', 'req-appr-by', { 
-                        user: interaction.user.tag 
-                    }) 
+                    .addFields({
+                        name: localize('staff-management-system', 'general-stat'),
+                        value: localize('staff-management-system', 'req-appr-by', {
+                            user: interaction.user.tag
+                        })
                 });
-                return interaction.editReply({ 
-                    embeds: [embed.toJSON()], 
-                    components: [] 
+                return interaction.editReply({
+                    embeds: [embed.toJSON()],
+                    components: []
                 });
             }
         }
@@ -443,7 +442,7 @@ module.exports.run = async (client, interaction) => {
             }
             if (request.status !== 'PENDING') {
                 return interaction.reply({
-                    content: localize('staff-management-system', 'err-req-hndl', { status: request.status }),
+                    content: localize('staff-management-system', 'err-req-hndl', {status: request.status}),
                     flags: MessageFlags.Ephemeral
                 });
             }
@@ -497,14 +496,14 @@ module.exports.run = async (client, interaction) => {
             const intro = interaction.fields.getTextInputValue('intro');
 
             const Profile = client.models['staff-management-system']['StaffProfile'];
-            await Profile.upsert({ 
-                userId: interaction.user.id, 
-                customNickname: nickname || null, 
-                customIntro: intro || null 
+            await Profile.upsert({
+                userId: interaction.user.id,
+                customNickname: nickname || null,
+                customIntro: intro || null
             });
-            return interaction.reply({ 
-                content: localize('staff-management-system', 'succ-prof-upd'), 
-                flags: MessageFlags.Ephemeral 
+            return interaction.reply({
+                content: localize('staff-management-system', 'succ-prof-upd'),
+                flags: MessageFlags.Ephemeral
             });
         }
 
@@ -513,23 +512,23 @@ module.exports.run = async (client, interaction) => {
             const ActivityCheck = client.models['staff-management-system']['ActivityCheck'];
             const ActivityCheckResponse = client.models['staff-management-system']['ActivityCheckResponse'];
 
-            const activeCheck = await ActivityCheck.findOne({ 
-                where: { 
-                    status: 'ACTIVE', 
-                    messageId: interaction.message.id 
-                } 
+            const activeCheck = await ActivityCheck.findOne({
+                where: {
+                    status: 'ACTIVE',
+                    messageId: interaction.message.id
+                }
             });
 
-            if (!activeCheck) return interaction.reply({ 
-                content: localize('staff-management-system', 'err-ac-alr-end'), 
-                flags: MessageFlags.Ephemeral 
+            if (!activeCheck) return interaction.reply({
+                content: localize('staff-management-system', 'err-ac-alr-end'),
+                flags: MessageFlags.Ephemeral
             });
 
             const targetRoles = JSON.parse(activeCheck.targetRoles || '[]');
             const hasRole = targetRoles.length === 0 || interaction.member.roles.cache.some(r => targetRoles.includes(r.id));
-            if (!hasRole) return interaction.reply({ 
-                content: localize('staff-management-system', 'err-ac-not-req'), 
-                flags: MessageFlags.Ephemeral 
+            if (!hasRole) return interaction.reply({
+                content: localize('staff-management-system', 'err-ac-not-req'),
+                flags: MessageFlags.Ephemeral
             });
 
             const existingResponse = await ActivityCheckResponse.findOne({
@@ -568,14 +567,16 @@ module.exports.run = async (client, interaction) => {
     } catch (e) {
         client.logger.error(localize('staff-management-system', 'log-int-error', { error: e.stack }));
         if (!interaction.replied && !interaction.deferred) {
-            try { await interaction.reply({ 
-                content: localize('staff-management-system', 'err-internal'), 
-                flags: MessageFlags.Ephemeral 
+            try {
+                await interaction.reply({
+                    content: localize('staff-management-system', 'err-internal'),
+                    flags: MessageFlags.Ephemeral
             }); } catch (err) {}
         } else {
-             try { await interaction.followUp({ 
-                content: localize('staff-management-system', 'err-internal'), 
-                flags: MessageFlags.Ephemeral 
+            try {
+                await interaction.followUp({
+                    content: localize('staff-management-system', 'err-internal'),
+                    flags: MessageFlags.Ephemeral
             }); } catch (err) {}
         }
     }

@@ -1,15 +1,15 @@
-const { processPing } = require('../ping-protection');
+const {processPing} = require('../ping-protection');
 
 // Handles auto mod actions
 module.exports.run = async function (client, execution) {
-    if (execution.ruleTriggerType !== 1) return; 
+    if (execution.ruleTriggerType !== 1) return;
 
     const config = client.configurations['ping-protection']['configuration'];
     if (config.ignoredUsers.includes(execution.userId)) return;
 
-    const matchedKeyword = execution.matchedKeyword || "";
+    const matchedKeyword = execution.matchedKeyword || '';
     const rawId = matchedKeyword.replace(/[^0-9]/g, '');
-    
+
     let isProtected = config.protectedRoles.includes(rawId) || config.protectedUsers.includes(rawId);
 
     let originChannel = execution.channel;
@@ -24,7 +24,8 @@ module.exports.run = async function (client, execution) {
             if (targetMember && targetMember.roles.cache.some(r => config.protectedRoles.includes(r.id))) {
                 isProtected = true;
             }
-        } catch (e) {}
+        } catch (e) {
+        }
     }
 
     if (!isProtected) return;

@@ -1,15 +1,15 @@
 const { MessageFlags, EmbedBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
 const { embedTypeV2 } = require('../../../src/functions/helpers');
 const { localize } = require('../../../src/functions/localize');
-const { 
+const {
     applyFooter,
-    issueInfraction, 
+    issueInfraction,
     getInfractionHistory,
     issueSuspension,
     voidInfraction,
     promoteUser,
     getPromotionHistory,
-    submitReview, 
+    submitReview,
     getReviewHistory,
     startActivityCheck,
     endActivityCheckProcess,
@@ -26,57 +26,57 @@ function canManageChecks(client, member) {
 
 async function handleProfileView(client, interaction, targetUser) {
     const config = client.configurations['staff-management-system']['profiles'];
-    if (!config || !config.enableProfiles) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-prof-dis') 
+    if (!config || !config.enableProfiles) return interaction.editReply({
+        content: localize('staff-management-system', 'err-prof-dis')
     });
 
     if (!config.profileEmbedMessage) {
-        return interaction.editReply({ 
-            content: localize('staff-management-system', 'err-prof-cfg') 
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-prof-cfg')
         });
     }
 
     const user = targetUser || interaction.user;
     const member = await interaction.guild.members.fetch(user.id).catch(() => null);
-    if (!member) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-no-mem') 
+    if (!member) return interaction.editReply({
+        content: localize('staff-management-system', 'err-no-mem')
     });
 
-    const restrictToStaff = config.onlyAllowStaffProfile !== false; 
+    const restrictToStaff = config.onlyAllowStaffProfile !== false;
     if (restrictToStaff) {
         const generalConfig = client.configurations['staff-management-system']['configuration'] || {};
-        
-        const staffRoles = Array.isArray(generalConfig.staffRoles) 
-        ? generalConfig.staffRoles 
-        : (generalConfig.staffRoles 
-            ? [generalConfig.staffRoles] 
+
+        const staffRoles = Array.isArray(generalConfig.staffRoles)
+            ? generalConfig.staffRoles
+            : (generalConfig.staffRoles
+                    ? [generalConfig.staffRoles]
             : []
         );
-        const supRoles = Array.isArray(generalConfig.supervisorRoles) 
-        ? generalConfig.supervisorRoles 
-        : (generalConfig.supervisorRoles 
-            ? [generalConfig.supervisorRoles] 
+        const supRoles = Array.isArray(generalConfig.supervisorRoles)
+            ? generalConfig.supervisorRoles
+            : (generalConfig.supervisorRoles
+                    ? [generalConfig.supervisorRoles]
             : []
         );
-        const mgmtRoles = Array.isArray(generalConfig.managementRoles) 
-        ? generalConfig.managementRoles 
-        : (generalConfig.managementRoles 
-            ? [generalConfig.managementRoles] 
+        const mgmtRoles = Array.isArray(generalConfig.managementRoles)
+            ? generalConfig.managementRoles
+            : (generalConfig.managementRoles
+                    ? [generalConfig.managementRoles]
             : []
         );
-        
+
         const allStaffRoles = [...staffRoles, ...supRoles, ...mgmtRoles];
         const isAdmin = member.permissions.has('Administrator');
         const isStaff = allStaffRoles.length > 0 && member.roles.cache.some(r => allStaffRoles.includes(r.id));
 
         if (!isAdmin && !isStaff) {
             if (user.id === interaction.user.id) {
-                return interaction.editReply({ 
-                    content: localize('staff-management-system', 'err-prof-no-own') 
+                return interaction.editReply({
+                    content: localize('staff-management-system', 'err-prof-no-own')
                 });
             } else {
-                return interaction.editReply({ 
-                    content: localize('staff-management-system', 'err-prof-no-tgt') 
+                return interaction.editReply({
+                    content: localize('staff-management-system', 'err-prof-no-tgt')
                 });
             }
         }
@@ -84,20 +84,20 @@ async function handleProfileView(client, interaction, targetUser) {
 
     const Profile = client.models['staff-management-system']['StaffProfile'];
     const Review = client.models['staff-management-system']['StaffReview'];
-    
-    const [profile] = await Profile.findOrCreate({ 
-        where: { userId: user.id } 
+
+    const [profile] = await Profile.findOrCreate({
+        where: {userId: user.id}
     });
 
     const reviewsConfig = client.configurations['staff-management-system']['reviews'];
     const reviewsEnabled = reviewsConfig && reviewsConfig.enableReviews;
-    
+
     let ratingDisplay = localize('staff-management-system', 'rev-dis-text');
     if (reviewsEnabled) {
         let avgRatingText = localize('staff-management-system', 'rev-no-rate');
-        const allReviews = await Review.findAll({ 
-            where: { targetId: user.id }, 
-            attributes: ['stars'] 
+        const allReviews = await Review.findAll({
+            where: {targetId: user.id},
+            attributes: ['stars']
         });
         if (allReviews.length > 0) {
             avgRatingText = (allReviews.reduce((a, b) => a + b.stars, 0) / allReviews.length).toFixed(1);
@@ -129,11 +129,11 @@ async function handleProfileView(client, interaction, targetUser) {
         '%nickname%': nicknameText,
         '%intro%': introText,
         '%status%': statusLines.join('\n'),
-        '%rating%': ratingDisplay, 
-        '%avatar%': user.displayAvatarURL({ 
-            dynamic: true, 
-            format: 'png', 
-            size: 1024 
+        '%rating%': ratingDisplay,
+        '%avatar%': user.displayAvatarURL({
+            dynamic: true,
+            format: 'png',
+            size: 1024
         }) || ''
     };
 
@@ -143,10 +143,10 @@ async function handleProfileView(client, interaction, targetUser) {
     }
 
     let msgOpts = await embedTypeV2(embedTemplate, placeholders);
-    
+
     if (!msgOpts) {
-        return interaction.editReply({ 
-            content: localize('staff-management-system', 'err-prof-empty') 
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-prof-empty')
         });
     }
 
@@ -155,51 +155,51 @@ async function handleProfileView(client, interaction, targetUser) {
 
 async function handleProfileEdit(client, interaction) {
     const config = client.configurations['staff-management-system']['profiles'];
-    if (!config || !config.enableProfiles) return interaction.reply({ 
-        content: localize('staff-management-system', 'err-prof-dis'), 
-        flags: MessageFlags.Ephemeral 
+    if (!config || !config.enableProfiles) return interaction.reply({
+        content: localize('staff-management-system', 'err-prof-dis'),
+        flags: MessageFlags.Ephemeral
     });
 
-    const restrictToStaff = config.onlyAllowStaffProfile !== false; 
+    const restrictToStaff = config.onlyAllowStaffProfile !== false;
     if (restrictToStaff) {
         const generalConfig = client.configurations['staff-management-system']['configuration'] || {};
-        
-        const staffRoles = Array.isArray(generalConfig.staffRoles) 
-        ? generalConfig.staffRoles 
-        : (generalConfig.staffRoles 
-            ? [generalConfig.staffRoles] 
+
+        const staffRoles = Array.isArray(generalConfig.staffRoles)
+            ? generalConfig.staffRoles
+            : (generalConfig.staffRoles
+                    ? [generalConfig.staffRoles]
             : []
         );
-        const supRoles = Array.isArray(generalConfig.supervisorRoles) 
-        ? generalConfig.supervisorRoles 
-        : (generalConfig.supervisorRoles 
-            ? [generalConfig.supervisorRoles] 
+        const supRoles = Array.isArray(generalConfig.supervisorRoles)
+            ? generalConfig.supervisorRoles
+            : (generalConfig.supervisorRoles
+                    ? [generalConfig.supervisorRoles]
             : []
         );
-        const mgmtRoles = Array.isArray(generalConfig.managementRoles) 
-        ? generalConfig.managementRoles 
-        : (generalConfig.managementRoles 
-            ? [generalConfig.managementRoles] 
+        const mgmtRoles = Array.isArray(generalConfig.managementRoles)
+            ? generalConfig.managementRoles
+            : (generalConfig.managementRoles
+                    ? [generalConfig.managementRoles]
             : []
         );
-        
+
         const allStaffRoles = [
-            ...staffRoles, 
-            ...supRoles, 
+            ...staffRoles,
+            ...supRoles,
             ...mgmtRoles
         ];
-        
+
         const isAdmin = interaction.member.permissions.has('Administrator');
         const hasStaffRole = allStaffRoles.length > 0 && interaction.member.roles.cache.some(r => allStaffRoles.includes(r.id));
-        
+
         if (!isAdmin && !hasStaffRole) {
-            return interaction.reply({ 
-                content: localize('staff-management-system', 'err-prof-perm'), 
-                flags: MessageFlags.Ephemeral 
+            return interaction.reply({
+                content: localize('staff-management-system', 'err-prof-perm'),
+                flags: MessageFlags.Ephemeral
             });
         }
     }
-    
+
     const Profile = client.models['staff-management-system']['StaffProfile'];
     const profile = await Profile.findByPk(interaction.user.id);
 
@@ -233,50 +233,50 @@ async function handleProfileEdit(client, interaction) {
 async function handleProfileAdminWipe(client, interaction, targetUser) {
     const profilesConfig = client.configurations['staff-management-system']['profiles'];
     const generalConfig = client.configurations['staff-management-system']['configuration'] || {};
-    
+
     if (!profilesConfig || !profilesConfig.enableProfiles) {
-        return interaction.editReply({ 
-            content: localize('staff-management-system', 'err-prof-dis') 
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-prof-dis')
         });
     }
 
-    const mRoles = Array.isArray(generalConfig.managementRoles) 
-    ? generalConfig.managementRoles 
-    : (generalConfig.managementRoles 
-        ? [generalConfig.managementRoles] 
+    const mRoles = Array.isArray(generalConfig.managementRoles)
+        ? generalConfig.managementRoles
+        : (generalConfig.managementRoles
+                ? [generalConfig.managementRoles]
         : []
     );
-    const sRoles = Array.isArray(generalConfig.supervisorRoles) 
-    ? generalConfig.supervisorRoles 
-    : (generalConfig.supervisorRoles 
-        ? [generalConfig.supervisorRoles] 
+    const sRoles = Array.isArray(generalConfig.supervisorRoles)
+        ? generalConfig.supervisorRoles
+        : (generalConfig.supervisorRoles
+                ? [generalConfig.supervisorRoles]
         : []
     );
 
-    const requiredRoles = profilesConfig.managePermission === 'Management' 
-    ? mRoles 
+    const requiredRoles = profilesConfig.managePermission === 'Management'
+        ? mRoles
     : [...sRoles, ...mRoles];
 
     const isAdmin = interaction.member.permissions.has('Administrator');
     const hasRequiredRole = requiredRoles.length > 0 && interaction.member.roles.cache.some(r => requiredRoles.includes(r.id));
 
     if (!isAdmin && !hasRequiredRole) {
-        return interaction.editReply({ 
-            content: localize('staff-management-system', 'err-no-perm') 
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-no-perm')
         });
     }
 
     const Profile = client.models['staff-management-system']['StaffProfile'];
-    await Profile.update({ 
-        customNickname: null, 
-        customIntro: null 
-    }, 
-    { 
-        where: { userId: targetUser.id } 
+    await Profile.update({
+            customNickname: null,
+            customIntro: null
+        },
+        {
+            where: {userId: targetUser.id}
     });
 
-    await interaction.editReply({ 
-        content: localize('staff-management-system', 'succ-prof-wipe', { u: targetUser.username }) 
+    await interaction.editReply({
+        content: localize('staff-management-system', 'succ-prof-wipe', {u: targetUser.username})
     });
 }
 
@@ -285,10 +285,10 @@ module.exports.autoComplete = {
         'issue': {
             'type': async function (interaction) {
                 const config = interaction.client.configurations['staff-management-system']['infractions'] || {};
-                const types = config.infractionTypes && config.infractionTypes.length > 0 
-                ? config.infractionTypes 
+                const types = config.infractionTypes && config.infractionTypes.length > 0
+                    ? config.infractionTypes
                 : ['Warning', 'Strike'];
-                
+
                 const focusedValue = interaction.options.getFocused() || '';
                 const filtered = types.filter(choice => choice.toLowerCase().startsWith(focusedValue.toLowerCase()));
                 await interaction.respond(filtered.slice(0, 25).map(choice => ({ name: choice, value: choice })));
@@ -301,14 +301,14 @@ module.exports.subcommands = {
     'panel': async (i) => {
         const user = i.options.getUser('user');
         const payload = await generateUserPanel(i.client, user);
-        await i.reply({ 
-            ...payload, 
-            flags: MessageFlags.Ephemeral 
+        await i.reply({
+            ...payload,
+            flags: MessageFlags.Ephemeral
         });
     },
     'infraction': {
         'issue': async (i) => {
-            const user = i.options.getMember('user'); 
+            const user = i.options.getMember('user');
             const type = i.options.getString('type');
             const reason = i.options.getString('reason');
             const expiry = i.options.getString('expiry');
@@ -331,7 +331,7 @@ module.exports.subcommands = {
     },
     'promotion': {
         'promote': async (i) => {
-            const user = i.options.getMember('user'); 
+            const user = i.options.getMember('user');
             const role = i.options.getRole('rank');
             const reason = i.options.getString('reason');
             await promoteUser(i.client, i, user, role, reason);
@@ -344,21 +344,21 @@ module.exports.subcommands = {
     'activity-check': {
         'start': async (i) => {
             await i.deferReply({ flags: MessageFlags.Ephemeral });
-            if (!canManageChecks(i.client, i.member)) return i.editReply({ 
-                content: localize('staff-management-system', 'err-no-perm') 
+            if (!canManageChecks(i.client, i.member)) return i.editReply({
+                content: localize('staff-management-system', 'err-no-perm')
             });
             await startActivityCheck(i.client, i, false);
         },
         'view': async (i) => {
             await i.deferReply({ flags: MessageFlags.Ephemeral });
-            if (!canManageChecks(i.client, i.member)) return i.editReply({ 
-                content: localize('staff-management-system', 'err-no-perm') 
+            if (!canManageChecks(i.client, i.member)) return i.editReply({
+                content: localize('staff-management-system', 'err-no-perm')
             });
-            
+
             const ActivityCheck = i.client.models['staff-management-system']['ActivityCheck'];
             const ActivityCheckResponse = i.client.models['staff-management-system']['ActivityCheckResponse'];
-            const activeCheck = await ActivityCheck.findOne({ 
-                where: { status: 'ACTIVE' } 
+            const activeCheck = await ActivityCheck.findOne({
+                where: {status: 'ACTIVE'}
             });
 
             if (!activeCheck) {
@@ -368,12 +368,12 @@ module.exports.subcommands = {
                 if (!logChannelId || (Array.isArray(logChannelId) && logChannelId.length === 0)) logChannelId = generalConfig.generalLogChannel;
                 if (Array.isArray(logChannelId)) logChannelId = logChannelId[0];
 
-                const channelPing = logChannelId 
+                const channelPing = logChannelId
                     ? `<#${logChannelId}>`
                     : localize('staff-management-system', 'lbl-log-chan');
 
                 return i.editReply({
-                    content: localize('staff-management-system', 'info-ac-none', { c: channelPing }) 
+                    content: localize('staff-management-system', 'info-ac-none', {c: channelPing})
                 });
             }
 
@@ -390,33 +390,33 @@ module.exports.subcommands = {
                     `**${localize('staff-management-system', 'ac-tot-res')}:** ${responseCount}`
                 )
             );
-            await i.editReply({ 
-                embeds: [embed] 
+            await i.editReply({
+                embeds: [embed]
             });
         },
         'end': async (i) => {
             await i.deferReply({ flags: MessageFlags.Ephemeral });
-            if (!canManageChecks(i.client, i.member)) return i.editReply({ 
-                content: localize('staff-management-system', 'err-no-perm') 
+            if (!canManageChecks(i.client, i.member)) return i.editReply({
+                content: localize('staff-management-system', 'err-no-perm')
             });
-            
+
             const ActivityCheck = i.client.models['staff-management-system']['ActivityCheck'];
             const activeCheck = await ActivityCheck.findOne({ where: { status: 'ACTIVE' } });
 
-            if (!activeCheck) return i.editReply({ 
-                content: localize('staff-management-system', 'err-ac-noact') 
+            if (!activeCheck) return i.editReply({
+                content: localize('staff-management-system', 'err-ac-noact')
             });
 
             await endActivityCheckProcess(i.client, activeCheck);
-            await i.editReply({ 
-                content: localize('staff-management-system', 'succ-ac-end') 
+            await i.editReply({
+                content: localize('staff-management-system', 'succ-ac-end')
             });
         }
     },
     'profile': {
         'view': async (i) => {
-            await i.deferReply({ 
-                flags: MessageFlags.Ephemeral 
+            await i.deferReply({
+                flags: MessageFlags.Ephemeral
             });
             const user = i.options.getUser('user') || i.user;
             await handleProfileView(i.client, i, user);
@@ -425,8 +425,8 @@ module.exports.subcommands = {
             await handleProfileEdit(i.client, i);
         },
         'wipe': async (i) => {
-            await i.deferReply({ 
-                flags: MessageFlags.Ephemeral 
+            await i.deferReply({
+                flags: MessageFlags.Ephemeral
             });
             const user = i.options.getUser('user');
             await handleProfileAdminWipe(i.client, i, user);
@@ -466,11 +466,11 @@ module.exports.config = {
             name: 'panel',
             description: localize('staff-management-system', 'cmd-desc-panel'),
             options: [
-                { 
-                    type: 'USER', 
-                    name: 'user', 
-                    description: localize('staff-management-system', 'cmd-desc-panel-user'), 
-                    required: true 
+                {
+                    type: 'USER',
+                    name: 'user',
+                    description: localize('staff-management-system', 'cmd-desc-panel-user'),
+                    required: true
                 }
             ]
         });
@@ -597,12 +597,12 @@ module.exports.config = {
                                 description: localize('staff-management-system', 'cmd-desc-promote-reason'),
                                 required: true
                             },
-                            { 
-                                type: 'CHANNEL', 
-                                name: 'channel', 
-                                description: localize('staff-management-system', 'cmd-desc-promote-channel'), 
-                                required: false, 
-                                channelTypes: [0, 5] 
+                            {
+                                type: 'CHANNEL',
+                                name: 'channel',
+                                description: localize('staff-management-system', 'cmd-desc-promote-channel'),
+                                required: false,
+                                channelTypes: [0, 5]
                             }
                         ]
                     },
@@ -721,11 +721,26 @@ module.exports.config = {
                                 description: localize('staff-management-system', 'cmd-desc-review-submit-stars'),
                                 required: true,
                                 choices: [
-                                    { name: '1 ⭐', value: 1 },
-                                    { name: '2 ⭐⭐', value: 2 },
-                                    { name: '3 ⭐⭐⭐', value: 3 },
-                                    { name: '4 ⭐⭐⭐⭐', value: 4 },
-                                    { name: '5 ⭐⭐⭐⭐⭐', value: 5 }
+                                    {
+                                        name: '1 ⭐',
+                                        value: 1
+                                    },
+                                    {
+                                        name: '2 ⭐⭐',
+                                        value: 2
+                                    },
+                                    {
+                                        name: '3 ⭐⭐⭐',
+                                        value: 3
+                                    },
+                                    {
+                                        name: '4 ⭐⭐⭐⭐',
+                                        value: 4
+                                    },
+                                    {
+                                        name: '5 ⭐⭐⭐⭐⭐',
+                                        value: 5
+                                    }
                                 ]
                             },
                             {

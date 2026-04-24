@@ -1,158 +1,106 @@
 {
   "filename": "reviews.json",
-  "humanName": {
-    "en": "Staff Reviews"
-  },
-  "description": {
-    "en": "Configure the staff rating system and feedback channels."
-  },
+  "humanName": "Staff Reviews",
+  "description": "Configure the staff rating system and feedback channels.",
   "categories": [
     {
       "id": "settings",
       "icon": "fas fa-gears",
-      "displayName": {
-        "en": "Settings"
-      }
+      "displayName": "Settings"
     },
     {
       "id": "messages",
       "icon": "fa fa-messages",
-      "displayName": {
-        "en": "Notifications"
-      }
+      "displayName": "Notifications"
     }
   ],
   "content": [
     {
       "name": "enableReviews",
       "category": "settings",
-      "humanName": {
-        "en": "Enable Reviews System"
-      },
-      "description": {
-        "en": "Enabling this unlocks the staff review system, allowing users to submit ratings and feedback for staff members."
-      },
+      "humanName": "Enable Reviews System",
+      "description": "Enabling this unlocks the staff review system, allowing users to submit ratings and feedback for staff members.",
       "type": "boolean",
-      "default": {
-        "en": true
-      }
+      "default": true
     },
     {
       "name": "reviewLogChannel",
       "category": "settings",
-      "humanName": {
-        "en": "Reviews Log Channel"
-      },
-      "description": {
-        "en": "Channel where new reviews are posted."
-      },
+      "humanName": "Reviews Log Channel",
+      "description": "Channel where new reviews are posted.",
       "type": "channelID",
       "channelTypes": [
         "GUILD_TEXT",
         "GUILD_NEWS"
       ],
-      "default": {
-        "en": ""
-      }
+      "default": ""
     },
     {
       "name": "allowSelfRating",
       "category": "settings",
-      "humanName": {
-        "en": "Allow Self-Rating?"
-      },
-      "description": {
-        "en": "If enabled, staff can review themselves. This is not recommended to keep a fair ratings system."
-      },
+      "humanName": "Allow Self-Rating?",
+      "description": "If enabled, staff can review themselves. This is not recommended to keep a fair ratings system.",
       "type": "boolean",
-      "default": {
-        "en": false
-      }
+      "default": false
     },
     {
       "name": "onlyAllowStaffReview",
       "category": "settings",
-      "humanName": {
-        "en": "Only let users review staff"
-      },
-      "description": {
-        "en": "If enabled, only staff members can review other staff members."
-      },
+      "humanName": "Only let users review staff",
+      "description": "If enabled, only staff members can review other staff members.",
       "type": "boolean",
-      "default": {
-        "en": true
-      }
+      "default": true
     },
     {
       "name": "ratingMessage",
       "category": "messages",
-      "humanName": {
-        "en": "Review Message"
-      },
-      "description": {
-        "en": "The message sent when a review is submitted."
-      },
+      "humanName": "Review Message",
+      "description": "The message sent when a review is submitted.",
       "type": "string",
       "allowEmbed": true,
       "params": [
-        { 
-          "name": "staff-mention", 
-          "description": { 
-            "en": "Mention of the staff member" 
-          } 
+        {
+          "name": "staff-mention",
+          "description": "Mention of the staff member"
         },
-        { 
-          "name": "reviewer-mention", 
-          "description": { 
-            "en": "Mention of the reviewer" 
-          } 
+        {
+          "name": "reviewer-mention",
+          "description": "Mention of the reviewer"
         },
-        { 
-          "name": "stars", 
-          "description": { 
-            "en": "Amount of stars rated in emoji's (⭐⭐⭐⭐⭐)" 
-          } 
+        {
+          "name": "stars",
+          "description": "Amount of stars rated in emoji's (⭐⭐⭐⭐⭐)"
         },
-        { 
-          "name": "rating", 
-          "description": { 
-            "en": "Amount of stars rated in text (1-5)" 
-          } 
+        {
+          "name": "rating",
+          "description": "Amount of stars rated in text (1-5)"
         },
-        { 
-          "name": "comment", 
-          "description": { 
-            "en": "The review's text" 
-          } 
+        {
+          "name": "comment",
+          "description": "The review's text"
         },
-        { 
-          "name": "staff-avatar", 
-          "description": { 
-            "en": "The staff member's profile picture (URL)" 
-          },
+        {
+          "name": "staff-avatar",
+          "description": "The staff member's profile picture (URL)",
           "isImage": true
         },
-        { 
-          "name": "reviewer-avatar", 
-          "description": { 
-            "en": "The reviewer's profile picture (URL)" 
-          },
+        {
+          "name": "reviewer-avatar",
+          "description": "The reviewer's profile picture (URL)",
           "isImage": true
         }
       ],
       "default": {
-        "en": {
-          "_schema": "v3",
-          "content": "%staff%",
-          "embeds": [
-            {
-              "title": "🌟 New Staff Rating",
-              "description": "**Staff:** %staff-mention%\n**Rated by:** %reviewer-mention%\n\n**Rating:** %stars% (%rating%/5)\n**Comment:**\n%comment%",
-              "color": "#f1c40f",
-              "thumbnailURL": "%staff-avatar%"
-            }
-          ]
-        }
+        "_schema": "v3",
+        "content": "%staff%",
+        "embeds": [
+          {
+            "title": "🌟 New Staff Rating",
+            "description": "**Staff:** %staff-mention%\n**Rated by:** %reviewer-mention%\n\n**Rating:** %stars% (%rating%/5)\n**Comment:**\n%comment%",
+            "color": "#f1c40f",
+            "thumbnailURL": "%staff-avatar%"
+          }
+        ]
       }
     }
   ]

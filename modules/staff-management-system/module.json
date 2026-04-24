@@ -5,6 +5,7 @@
     "name": "Kevin",
     "link": "https://github.com/Kevinking500"
   },
+  "fa-icon": "far fa-gear looks",
   "openSourceURL": "https://github.com/Kevinking500/CustomDCBot/tree/main/modules/staff-management-system",
   "commands-dir": "/commands",
   "events-dir": "/events",
@@ -22,12 +23,6 @@
   "tags": [
     "moderation"
   ],
-  "humanReadableName": {
-    "en": "Staff Management System",
-    "de": "Mitarbeiter-Management-System"
-  },
-  "description": {
-    "en": "A powerful, highly customizable staff management system designed to track activity, moderate personnel, and maintain detailed staff records seamlessly.",
-    "de": "Ein leistungsstarkes, hochgradig anpassbares Mitarbeiter-Management-System, das entwickelt wurde, um die Aktivität zu verfolgen, das Personal zu moderieren und detaillierte Mitarbeiterakten nahtlos zu pflegen."
-  }
+  "humanReadableName": "Staff Management System",
+  "description": "A powerful, highly customizable staff management system designed to track activity, moderate personnel, and maintain detailed staff records seamlessly."
 }

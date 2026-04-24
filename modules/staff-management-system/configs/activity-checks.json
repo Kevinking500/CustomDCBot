@@ -1,150 +1,100 @@
 {
   "filename": "activity-checks.json",
-  "humanName": {
-    "en": "Activity Checks"
-  },
-  "description": {
-    "en": "Configure automated staff activity checks and response logging."
-  },
+  "humanName": "Activity Checks",
+  "description": "Configure automated staff activity checks and response logging.",
   "categories": [
     {
       "id": "general",
       "icon": "fas fa-clipboard-user",
-      "displayName": {
-        "en": "General Settings"
-      }
+      "displayName": "General Settings"
     },
     {
       "id": "exceptions",
       "icon": "fa-solid fa-badge-check",
-      "displayName": {
-        "en": "Exceptions"
-      }
+      "displayName": "Exceptions"
     },
     {
       "id": "automation",
       "icon": "far fa-robot",
-      "displayName": {
-        "en": "Automation"
-      }
+      "displayName": "Automation"
     },
     {
       "id": "results",
       "icon": "fa-solid fa-check-to-slot",
-      "displayName": {
-        "en": "Results & Logging"
-      }
+      "displayName": "Results & Logging"
     }
   ],
   "content": [
     {
       "name": "enableActivityChecks",
       "category": "general",
-      "humanName": {
-        "en": "Enable Activity Checks"
-      },
-      "description": {
-        "en": "Allows admins to start an activity check to see who is active."
-      },
+      "humanName": "Enable Activity Checks",
+      "description": "Allows admins to start an activity check to see who is active.",
       "type": "boolean",
-      "default": {
-        "en": true
-      },
+      "default": true,
       "elementToggle": true
     },
     {
       "name": "targetRoles",
       "category": "general",
-      "humanName": {
-        "en": "Roles to Check"
-      },
-      "description": {
-        "en": "The roles required to respond to the activity check. Anyone with these roles will be expected to click the button. Leave empty to default to the General Staff Roles."
-      },
+      "humanName": "Roles to Check",
+      "description": "The roles required to respond to the activity check. Anyone with these roles will be expected to click the button. Leave empty to default to the General Staff Roles.",
       "type": "array",
       "content": "roleID",
-      "default": {
-        "en": []
-      },
+      "default": [],
       "allowNull": true
     },
     {
       "name": "timeframe",
       "category": "general",
-      "humanName": {
-        "en": "Check Duration (Hours)"
-      },
-      "description": {
-        "en": "How long staff have to respond to the activity check (Max 168 hours / 1 week)."
-      },
+      "humanName": "Check Duration (Hours)",
+      "description": "How long staff have to respond to the activity check (Max 168 hours / 1 week).",
       "type": "integer",
       "minValue": 1,
       "maxValue": 168,
-      "default": {
-        "en": 24
-      }
+      "default": 24
     },
     {
       "name": "checkMessage",
       "category": "general",
-      "humanName": {
-        "en": "Activity Check Embed"
-      },
-      "description": {
-        "en": "The message sent when an activity check starts."
-      },
+      "humanName": "Activity Check Embed",
+      "description": "The message sent when an activity check starts.",
       "type": "string",
       "allowEmbed": true,
       "params": [
-        { 
-          "name": "end-time", 
-          "description": { 
-            "en": "The Discord timestamp when the check ends." 
-          }
+        {
+          "name": "end-time",
+          "description": "The Discord timestamp when the check ends."
         },
-        { 
-          "name": "duration", 
-          "description": { 
-            "en": "The configured duration in hours." 
-          } 
+        {
+          "name": "duration",
+          "description": "The configured duration in hours."
         }
       ],
       "default": {
-        "en": {
-          "title": "📋 Staff Activity Check",
-          "description": "Please click the button below to confirm your activity before %endtime%.",
-          "color": "#3498db"
-        }
+        "title": "📋 Staff Activity Check",
+        "description": "Please click the button below to confirm your activity before %endtime%.",
+        "color": "#3498db"
       }
     },
     {
       "name": "sendingChannel",
       "category": "general",
-      "humanName": {
-        "en": "Default Sending Channel"
-      },
-      "description": {
-        "en": "The default channel where the activity check message will be posted. This can manually be overridden with the command."
-      },
+      "humanName": "Default Sending Channel",
+      "description": "The default channel where the activity check message will be posted. This can manually be overridden with the command.",
       "type": "channelID",
       "channelTypes": [
         "GUILD_TEXT",
         "GUILD_NEWS"
       ],
-      "default": {
-        "en": ""
-      },
+      "default": "",
       "allowNull": true
     },
     {
       "name": "exceptionsType",
       "category": "exceptions",
-      "humanName": {
-        "en": "Exceptions Rule"
-      },
-      "description": {
-        "en": "Who are excused from the activity checks?"
-      },
+      "humanName": "Exceptions Rule",
+      "description": "Who are excused from the activity checks?",
       "type": "select",
       "content": [
         "No exceptions",
@@ -153,49 +103,31 @@
         "LoA and RA",
         "Custom role(s)"
       ],
-      "default": {
-        "en": "LoA and RA"
-      }
+      "default": "LoA and RA"
     },
     {
       "name": "customExceptionRoles",
       "category": "exceptions",
-      "humanName": {
-        "en": "Custom Exception Roles"
-      },
-      "description": {
-        "en": "Only applies if 'Custom role(s)' is selected above."
-      },
+      "humanName": "Custom Exception Roles",
+      "description": "Only applies if 'Custom role(s)' is selected above.",
       "type": "array",
       "content": "roleID",
-      "default": {
-        "en": []
-      },
+      "default": [],
       "allowNull": true
     },
     {
       "name": "automatedChecks",
       "category": "automation",
-      "humanName": {
-        "en": "Automated Checks"
-      },
-      "description": {
-        "en": "If enabled, the bot will automatically start activity checks at configured intervals."
-      },
+      "humanName": "Automated Checks",
+      "description": "If enabled, the bot will automatically start activity checks at configured intervals.",
       "type": "boolean",
-      "default": {
-        "en": false
-      }
+      "default": false
     },
     {
       "name": "automatedCheckInterval",
       "category": "automation",
-      "humanName": {
-        "en": "Automated Check Interval"
-      },
-      "description": {
-        "en": "On which interval to start automatic checks. Choose cronjob for full customzation."
-      },
+      "humanName": "Automated Check Interval",
+      "description": "On which interval to start automatic checks. Choose cronjob for full customzation.",
       "type": "select",
       "content": [
         "Weekly",
@@ -203,36 +135,24 @@
         "Monthly",
         "Cronjob"
       ],
-      "default": {
-        "en": "Biweekly"
-      },
+      "default": "Biweekly",
       "dependsOn": "automatedChecks"
     },
     {
       "name": "automatedCheckCronjob",
       "category": "automation",
-      "humanName": {
-        "en": "Automated Check Cronjob"
-      },
-      "description": {
-        "en": "The cronjob schedule for automatic checks. Only applies if 'Cronjob' is selected above."
-      },
+      "humanName": "Automated Check Cronjob",
+      "description": "The cronjob schedule for automatic checks. Only applies if 'Cronjob' is selected above.",
       "type": "string",
-      "default": {
-        "en": ""
-      },
+      "default": "",
       "dependsOn": "automatedChecks",
       "allowNull": true
     },
     {
       "name": "automatedCheckWeekDay",
       "category": "automation",
-      "humanName": {
-        "en": "Automated Check Week Day"
-      },
-      "description": {
-        "en": "The week day to start automatic checks."
-      },
+      "humanName": "Automated Check Week Day",
+      "description": "The week day to start automatic checks.",
       "type": "select",
       "content": [
         "Monday",
@@ -243,41 +163,27 @@
         "Saturday",
         "Sunday"
       ],
-      "default":{
-        "en": "Monday"
-      },
+      "default": "Monday",
       "dependsOn": "automatedChecks"
     },
     {
       "name": "automatedCheckMonthWeek",
       "category": "automation",
-      "humanName": {
-        "en": "Automated Check Month Week"
-      },
-      "description": {
-        "en": "The week of the month to start automatic checks. Only applies if 'Monthly' is selected above."
-      },
+      "humanName": "Automated Check Month Week",
+      "description": "The week of the month to start automatic checks. Only applies if 'Monthly' is selected above.",
       "type": "integer",
       "minValue": 1,
       "maxValue": 4,
-      "default": {
-        "en": 1
-      },
+      "default": 1,
       "dependsOn": "automatedChecks"
     },
     {
       "name": "logChannel",
       "category": "results",
-      "humanName": {
-        "en": "Results Channel"
-      },
-      "description": {
-        "en": "Where the final results are posted. Leave empty if you want to use the general log channel."
-      },
+      "humanName": "Results Channel",
+      "description": "Where the final results are posted. Leave empty if you want to use the general log channel.",
       "type": "channelID",
-      "default": {
-        "en": ""
-      },
+      "default": "",
       "channelTypes": [
         "GUILD_TEXT",
         "GUILD_NEWS"
@@ -287,31 +193,19 @@
     {
       "name": "pingResults",
       "category": "results",
-      "humanName": {
-        "en": "Ping on Results"
-      },
-      "description": {
-        "en": "Ping specific roles when the results are posted."
-      },
+      "humanName": "Ping on Results",
+      "description": "Ping specific roles when the results are posted.",
       "type": "boolean",
-      "default": {
-        "en": false
-      }
+      "default": false
     },
     {
       "name": "pingRoles",
       "category": "results",
-      "humanName": {
-        "en": "Roles to Ping"
-      },
-      "description": {
-        "en": "The roles to ping with the results message."
-      },
+      "humanName": "Roles to Ping",
+      "description": "The roles to ping with the results message.",
       "type": "array",
       "content": "roleID",
-      "default": {
-        "en": []
-      },
+      "default": [],
       "dependsOn": "pingResults"
     }
   ]

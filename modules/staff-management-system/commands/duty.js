@@ -1,6 +1,13 @@
 const { MessageFlags, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { Op, fn, col, literal } = require('sequelize');
-const { getConfig, applyFooter, getSafeChannelId, formatDuration, buildPaginationRow, checkStaffPermissions } = require('../staff-management');
+const {
+    getConfig,
+    applyFooter,
+    getSafeChannelId,
+    formatDuration,
+    buildPaginationRow,
+    checkStaffPermissions
+} = require('../staff-management');
 const { localize } = require('../../../src/functions/localize');
 
 function getLookbackDate(config) {
@@ -50,18 +57,18 @@ function getQuotaForMember(member, config) {
 
     let bestQuota = null;
     let highestPosition = -1;
-    
+
     for (const [roleId, hoursStr] of Object.entries(config.quotas)) {
         const hours = parseFloat(hoursStr);
         if (isNaN(hours)) continue;
-        
+
         const role = member.guild.roles.cache.get(roleId);
         if (role && member.roles.cache.has(roleId) && role.position > highestPosition) {
             highestPosition = role.position;
             bestQuota = { roleId, hours };
         }
     }
-    
+
     return bestQuota;
 }
 
@@ -70,15 +77,15 @@ async function sendShiftEndDm(client, member, shift) {
 
     const embed = applyFooter(client, new EmbedBuilder()
         .setTitle(localize('staff-management-system', 'duty-shift-report-title'))
-        .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
+        .setThumbnail(member.user.displayAvatarURL({dynamic: true}))
         .addFields(
             {
                 name: localize('staff-management-system', 'duty-shift-information'),
                 value:
-                `>>> **${localize('staff-management-system', 'label-shift-type')}:** ${shift.type || 'Staff'}\n` +
-                `**${localize('staff-management-system', 'general-start')}:** <t:${Math.floor(new Date(shift.startTime).getTime() / 1000)}:F>\n` +
-                `**${localize('staff-management-system', 'general-end')}:** <t:${Math.floor(new Date(shift.endTime).getTime() / 1000)}:F>\n` +
-                `**${localize('staff-management-system', 'label-breaks')}:** ${shift.breakCount || 0}`
+                    `>>> **${localize('staff-management-system', 'label-shift-type')}:** ${shift.type || 'Staff'}\n` +
+                    `**${localize('staff-management-system', 'general-start')}:** <t:${Math.floor(new Date(shift.startTime).getTime() / 1000)}:F>\n` +
+                    `**${localize('staff-management-system', 'general-end')}:** <t:${Math.floor(new Date(shift.endTime).getTime() / 1000)}:F>\n` +
+                    `**${localize('staff-management-system', 'label-breaks')}:** ${shift.breakCount || 0}`
             },
             {
                 name: localize('staff-management-system', 'label-elapsed-time'),
@@ -88,7 +95,7 @@ async function sendShiftEndDm(client, member, shift) {
     );
 
     try {
-        await member.user.send({ embeds: [embed.toJSON()] });
+        await member.user.send({embeds: [embed.toJSON()]});
     } catch (e) {
         client.logger.warn(localize('staff-management-system', 'log-duty-dm-fail', {
             user: member.user.tag,
@@ -115,13 +122,13 @@ async function logShiftChange(client, action, data) {
     const username = targetUserObj ? targetUserObj.username : data.userId;
 
     const embed = new EmbedBuilder()
-        .setThumbnail(targetUserObj?.displayAvatarURL({ dynamic: true }) || null);
+        .setThumbnail(targetUserObj?.displayAvatarURL({dynamic: true}) || null);
 
     if (action === 'start') {
         embed
-            .setTitle(localize('staff-management-system', 'log-duty-start-title', { username }))
+            .setTitle(localize('staff-management-system', 'log-duty-start-title', {username}))
             .setColor('Green')
-            .setDescription(localize('staff-management-system', 'log-duty-start-desc', { mention }))
+            .setDescription(localize('staff-management-system', 'log-duty-start-desc', {mention}))
             .addFields({
                 name: localize('staff-management-system', 'log-duty-info-hdr'),
                 value:
@@ -130,9 +137,9 @@ async function logShiftChange(client, action, data) {
             });
     } else if (action === 'break') {
         embed
-            .setTitle(localize('staff-management-system', 'log-duty-break-title', { username }))
+            .setTitle(localize('staff-management-system', 'log-duty-break-title', {username}))
             .setColor('Yellow')
-            .setDescription(localize('staff-management-system', 'log-duty-break-desc', { mention }))
+            .setDescription(localize('staff-management-system', 'log-duty-break-desc', {mention}))
             .addFields({
                 name: localize('staff-management-system', 'log-duty-info-hdr'),
                 value:
@@ -143,9 +150,9 @@ async function logShiftChange(client, action, data) {
             });
     } else if (action === 'resume') {
         embed
-            .setTitle(localize('staff-management-system', 'log-duty-resume-title', { username }))
+            .setTitle(localize('staff-management-system', 'log-duty-resume-title', {username}))
             .setColor('Green')
-            .setDescription(localize('staff-management-system', 'log-duty-resume-desc', { mention }))
+            .setDescription(localize('staff-management-system', 'log-duty-resume-desc', {mention}))
             .addFields({
                 name: localize('staff-management-system', 'log-duty-info-hdr'),
                 value:
@@ -156,9 +163,9 @@ async function logShiftChange(client, action, data) {
             });
     } else if (action === 'end') {
         embed
-            .setTitle(localize('staff-management-system', 'log-duty-end-title', { username }))
+            .setTitle(localize('staff-management-system', 'log-duty-end-title', {username}))
             .setColor('Red')
-            .setDescription(localize('staff-management-system', 'log-duty-end-desc', { mention }))
+            .setDescription(localize('staff-management-system', 'log-duty-end-desc', {mention}))
             .addFields({
                 name: localize('staff-management-system', 'log-duty-info-hdr'),
                 value:
@@ -173,7 +180,7 @@ async function logShiftChange(client, action, data) {
             });
     } else if (action === 'void') {
         embed
-            .setTitle(localize('staff-management-system', 'log-duty-void-title', { username }))
+            .setTitle(localize('staff-management-system', 'log-duty-void-title', {username}))
             .setColor('DarkRed')
             .setDescription(localize('staff-management-system', 'log-duty-void-desc', {
                 mention,
@@ -193,7 +200,7 @@ async function logShiftChange(client, action, data) {
     applyFooter(client, embed);
 
     try {
-        await channel.send({ embeds: [embed.toJSON()] });
+        await channel.send({embeds: [embed.toJSON()]});
     } catch (e) {
         client.logger.error(localize('staff-management-system', 'log-duty-log-fail', {
             action,
@@ -222,22 +229,25 @@ async function buildDutyManagePayload(client, userId, shiftType, endedShift = nu
     }
 
     const completedShifts = await Shift.findAll({
-        where: { 
-            userId, 
-            type: shiftType, 
-            endTime: { [Op.not]: null }, 
-            duration: { [Op.not]: null } 
+        where: {
+            userId,
+            type: shiftType,
+            endTime: {[Op.not]: null},
+            duration: {[Op.not]: null}
         }
     });
     const totalShifts = completedShifts.length;
     const totalSeconds = completedShifts.reduce((sum, s) => sum + (parseInt(s.duration) || 0), 0);
-    const avgSeconds = totalShifts > 0 
-        ? Math.floor(totalSeconds / totalShifts) 
+    const avgSeconds = totalShifts > 0
+        ? Math.floor(totalSeconds / totalShifts)
         : 0;
 
     const activeShift = onDuty
         ? await Shift.findOne({
-            where: { userId, endTime: null },
+            where: {
+                userId,
+                endTime: null
+            },
             order: [['startTime', 'DESC']]
         })
         : null;
@@ -248,7 +258,7 @@ async function buildDutyManagePayload(client, userId, shiftType, endedShift = nu
     else if (endedShift) titleKey = 'duty-ended-title';
 
     const embed = applyFooter(client, new EmbedBuilder()
-        .setTitle(localize('staff-management-system', titleKey, { type: shiftType }))
+        .setTitle(localize('staff-management-system', titleKey, {type: shiftType}))
         .setColor(statusColor)
         .setThumbnail(user?.displayAvatarURL({ dynamic: true }) || null)
     );
@@ -316,9 +326,9 @@ async function buildDutyManagePayload(client, userId, shiftType, endedShift = nu
             .setDisabled(!onDuty)
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [row.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [row.toJSON()]
     };
 }
 
@@ -327,10 +337,10 @@ async function buildDutyTimePayload(client, interaction, shiftType) {
     const Shift = client.models['staff-management-system']['StaffShift'];
     const user = interaction.user;
 
-    const whereClause = { 
-        userId: user.id, 
-        endTime: { [Op.not]: null }, 
-        duration: { [Op.not]: null } 
+    const whereClause = {
+        userId: user.id,
+        endTime: {[Op.not]: null},
+        duration: {[Op.not]: null}
     };
     if (shiftType !== 'All') whereClause.type = shiftType;
 
@@ -362,11 +372,11 @@ async function buildDutyTimePayload(client, interaction, shiftType) {
             if (timeframe === 'Weekly') cutoff.setDate(cutoff.getDate() - 7);
             else cutoff.setMonth(cutoff.getMonth() - 1);
 
-            const recentWhere = { 
-                userId: user.id, 
-                startTime: { [Op.gt]: cutoff }, 
-                endTime: { [Op.not]: null }, 
-                duration: { [Op.not]: null } 
+            const recentWhere = {
+                userId: user.id,
+                startTime: {[Op.gt]: cutoff},
+                endTime: {[Op.not]: null},
+                duration: {[Op.not]: null}
             };
             if (shiftType !== 'All') recentWhere.type = shiftType;
 
@@ -374,13 +384,13 @@ async function buildDutyTimePayload(client, interaction, shiftType) {
             const recentSeconds = recentShifts.reduce((sum, s) => sum + (parseInt(s.duration) || 0), 0);
             const requiredSeconds = quota.hours * 3600;
             const metQuota = recentSeconds >= requiredSeconds;
-            quotaText = localize('staff-management-system', 'duty-quota-str', { 
-                timeframe, 
+            quotaText = localize('staff-management-system', 'duty-quota-str', {
+                timeframe,
                 duration: formatDuration(recentSeconds),
-                hours: quota.hours, 
-                result: metQuota 
-                ? localize('staff-management-system', 'quota-met') 
-                : localize('staff-management-system', 'quota-fail') 
+                hours: quota.hours,
+                result: metQuota
+                    ? localize('staff-management-system', 'quota-met')
+                    : localize('staff-management-system', 'quota-fail')
             });
         }
     }
@@ -389,9 +399,9 @@ async function buildDutyTimePayload(client, interaction, shiftType) {
         .setTitle(localize('staff-management-system', 'duty-time-title', { type: shiftType }))
         .setColor('Blue')
         .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-        .setDescription(localize('staff-management-system', 'duty-time-desc', { 
-            count: shiftCount, 
-            duration: formatDuration(totalSeconds) 
+        .setDescription(localize('staff-management-system', 'duty-time-desc', {
+            count: shiftCount,
+            duration: formatDuration(totalSeconds)
         }) + breakdownText + quotaText)
     );
 
@@ -403,9 +413,9 @@ async function buildDutyTimePayload(client, interaction, shiftType) {
             .setDisabled(shiftCount === 0)
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [row.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [row.toJSON()]
     };
 }
 
@@ -415,12 +425,12 @@ async function buildLeaderboardPayload(client, page = 1, shiftType) {
     const limit = 15;
     const offset = (page - 1) * limit;
 
-    const whereClause = { 
-        endTime: { [Op.not]: null }, 
-        duration: { [Op.not]: null } 
+    const whereClause = {
+        endTime: {[Op.not]: null},
+        duration: {[Op.not]: null}
     };
     if (shiftType !== 'All') whereClause.type = shiftType;
-    
+
     const lookbackDate = getLookbackDate(config);
     if (lookbackDate) whereClause.startTime = { [Op.gt]: lookbackDate };
 
@@ -436,10 +446,10 @@ async function buildLeaderboardPayload(client, page = 1, shiftType) {
     });
 
     const total = allResults.length;
-    if (total === 0) return { 
-        content: localize('staff-management-system', 'err-no-lb', { 
-            type: shiftType 
-        }) 
+    if (total === 0) return {
+        content: localize('staff-management-system', 'err-no-lb', {
+            type: shiftType
+        })
     };
 
     const totalPages = Math.ceil(total / limit) || 1;
@@ -479,21 +489,21 @@ async function buildLeaderboardPayload(client, page = 1, shiftType) {
         page, totalPages, 'back', 'next'
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [row.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [row.toJSON()]
     };
 }
 
 async function buildShiftHistoryPayload(client, userId, page = 1, shiftType) {
     const Shift = client.models['staff-management-system']['StaffShift'];
-    const limit = 10; 
+    const limit = 10;
     const offset = (page - 1) * limit;
 
-    const whereClause = { 
-        userId, 
-        endTime: { [Op.not]: null }, 
-        duration: { [Op.not]: null } 
+    const whereClause = {
+        userId,
+        endTime: {[Op.not]: null},
+        duration: {[Op.not]: null}
     };
     if (shiftType !== 'All') whereClause.type = shiftType;
 
@@ -512,7 +522,7 @@ async function buildShiftHistoryPayload(client, userId, page = 1, shiftType) {
         const startTs = Math.floor(new Date(shift.startTime).getTime() / 1000);
         const endTs = Math.floor(new Date(shift.endTime).getTime() / 1000);
         const typeBadge = shiftType === 'All' ? ` \`[${shift.type || 'Staff'}]\`` : '';
-        
+
         return `**${offset + i + 1}. ${dur}${typeBadge}:**\nStart: <t:${startTs}:F> | End: <t:${endTs}:F>`;
     });
 
@@ -530,7 +540,7 @@ async function buildShiftHistoryPayload(client, userId, page = 1, shiftType) {
             page,
             total: totalPages
         })
-    }); 
+    });
 
     const row = buildPaginationRow(
         `duty-mgmt_hist_${userId}_${page - 1}_${shiftType}`,
@@ -539,9 +549,9 @@ async function buildShiftHistoryPayload(client, userId, page = 1, shiftType) {
         page, totalPages
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [row.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [row.toJSON()]
     };
 }
 
@@ -556,47 +566,45 @@ async function buildDutyAdminPayload(client, targetMember, requestingMember) {
     const onBreak = profile?.onBreak || false;
 
     let statusText, statusColor;
-    if (onDuty && onBreak) { 
-        statusText = localize('staff-management-system', 'stat-brk'); 
-        statusColor = 'Yellow'; 
-    }
-    else if (onDuty) { 
-        statusText = localize('staff-management-system', 'stat-on'); 
-        statusColor = 'Green'; 
-    }
-    else { 
-        statusText = localize('staff-management-system', 'stat-off'); 
-        statusColor = 'Red'; 
+    if (onDuty && onBreak) {
+        statusText = localize('staff-management-system', 'stat-brk');
+        statusColor = 'Yellow';
+    } else if (onDuty) {
+        statusText = localize('staff-management-system', 'stat-on');
+        statusColor = 'Green';
+    } else {
+        statusText = localize('staff-management-system', 'stat-off');
+        statusColor = 'Red';
     }
 
     const completedShifts = await Shift.findAll({
-        where: { 
-            userId: targetUser.id, 
-            endTime: { [Op.not]: null }, 
-            duration: { [Op.not]: null } 
+        where: {
+            userId: targetUser.id,
+            endTime: {[Op.not]: null},
+            duration: {[Op.not]: null}
         }
     });
     const totalShifts = completedShifts.length;
     const totalSeconds = completedShifts.reduce((sum, s) => sum + (parseInt(s.duration) || 0), 0);
-    const avgSeconds = totalShifts > 0 
-    ? Math.floor(totalSeconds / totalShifts) 
+    const avgSeconds = totalShifts > 0
+        ? Math.floor(totalSeconds / totalShifts)
     : 0;
 
     const embed = applyFooter(client, new EmbedBuilder()
-        .setTitle(localize('staff-management-system', 'duty-adm-title', { 
-            user: targetUser.username 
+        .setTitle(localize('staff-management-system', 'duty-adm-title', {
+            user: targetUser.username
         }))
         .setColor(statusColor)
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
         .setDescription(`**${statusText}**`)
         .addFields(
-            { 
-                name: localize('staff-management-system', 'duty-stats'), 
-                value: localize('staff-management-system', 'duty-stat-desc', { 
-                    duration: formatDuration(totalSeconds), 
-                    count: totalShifts, 
-                    average: formatDuration(avgSeconds) 
-                }) 
+            {
+                name: localize('staff-management-system', 'duty-stats'),
+                value: localize('staff-management-system', 'duty-stat-desc', {
+                    duration: formatDuration(totalSeconds),
+                    count: totalShifts,
+                    average: formatDuration(avgSeconds)
+                })
             }
         )
     );
@@ -630,9 +638,9 @@ async function buildDutyAdminPayload(client, targetMember, requestingMember) {
         .setDisabled(!isManagement)
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [row.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [row.toJSON()]
     };
 }
 
@@ -640,11 +648,11 @@ async function buildDutyAdminPayload(client, targetMember, requestingMember) {
 async function handleDutyStartButton(client, interaction) {
     const parts = interaction.customId.split('_');
     const userId = parts[2];
-    const shiftType = parts[3] || 'Staff'; 
+    const shiftType = parts[3] || 'Staff';
 
-    if (interaction.user.id !== userId) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-not-yours'), 
-        flags: MessageFlags.Ephemeral 
+    if (interaction.user.id !== userId) return interaction.editReply({
+        content: localize('staff-management-system', 'err-not-yours'),
+        flags: MessageFlags.Ephemeral
     });
 
     const config = getConfig(client, 'shifts');
@@ -652,9 +660,9 @@ async function handleDutyStartButton(client, interaction) {
     const Shift = client.models['staff-management-system']['StaffShift'];
 
     const profile = await Profile.findByPk(userId);
-    if (profile?.onDuty) return interaction.followUp({ 
-        content: localize('staff-management-system', 'err-alr-on'), 
-        flags: MessageFlags.Ephemeral 
+    if (profile?.onDuty) return interaction.followUp({
+        content: localize('staff-management-system', 'err-alr-on'),
+        flags: MessageFlags.Ephemeral
     });
 
     const startTime = new Date();
@@ -688,22 +696,22 @@ async function handleDutyStartButton(client, interaction) {
 
 async function handleDutyBreakButton(client, interaction) {
     const userId = interaction.customId.split('_')[2];
-    if (interaction.user.id !== userId) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-not-yours'), 
-        flags: MessageFlags.Ephemeral 
+    if (interaction.user.id !== userId) return interaction.editReply({
+        content: localize('staff-management-system', 'err-not-yours'),
+        flags: MessageFlags.Ephemeral
     });
 
     const Profile = client.models['staff-management-system']['StaffProfile'];
     const Shift = client.models['staff-management-system']['StaffShift'];
     const profile = await Profile.findByPk(userId);
-    
-    if (!profile?.onDuty) return interaction.followUp({ 
-        content: localize('staff-management-system', 'err-not-on'), 
-        flags: MessageFlags.Ephemeral 
+
+    if (!profile?.onDuty) return interaction.followUp({
+        content: localize('staff-management-system', 'err-not-on'),
+        flags: MessageFlags.Ephemeral
     });
 
-    const activeShift = await Shift.findOne({ 
-        where: { userId, endTime: null } 
+    const activeShift = await Shift.findOne({
+        where: {userId, endTime: null}
     });
     const shiftType = activeShift?.type || 'Staff';
 
@@ -720,21 +728,21 @@ async function handleDutyBreakButton(client, interaction) {
     }
 
     const elapsedSeconds = activeShift
-    ? Math.max(
-        0,
-        Math.floor(
-            ((nowOnBreak ? new Date() : new Date(profile.breakStartTime || Date.now())).getTime() -
-            new Date(activeShift.startTime).getTime()) / 1000
+        ? Math.max(
+            0,
+            Math.floor(
+                ((nowOnBreak ? new Date() : new Date(profile.breakStartTime || Date.now())).getTime() -
+                    new Date(activeShift.startTime).getTime()) / 1000
+            )
         )
-    )
-    : 0;
+        : 0;
 
     const breakStartTime = nowOnBreak ? new Date() : null;
     await Profile.update({
         onBreak: nowOnBreak,
         breakStartTime
     }, {
-        where: { userId }
+        where: {userId}
     });
 
     if (activeShift) {
@@ -765,9 +773,9 @@ async function handleDutyBreakButton(client, interaction) {
 
 async function handleDutyEndButton(client, interaction) {
     const userId = interaction.customId.split('_')[2];
-    if (interaction.user.id !== userId) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-not-yours'), 
-        flags: MessageFlags.Ephemeral 
+    if (interaction.user.id !== userId) return interaction.editReply({
+        content: localize('staff-management-system', 'err-not-yours'),
+        flags: MessageFlags.Ephemeral
     });
 
     const config = getConfig(client, 'shifts');
@@ -775,9 +783,9 @@ async function handleDutyEndButton(client, interaction) {
     const Shift = client.models['staff-management-system']['StaffShift'];
 
     const profile = await Profile.findByPk(userId);
-    if (!profile?.onDuty) return interaction.followUp({ 
-        content: localize('staff-management-system', 'err-not-on'), 
-        flags: MessageFlags.Ephemeral 
+    if (!profile?.onDuty) return interaction.followUp({
+        content: localize('staff-management-system', 'err-not-on'),
+        flags: MessageFlags.Ephemeral
     });
 
     const activeShifts = await Shift.findAll({ where: { userId, endTime: null } });
@@ -807,33 +815,34 @@ async function handleDutyEndButton(client, interaction) {
         }
     }
 
-    await Profile.update({ 
-        onDuty: false, 
-        onBreak: false, 
+    await Profile.update({
+        onDuty: false,
+        onBreak: false,
         breakStartTime: null
     }, {
-        where: { userId }
+        where: {userId}
     });
 
     const member = await interaction.guild.members.fetch(userId).catch(() => null);
     if (config.onDutyRole && member) {
-        await member.roles.remove(config.onDutyRole).catch(() => {});
+        await member.roles.remove(config.onDutyRole).catch(() => {
+        });
     }
     if (member && endedShiftForDisplay) {
         await sendShiftEndDm(client, member, endedShiftForDisplay);
     }
 
     if (endedShiftForDisplay) {
-    await logShiftChange(client, 'end', {
-        userId,
-        targetUser: interaction.user,
-        shiftType: endedShiftForDisplay.type || shiftType,
-        startTime: endedShiftForDisplay.startTime,
-        endTime: endedShiftForDisplay.endTime,
-        breakCount: endedShiftForDisplay.breakCount || 0,
-        durationSeconds: parseInt(endedShiftForDisplay.duration) || 0
-    });
-}
+        await logShiftChange(client, 'end', {
+            userId,
+            targetUser: interaction.user,
+            shiftType: endedShiftForDisplay.type || shiftType,
+            startTime: endedShiftForDisplay.startTime,
+            endTime: endedShiftForDisplay.endTime,
+            breakCount: endedShiftForDisplay.breakCount || 0,
+            durationSeconds: parseInt(endedShiftForDisplay.duration) || 0
+        });
+    }
 
     const payload = await buildDutyManagePayload(client, userId, shiftType, endedShiftForDisplay);
     await interaction.editReply(payload);
@@ -855,24 +864,24 @@ async function handleDutyHistPageButton(client, interaction) {
     const page = parseInt(parts[3]);
     const shiftType = parts[4] || 'Staff';
 
-    if (interaction.user.id !== userId) return interaction.followUp({ 
-        content: localize('staff-management-system', 'err-hist-oth'), 
-        flags: MessageFlags.Ephemeral 
+    if (interaction.user.id !== userId) return interaction.followUp({
+        content: localize('staff-management-system', 'err-hist-oth'),
+        flags: MessageFlags.Ephemeral
     });
 
     const payload = await buildShiftHistoryPayload(client, userId, page, shiftType);
-    if (payload.content) return interaction.followUp({ 
-        ...payload, 
-        flags: MessageFlags.Ephemeral 
+    if (payload.content) return interaction.followUp({
+        ...payload,
+        flags: MessageFlags.Ephemeral
     });
 
     const isOnHistEmbed = interaction.message?.embeds?.[0]?.title?.startsWith(localize('staff-management-system', 'duty-hi-title', { type: '' }).replace(' - ', ''));
     if (isOnHistEmbed) {
         return interaction.editReply(payload);
     } else {
-        return interaction.followUp({ 
-            ...payload, 
-            flags: MessageFlags.Ephemeral 
+        return interaction.followUp({
+            ...payload,
+            flags: MessageFlags.Ephemeral
         });
     }
 }
@@ -899,8 +908,8 @@ async function handleDutyAdminForceEnd(client, interaction) {
     const profile = await Profile.findByPk(targetUserId);
     let endedShiftForDisplay = null;
 
-    const activeShifts = await Shift.findAll({ 
-        where: { userId: targetUserId, endTime: null } 
+    const activeShifts = await Shift.findAll({
+        where: {userId: targetUserId, endTime: null}
     });
     for (const activeShift of activeShifts) {
         if (profile?.onBreak && profile.breakStartTime) {
@@ -919,11 +928,12 @@ async function handleDutyAdminForceEnd(client, interaction) {
         endedShiftForDisplay = activeShift;
     }
 
-    await Profile.update({ 
-        onDuty: false, 
-        onBreak: false, 
-        breakStartTime: null }, { 
-            where: { userId: targetUserId } 
+    await Profile.update({
+        onDuty: false,
+        onBreak: false,
+        breakStartTime: null
+    }, {
+        where: {userId: targetUserId}
         });
     if (config.onDutyRole) {
         const member = await interaction.guild.members.fetch(targetUserId).catch(() => null);
@@ -965,19 +975,23 @@ async function handleDutyAdminVoidActive(client, interaction) {
     const Shift = client.models['staff-management-system']['StaffShift'];
 
     const activeShifts = await Shift.findAll({
-        where: { userId: targetUserId, endTime: null },
+        where: {
+            userId: targetUserId,
+            endTime: null
+        },
         order: [['startTime', 'DESC']]
     });
-    const shiftForLog = activeShifts.length > 0 
-        ? activeShifts[0] 
+    const shiftForLog = activeShifts.length > 0
+        ? activeShifts[0]
         : null;
     for (const activeShift of activeShifts) await activeShift.destroy();
 
-    await Profile.update({ 
-        onDuty: false, 
-        onBreak: false, 
-        breakStartTime: null }, { 
-            where: { userId: targetUserId } 
+    await Profile.update({
+        onDuty: false,
+        onBreak: false,
+        breakStartTime: null
+    }, {
+        where: {userId: targetUserId}
         });
     if (config.onDutyRole) {
         const member = await interaction.guild.members.fetch(targetUserId).catch(() => null);
@@ -985,14 +999,14 @@ async function handleDutyAdminVoidActive(client, interaction) {
     }
 
     if (shiftForLog) {
-    await logShiftChange(client, 'void', {
-        userId: targetUserId,
-        shiftType: shiftForLog.type || 'Staff',
-        startTime: shiftForLog.startTime,
-        breakCount: shiftForLog.breakCount || 0,
-        executorId: interaction.user.id
-    });
-}
+        await logShiftChange(client, 'void', {
+            userId: targetUserId,
+            shiftType: shiftForLog.type || 'Staff',
+            startTime: shiftForLog.startTime,
+            breakCount: shiftForLog.breakCount || 0,
+            executorId: interaction.user.id
+        });
+    }
 
     const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
     if (!targetMember) {
@@ -1036,11 +1050,11 @@ async function handleDutyAdminVoidAllSubmit(client, interaction) {
 
     const targetUserId = interaction.customId.split('_')[2];
     const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
-    
+
     if (interaction.fields.getTextInputValue('confirm').trim() !== confirmPhrase) {
-        return interaction.reply({ 
-            content: localize('staff-management-system', 'err-conf-fail'), 
-            flags: MessageFlags.Ephemeral 
+        return interaction.reply({
+            content: localize('staff-management-system', 'err-conf-fail'),
+            flags: MessageFlags.Ephemeral
         });
     }
 
@@ -1048,43 +1062,43 @@ async function handleDutyAdminVoidAllSubmit(client, interaction) {
     const Profile = client.models['staff-management-system']['StaffProfile'];
     const Shift = client.models['staff-management-system']['StaffShift'];
 
-    await Shift.destroy({ 
-        where: { userId: targetUserId } 
+    await Shift.destroy({
+        where: {userId: targetUserId}
     });
-    await Profile.update({ 
-        onDuty: false, 
-        onBreak: false, 
-        breakStartTime: null 
-    }, { 
-        where: { userId: targetUserId } 
+    await Profile.update({
+        onDuty: false,
+        onBreak: false,
+        breakStartTime: null
+    }, {
+        where: {userId: targetUserId}
     });
-    
+
     if (config.onDutyRole) {
         const member = await interaction.guild.members.fetch(targetUserId).catch(() => null);
         if (member) await member.roles.remove(config.onDutyRole).catch(() => {});
     }
 
-    client.logger.info(localize('staff-management-system', 'log-void-all', { 
-        target: targetUserId, 
-        admin: interaction.user.id 
+    client.logger.info(localize('staff-management-system', 'log-void-all', {
+        target: targetUserId,
+        admin: interaction.user.id
     }));
-    
-    return interaction.reply({ 
-        content: localize('staff-management-system', 'succ-v-all', { user: targetUserId }), 
-        flags: MessageFlags.Ephemeral 
+
+    return interaction.reply({
+        content: localize('staff-management-system', 'succ-v-all', {user: targetUserId}),
+        flags: MessageFlags.Ephemeral
     });
 }
 
 async function handleDutyAdminAddTimeButton(client, interaction) {
     const permCheck = checkDutyAdminPermission(client, interaction);
     if (permCheck) return permCheck;
-    
+
     const targetUserId = interaction.customId.split('_')[2];
     const config = getConfig(client, 'shifts');
-    const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0 
-    ? config.dutyTypes 
+    const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0
+        ? config.dutyTypes
     : ['Staff'];
-    
+
     const modal = new ModalBuilder()
     .setCustomId(`duty-mgmt_admin-addtime-submit_${targetUserId}`)
     .setTitle(localize('staff-management-system', 'mod-add-t'));
@@ -1119,7 +1133,7 @@ async function handleDutyAdminAddTimeSubmit(client, interaction) {
     const targetUserId = interaction.customId.split('_')[2];
     const minutesRaw = interaction.fields.getTextInputValue('minutes');
     const shiftType = interaction.fields.getTextInputValue('type');
-    
+
     const maxMinutes = 10080;
     const minutes = parseInt(minutesRaw, 10);
 
@@ -1131,21 +1145,21 @@ async function handleDutyAdminAddTimeSubmit(client, interaction) {
     }
 
     const config = getConfig(client, 'shifts');
-    const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0 
-    ? config.dutyTypes 
+    const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0
+        ? config.dutyTypes
     : ['Staff'];
-    
+
     if (!dutyTypes.includes(shiftType)) {
-        return interaction.reply({ 
-            content: localize('staff-management-system', 'err-inv-type', { 
-                types: dutyTypes.join(', ') 
-            }), 
-            flags: MessageFlags.Ephemeral 
+        return interaction.reply({
+            content: localize('staff-management-system', 'err-inv-type', {
+                types: dutyTypes.join(', ')
+            }),
+            flags: MessageFlags.Ephemeral
         });
     }
 
     const Shift = client.models['staff-management-system']['StaffShift'];
-    
+
     const durationSeconds = minutes * 60;
     const endTime = new Date();
     const startTime = new Date(endTime.getTime() - (durationSeconds * 1000));
@@ -1158,11 +1172,11 @@ async function handleDutyAdminAddTimeSubmit(client, interaction) {
         type: shiftType
     });
 
-    client.logger.info(localize('staff-management-system', 'log-add-time', { 
-        admin: interaction.user.tag, 
-        min: minutes, 
-        type: shiftType, 
-        target: targetUserId 
+    client.logger.info(localize('staff-management-system', 'log-add-time', {
+        admin: interaction.user.tag,
+        min: minutes,
+        type: shiftType,
+        target: targetUserId
     }));
 
     const targetMember = await interaction.guild.members.fetch(targetUserId).catch(() => null);
@@ -1199,7 +1213,7 @@ async function handleDutyDropdown(client, interaction, action, selectedType) {
 async function handleCommonDutyCommand(i, action) {
     const config = getConfig(i.client, 'shifts');
     if (!config || !config.enableShifts) return i.editReply({ content: localize('staff-management-system', 'err-sh-dis') });
-    
+
     const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0 ? config.dutyTypes : ['Staff'];
     let shiftType = i.options.getString('type');
 
@@ -1219,12 +1233,12 @@ async function handleCommonDutyCommand(i, action) {
         if (dutyTypes.length === 1 && action === 'manage') {
             shiftType = dutyTypes[0];
         } else if (dutyTypes.length === 1 && (action === 'leaderboard' || action === 'time')) {
-            shiftType = 'All'; 
+            shiftType = 'All';
         } else {
             const selectMenu = new StringSelectMenuBuilder()
                 .setCustomId(`duty-mgmt_dropdown_${action}`)
                 .setPlaceholder(localize('staff-management-system', 'ph-sel-type'));
-            
+
             allowedTypes.forEach(t => selectMenu.addOptions({ label: t, value: t }));
             const row = new ActionRowBuilder().addComponents(selectMenu);
             return i.editReply({ content: localize('staff-management-system', 'msg-sel-type'), components: [row.toJSON()] });
@@ -1249,55 +1263,55 @@ module.exports.autoComplete = {
     'manage': {
         'type': async function (interaction) {
             const config = getConfig(interaction.client, 'shifts');
-            const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0 
-            ? config.dutyTypes 
+            const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0
+                ? config.dutyTypes
             : ['Staff'];
             const focusedValue = interaction.value || '';
-            
+
             const filtered = dutyTypes.filter(choice => choice.toLowerCase().startsWith(focusedValue.toLowerCase()));
-            await interaction.respond(filtered.slice(0, 25).map(choice => ({ 
-                name: choice, 
-                value: choice 
+            await interaction.respond(filtered.slice(0, 25).map(choice => ({
+                name: choice,
+                value: choice
             })));
         }
     },
     'leaderboard': {
         'type': async function (interaction) {
             const config = getConfig(interaction.client, 'shifts');
-            const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0 
-            ? config.dutyTypes 
+            const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0
+                ? config.dutyTypes
             : ['Staff'];
-            const options = ['All', ...dutyTypes]; 
+            const options = ['All', ...dutyTypes];
             const focusedValue = interaction.value || '';
-            
+
             const filtered = options.filter(choice => choice.toLowerCase().startsWith(focusedValue.toLowerCase()));
-            await interaction.respond(filtered.slice(0, 25).map(choice => ({ 
-                name: choice, 
-                value: choice 
+            await interaction.respond(filtered.slice(0, 25).map(choice => ({
+                name: choice,
+                value: choice
             })));
         }
     },
     'time': {
         'type': async function (interaction) {
             const config = getConfig(interaction.client, 'shifts');
-            const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0 
-            ? config.dutyTypes 
+            const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0
+                ? config.dutyTypes
             : ['Staff'];
-            const options = ['All', ...dutyTypes]; 
+            const options = ['All', ...dutyTypes];
             const focusedValue = interaction.value || '';
-            
+
             const filtered = options.filter(choice => choice.toLowerCase().startsWith(focusedValue.toLowerCase()));
-            await interaction.respond(filtered.slice(0, 25).map(choice => ({ 
-                name: choice, 
-                value: choice 
+            await interaction.respond(filtered.slice(0, 25).map(choice => ({
+                name: choice,
+                value: choice
             })));
         }
     }
 };
 
 module.exports.beforeSubcommand = async function (interaction) {
-    await interaction.deferReply({ 
-        flags: MessageFlags.Ephemeral 
+    await interaction.deferReply({
+        flags: MessageFlags.Ephemeral
     });
 };
 
@@ -1307,19 +1321,19 @@ module.exports.subcommands = {
     },
     'active': async function (i) {
         const config = getConfig(i.client, 'shifts');
-        if (!config || !config.enableShifts) return i.editReply({ 
-            content: localize('staff-management-system', 'err-sh-dis') 
+        if (!config || !config.enableShifts) return i.editReply({
+            content: localize('staff-management-system', 'err-sh-dis')
         });
 
         const Shift = i.client.models['staff-management-system']['StaffShift'];
         const Profile = i.client.models['staff-management-system']['StaffProfile'];
-        const activeShifts = await Shift.findAll({ 
-            where: { endTime: null }, 
-            order: [['startTime', 'ASC']] 
+        const activeShifts = await Shift.findAll({
+            where: {endTime: null},
+            order: [['startTime', 'ASC']]
         });
 
-        if (activeShifts.length === 0) return i.editReply({ 
-            content: localize('staff-management-system', 'info-no-act-sh') 
+        if (activeShifts.length === 0) return i.editReply({
+            content: localize('staff-management-system', 'info-no-act-sh')
         });
 
         const profiles = await Profile.findAll({
@@ -1329,8 +1343,8 @@ module.exports.subcommands = {
         });
         const profileMap = new Map(profiles.map(profile => [profile.userId, profile]));
 
-        const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0 
-        ? config.dutyTypes 
+        const dutyTypes = config.dutyTypes && config.dutyTypes.length > 0
+            ? config.dutyTypes
         : ['Staff'];
 
         const grouped = {};
@@ -1343,7 +1357,7 @@ module.exports.subcommands = {
         const embed = applyFooter(i.client, new EmbedBuilder()
             .setTitle(localize('staff-management-system', 'duty-act-title'))
             .setColor('Green')
-            .setDescription(localize('staff-management-system', 'duty-act-desc', { 
+            .setDescription(localize('staff-management-system', 'duty-act-desc', {
                 count: activeShifts.length
             }))
         );
@@ -1374,9 +1388,9 @@ module.exports.subcommands = {
                     lines.push(`${index}. **<@${shift.userId}>** • ${formatDuration(elapsed)}${breakSuffix}`);
                     index++;
                 }
-                embed.addFields({ 
-                    name: `${type} (${grouped[type].length})`, 
-                    value: lines.join('\n') 
+                embed.addFields({
+                    name: `${type} (${grouped[type].length})`,
+                    value: lines.join('\n')
                 });
                 delete grouped[type];
             }
@@ -1411,8 +1425,8 @@ module.exports.subcommands = {
                 value: lines.join('\n')
             });
         }
-        await i.editReply({ 
-            embeds: [embed.toJSON()] 
+        await i.editReply({
+            embeds: [embed.toJSON()]
         });
     },
     'leaderboard': async function (i) {
@@ -1423,21 +1437,21 @@ module.exports.subcommands = {
     },
     'admin': async function (i) {
         const config = getConfig(i.client, 'shifts');
-        if (!config || !config.enableShifts) return i.editReply({ 
-            content: localize('staff-management-system', 'err-sh-dis') 
+        if (!config || !config.enableShifts) return i.editReply({
+            content: localize('staff-management-system', 'err-sh-dis')
         });
-        
+
         const generalConfig = getConfig(i.client, 'configuration');
         const canManage = i.member.roles.cache.some(r => [...(generalConfig.supervisorRoles || []), ...(generalConfig.managementRoles || [])].includes(r.id)) || i.member.permissions.has('Administrator');
-        if (!canManage) return i.editReply({ 
-            content: localize('staff-management-system', 'err-no-perm') 
+        if (!canManage) return i.editReply({
+            content: localize('staff-management-system', 'err-no-perm')
         });
 
         const target = i.options.getMember('user');
-        if (!target) return i.editReply({ 
-            content: localize('staff-management-system', 'err-no-mem') 
+        if (!target) return i.editReply({
+            content: localize('staff-management-system', 'err-no-mem')
         });
-        
+
         const payload = await buildDutyAdminPayload(i.client, target, i.member);
         await i.editReply(payload);
     }
@@ -1453,63 +1467,63 @@ module.exports.config = {
         return !client.configurations['staff-management-system']['shifts']?.enableShifts;
     },
     options: [
-        { 
-            type: 'SUB_COMMAND', 
-            name: 'manage', 
+        {
+            type: 'SUB_COMMAND',
+            name: 'manage',
             description: localize('staff-management-system', 'cmd-desc-duty-manage'),
             options: [
-                { 
-                    type: 'STRING', 
-                    name: 'type', 
-                    description: localize('staff-management-system', 'cmd-desc-duty-manage-type'), 
-                    required: false, 
-                    autocomplete: true 
+                {
+                    type: 'STRING',
+                    name: 'type',
+                    description: localize('staff-management-system', 'cmd-desc-duty-manage-type'),
+                    required: false,
+                    autocomplete: true
                 }
             ]
         },
-        { 
-            type: 'SUB_COMMAND', 
-            name: 'active', 
-            description: localize('staff-management-system', 'cmd-desc-duty-active') 
+        {
+            type: 'SUB_COMMAND',
+            name: 'active',
+            description: localize('staff-management-system', 'cmd-desc-duty-active')
         },
-        { 
-            type: 'SUB_COMMAND', 
-            name: 'leaderboard', 
+        {
+            type: 'SUB_COMMAND',
+            name: 'leaderboard',
             description: localize('staff-management-system', 'cmd-desc-duty-lb'),
             options: [
-                { 
-                    type: 'STRING', 
-                    name: 'type', 
-                    description: localize('staff-management-system', 'cmd-desc-duty-lb-type'), 
-                    required: false, 
-                    autocomplete: true 
+                {
+                    type: 'STRING',
+                    name: 'type',
+                    description: localize('staff-management-system', 'cmd-desc-duty-lb-type'),
+                    required: false,
+                    autocomplete: true
                 }
             ]
         },
-        { 
-            type: 'SUB_COMMAND', 
-            name: 'time', 
+        {
+            type: 'SUB_COMMAND',
+            name: 'time',
             description: localize('staff-management-system', 'cmd-desc-duty-time'),
             options: [
-                { 
-                    type: 'STRING', 
-                    name: 'type', 
-                    description: localize('staff-management-system', 'cmd-desc-duty-time-type'), 
-                    required: false, 
-                    autocomplete: true 
+                {
+                    type: 'STRING',
+                    name: 'type',
+                    description: localize('staff-management-system', 'cmd-desc-duty-time-type'),
+                    required: false,
+                    autocomplete: true
                 }
             ]
         },
-        { 
-            type: 'SUB_COMMAND', 
-            name: 'admin', 
-            description: localize('staff-management-system', 'cmd-desc-duty-admin'), 
+        {
+            type: 'SUB_COMMAND',
+            name: 'admin',
+            description: localize('staff-management-system', 'cmd-desc-duty-admin'),
             options: [
-                { 
-                    type: 'USER', 
-                    name: 'user', 
-                    description: localize('staff-management-system', 'cmd-desc-duty-admin-user'), 
-                    required: true 
+                {
+                    type: 'USER',
+                    name: 'user',
+                    description: localize('staff-management-system', 'cmd-desc-duty-admin-user'),
+                    required: true
                 }
             ]
         }
@@ -1518,16 +1532,16 @@ module.exports.config = {
 
 // Export handlers
 module.exports.buttonHandlers = {
-    handleDutyStartButton, 
+    handleDutyStartButton,
     handleDutyAdminAddTimeButton,
-    handleDutyBreakButton, 
-    handleDutyEndButton, 
-    handleDutyDropdown, 
-    handleDutyHistPageButton, 
+    handleDutyBreakButton,
+    handleDutyEndButton,
+    handleDutyDropdown,
+    handleDutyHistPageButton,
     handleDutyLbPageButton,
-    handleDutyAdminForceEnd, 
-    handleDutyAdminVoidActive, 
-    handleDutyAdminVoidAll, 
-    handleDutyAdminVoidAllSubmit, 
+    handleDutyAdminForceEnd,
+    handleDutyAdminVoidActive,
+    handleDutyAdminVoidAll,
+    handleDutyAdminVoidAllSubmit,
     handleDutyAdminAddTimeSubmit
 };

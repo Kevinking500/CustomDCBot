@@ -12,9 +12,9 @@ const { localize } = require('../../src/functions/localize');
 // --- Local helpers ---
 const getConfig = (client, file) => client.configurations['staff-management-system'][file];
 const getSafeChannelId = (val) => Array.isArray(val) && val.length > 0 // Helper to get safe channel ID from config
-? val[0] 
-: (typeof val === 'string' 
-    ? val 
+    ? val[0]
+    : (typeof val === 'string'
+            ? val
     : null
 );
 const parseDurationToDays = (input) => {
@@ -23,10 +23,10 @@ const parseDurationToDays = (input) => {
     if (!match) return null;
     const value = parseInt(match[1], 10);
     const unit = match[2]?.toLowerCase() || 'd';
-    return unit === 'm' 
-    ? value * 30 
-    : (unit === 'w' 
-        ? value * 7 
+    return unit === 'm'
+        ? value * 30
+        : (unit === 'w'
+                ? value * 7
         : value
     );
 };
@@ -105,10 +105,10 @@ function formatDuration(seconds) {
 
 // ---------- Infractions ----------
 async function issueInfraction(client, interaction, targetMember, type, reason, expiryInput) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ephemeral: true});
     const config = getConfig(client, 'infractions');
-    if (!config?.enableInfractions) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-feat-disabled', { feature: 'Infractions' })
+    if (!config?.enableInfractions) return interaction.editReply({
+        content: localize('staff-management-system', 'err-feat-disabled', {feature: 'Infractions'})
     });
 
     if (targetMember.id === interaction.user.id) {
@@ -118,7 +118,7 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
     }
 
     if (type.toLowerCase() === 'suspension') {
-        return interaction.editReply({ 
+        return interaction.editReply({
             content: localize('staff-management-system', 'err-use-susp')
         });
     }
@@ -126,30 +126,38 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
     let expiresAt = null;
     if (expiryInput) {
         const days = parseDurationToDays(expiryInput);
-        if (!days) return interaction.editReply({ 
-            content: localize('staff-management-system', 'err-inv-dur') 
+        if (!days) return interaction.editReply({
+            content: localize('staff-management-system', 'err-inv-dur')
         });
         expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
     }
 
     const record = await client.models['staff-management-system']['Infraction'].create({
-        userId: targetMember.id, 
-        issuerId: interaction.user.id, 
-        type, reason, expiresAt, 
+        userId: targetMember.id,
+        issuerId: interaction.user.id,
+        type, reason, expiresAt,
         active: true
     });
 
     const placeholders = {
         '%user%': targetMember.user.toString(),
-        '%user-avatar%': targetMember.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
+        '%user-avatar%': targetMember.user.displayAvatarURL({
+            dynamic: true,
+            format: 'png',
+            size: 1024
+        }) || '',
         '%issuer-mention%': interaction.user.toString(),
         '%issuer-name%': interaction.user.username,
-        '%issuer-avatar%': interaction.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
+        '%issuer-avatar%': interaction.user.displayAvatarURL({
+            dynamic: true,
+            format: 'png',
+            size: 1024
+        }) || '',
         '%type%': type,
         '%reason%': reason,
         '%case-id%': record.caseId.toString(),
-        '%end-date%': expiresAt 
-            ? `<t:${Math.floor(expiresAt.getTime() / 1000)}:F>` 
+        '%end-date%': expiresAt
+            ? `<t:${Math.floor(expiresAt.getTime() / 1000)}:F>`
             : localize('staff-management-system', 'label-never')
     };
 
@@ -158,14 +166,15 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
         if (channel) {
             let template = config.infractionMessage;
-            if (typeof template === 'string') { 
-                try { template = JSON.parse(template); } 
-                catch (e) {} 
-            } 
-            else if (typeof template === 'object') { 
-                template = JSON.parse(JSON.stringify(template)); 
+            if (typeof template === 'string') {
+                try {
+                    template = JSON.parse(template);
+                } catch (e) {
+                }
+            } else if (typeof template === 'object') {
+                template = JSON.parse(JSON.stringify(template));
             }
-            
+
             if (template && template.embeds && !template._schema) template._schema = 'v3';
             let msgOpts = await embedTypeV2(template, placeholders);
             if (msgOpts?.content?.trim() === '') delete msgOpts.content;
@@ -186,7 +195,8 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         if (typeof dmTemplate === 'string') {
             try {
                 dmTemplate = JSON.parse(dmTemplate);
-            } catch (e) {} 
+            } catch (e) {
+            }
         } else if (typeof dmTemplate === 'object') {
             dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
         }
@@ -207,31 +217,31 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         }
     }
 
-    await interaction.editReply({ 
-        content: localize('staff-management-system', 'succ-infract', { 
-            type, 
-            caseId: record.caseId, 
-            user: targetMember.user.tag 
+    await interaction.editReply({
+        content: localize('staff-management-system', 'succ-infract', {
+            type,
+            caseId: record.caseId,
+            user: targetMember.user.tag
         })
     });
 }
 
 // ---------- Suspensions ----------
 async function issueSuspension(client, interaction, targetMember, durationInput, reason) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ephemeral: true});
     const config = getConfig(client, 'infractions');
-    if (!config?.enableInfractions) 
-        return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-feat-disabled', { 
-        feature: 'Infractions' 
-        }) 
+    if (!config?.enableInfractions)
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-feat-disabled', {
+                feature: 'Infractions'
+            })
     });
 
-    if (!config?.enableSuspensions) 
-        return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-feat-disabled', { 
-            feature: 'Suspensions' 
-        }) 
+    if (!config?.enableSuspensions)
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-feat-disabled', {
+                feature: 'Suspensions'
+            })
     });
 
     if (targetMember.id === interaction.user.id) {
@@ -241,11 +251,11 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
     }
 
     const durationDays = parseDurationToDays(durationInput);
-    if (!durationDays) 
-        return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-inv-dur') 
+    if (!durationDays)
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-inv-dur')
     });
-    
+
     const expiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
     const durationString = `${durationDays} ${localize('staff-management-system', 'label-days')}`;
 
@@ -269,19 +279,27 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
     if (config.suspensionRole) await targetMember.roles.add(config.suspensionRole).catch(() => {});
 
     const record = await client.models['staff-management-system']['Infraction'].create({
-        userId: targetMember.id, 
-        issuerId: interaction.user.id, 
-        type: 'Suspension', 
-        reason, durationDays, expiresAt, 
+        userId: targetMember.id,
+        issuerId: interaction.user.id,
+        type: 'Suspension',
+        reason, durationDays, expiresAt,
         active: true
     });
 
     const placeholders = {
         '%user%': targetMember.user.toString(),
-        '%user-avatar%': targetMember.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
+        '%user-avatar%': targetMember.user.displayAvatarURL({
+            dynamic: true,
+            format: 'png',
+            size: 1024
+        }) || '',
         '%issuer-mention%': interaction.user.toString(),
         '%issuer-name%': interaction.user.username,
-        '%issuer-avatar%': interaction.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
+        '%issuer-avatar%': interaction.user.displayAvatarURL({
+            dynamic: true,
+            format: 'png',
+            size: 1024
+        }) || '',
         '%duration%': durationString,
         '%reason%': reason,
         '%case-id%': record.caseId.toString(),
@@ -293,16 +311,15 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
         const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
         if (channel) {
             let template = config.suspensionMessage;
-            if (typeof template === 'string') { 
-                try { 
-                    template = JSON.parse(template); 
-                } 
-                catch (e) {} 
-            } 
-            else if (typeof template === 'object') { 
-                template = JSON.parse(JSON.stringify(template)); 
+            if (typeof template === 'string') {
+                try {
+                    template = JSON.parse(template);
+                } catch (e) {
+                }
+            } else if (typeof template === 'object') {
+                template = JSON.parse(JSON.stringify(template));
             }
-            
+
             if (template && template.embeds && !template._schema) template._schema = 'v3';
             let msgOpts = await embedTypeV2(template, placeholders);
             if (msgOpts?.content?.trim() === '') delete msgOpts.content;
@@ -320,14 +337,13 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
 
     if (config.dmInfractedUser && config.suspensionDmMessage) {
         let dmTemplate = config.suspensionDmMessage;
-        if (typeof dmTemplate === 'string') { 
-            try { 
-                dmTemplate = JSON.parse(dmTemplate); 
-            } 
-            catch (e) {} 
-        } 
-        else if (typeof dmTemplate === 'object') { 
-            dmTemplate = JSON.parse(JSON.stringify(dmTemplate)); 
+        if (typeof dmTemplate === 'string') {
+            try {
+                dmTemplate = JSON.parse(dmTemplate);
+            } catch (e) {
+            }
+        } else if (typeof dmTemplate === 'object') {
+            dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
         }
 
         if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
@@ -346,11 +362,11 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
         }
     }
 
-    await interaction.editReply({ 
-        content: localize('staff-management-system', 'succ-susp', { 
-            caseId: record.caseId, 
-            user: targetMember.user.tag, 
-            duration: durationString 
+    await interaction.editReply({
+        content: localize('staff-management-system', 'succ-susp', {
+            caseId: record.caseId,
+            user: targetMember.user.tag,
+            duration: durationString
         })
     });
 }
@@ -375,7 +391,7 @@ async function resolveInfractionReference(client, reference) {
         if (parts.length !== 4 || parts[0] !== 'channels') return null;
 
         return await Infraction.findOne({
-            where: { messageUrl: value }
+            where: {messageUrl: value}
         });
     } catch (e) {
         return null;
@@ -384,38 +400,38 @@ async function resolveInfractionReference(client, reference) {
 
 // ----- Infractions voiding -----
 async function voidInfraction(client, interaction, reference) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ephemeral: true});
     const config = getConfig(client, 'infractions');
-    if (!config?.enableInfractions) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-feat-disabled', { 
-            feature: 'Infractions' 
+    if (!config?.enableInfractions) return interaction.editReply({
+        content: localize('staff-management-system', 'err-feat-disabled', {
+            feature: 'Infractions'
         })
     });
 
     const canManage = checkStaffPermissions(interaction.member, getConfig(client, 'configuration'), 'supervisor');
-    if (!canManage) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-gen-no-perm') 
+    if (!canManage) return interaction.editReply({
+        content: localize('staff-management-system', 'err-gen-no-perm')
     });
 
     const record = await resolveInfractionReference(client, reference);
-    if (!record) { 
-        return interaction.editReply({ 
-            content: localize('staff-management-system', 'err-no-case-ref', { reference })
-        }); 
+    if (!record) {
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-no-case-ref', {reference})
+        });
     }
-    if (!record.active) { 
-        return interaction.editReply({ 
-            content: localize('staff-management-system', 'err-case-inact', { caseId: record.caseId })
-        }); 
+    if (!record.active) {
+        return interaction.editReply({
+            content: localize('staff-management-system', 'err-case-inact', {caseId: record.caseId})
+        });
     }
 
     if (record.type.toLowerCase() === 'suspension') {
         const Profile = client.models['staff-management-system']['StaffProfile'];
-        const profile = await Profile.findOne({ 
-            where: { userId: record.userId } 
+        const profile = await Profile.findOne({
+            where: {userId: record.userId}
         });
         const member = await interaction.guild.members.fetch(record.userId).catch(() => null);
-        
+
         if (member && profile && profile.isSuspended) {
             try {
                 const rolesToRestore = JSON.parse(profile.suspendedRoles || '[]');
@@ -423,15 +439,15 @@ async function voidInfraction(client, interaction, reference) {
                 if (config.suspensionRole) await member.roles.remove(config.suspensionRole);
                 await profile.update({ isSuspended: false, suspendedRoles: '[]' });
             } catch (e) {
-                return interaction.editReply({ 
-                    content: localize('staff-management-system', 'succ-void-fail', { caseId: record.caseId })
+                return interaction.editReply({
+                    content: localize('staff-management-system', 'succ-void-fail', {caseId: record.caseId})
                 });
             }
         }
     }
-    await record.update({ active: false });
-    await interaction.editReply({ 
-        content: localize('staff-management-system', 'succ-void', { caseId: record.caseId })
+    await record.update({active: false});
+    await interaction.editReply({
+        content: localize('staff-management-system', 'succ-void', {caseId: record.caseId})
     });
 }
 
@@ -439,18 +455,18 @@ async function voidInfraction(client, interaction, reference) {
 async function generateInfractionHistoryResponse(client, targetUser, page = 1) {
     const limit = 5;
     const offset = (page - 1) * limit;
-    const { count, rows } = await client.models['staff-management-system']['Infraction'].findAndCountAll({ 
-        where: { userId: targetUser.id }, 
-        order: [['createdAt', 'DESC']], 
-        limit, offset 
+    const {count, rows} = await client.models['staff-management-system']['Infraction'].findAndCountAll({
+        where: {userId: targetUser.id},
+        order: [['createdAt', 'DESC']],
+        limit, offset
     });
 
-    if (count === 0) 
-        return { 
-        content: localize('staff-management-system', 'info-clean-rec', { 
-            username: targetUser.username 
-        }), 
-        flags: MessageFlags.Ephemeral 
+    if (count === 0)
+        return {
+            content: localize('staff-management-system', 'info-clean-rec', {
+                username: targetUser.username
+            }),
+            flags: MessageFlags.Ephemeral
     };
 
     const totalPages = Math.ceil(count / limit) || 1;
@@ -461,23 +477,24 @@ async function generateInfractionHistoryResponse(client, targetUser, page = 1) {
     );
 
     const desc = rows.map(r => {
-        const link = r.messageUrl 
-        ? ` • [Jump](${r.messageUrl})` 
+        const link = r.messageUrl
+            ? ` • [Jump](${r.messageUrl})`
         : '';
-        const statusIcon = r.active 
-        ? '🔴' 
+        const statusIcon = r.active
+            ? '🔴'
         : localize('staff-management-system', 'icon-voided');
-        const expiry = r.expiresAt 
-        ? `\n**${localize('staff-management-system', 'label-exp')}:** <t:${Math.floor(new Date(r.expiresAt).getTime() / 1000)}:R>` 
+        const expiry = r.expiresAt
+            ? `\n**${localize('staff-management-system', 'label-exp')}:** <t:${Math.floor(new Date(r.expiresAt).getTime() / 1000)}:R>`
         : '';
 
         return `**${statusIcon} ${localize('staff-management-system', 'label-case')} #${r.caseId} - ${r.type}**\n**${localize('staff-management-system', 'label-date')}:** <t:${Math.floor(new Date(r.createdAt).getTime() / 1000)}:f>\n**${localize('staff-management-system', 'label-iss')}:** <@${r.issuerId}>\n**${localize('staff-management-system', 'general-rsn')}:** ${r.reason}${expiry}${link}`;
     }).join('\n\n');
 
     embed.setDescription(desc);
-    embed.addFields({ name: '\u200b', value: localize('staff-management-system', 'page-count', { 
-        page, 
-        total: totalPages 
+    embed.addFields({
+        name: '\u200b', value: localize('staff-management-system', 'page-count', {
+            page,
+            total: totalPages
     }) });
 
     const row = buildPaginationRow(
@@ -492,20 +509,20 @@ async function generateInfractionHistoryResponse(client, targetUser, page = 1) {
 
 // ----- Gets infraction history -----
 async function getInfractionHistory(client, interaction, targetUser) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ephemeral: true});
     const response = await generateInfractionHistoryResponse(client, targetUser, 1);
     if (response.content && response.content.startsWith('ℹ️')) return interaction.editReply(response);
-    await interaction.editReply({ 
+    await interaction.editReply({
         ...response
     });
 }
 
 // ---------- Promotions ----------
 async function promoteUser(client, interaction, targetMember, newRole, reason) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ephemeral: true});
     const config = getConfig(client, 'promotions');
-    if (!config?.enablePromotions) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-feat-disabled', { feature: 'Promotions' })
+    if (!config?.enablePromotions) return interaction.editReply({
+        content: localize('staff-management-system', 'err-feat-disabled', {feature: 'Promotions'})
     });
 
     if (targetMember.id === interaction.user.id) {
@@ -514,60 +531,65 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
         });
     }
 
-    const finalReason = reason && reason.trim() !== '' 
-    ? reason 
+    const finalReason = reason && reason.trim() !== ''
+        ? reason
     : localize('staff-management-system', 'none-provided');
     const channelOverride = interaction.options.getChannel('channel');
 
     if (config.autoAddRole) {
         if (interaction.guild.members.me.roles.highest.position <= newRole.position) {
-            return interaction.editReply({ 
+            return interaction.editReply({
                 content: localize('staff-management-system', 'err-role-hier')
             });
         }
-        try { 
-            await targetMember.roles.add(newRole); 
-        } 
-        catch (e) { 
-            return interaction.editReply({ 
-            content: localize('staff-management-system', 'err-add-role', { e: e.message })
+        try {
+            await targetMember.roles.add(newRole);
+        } catch (e) {
+            return interaction.editReply({
+                content: localize('staff-management-system', 'err-add-role', {e: e.message})
         }); }
     }
 
-    const record = await client.models['staff-management-system']['Promotion'].create({ 
-        userId: targetMember.id, 
-        issuerId: interaction.user.id, 
-        newRole: newRole.id, 
-        reason: finalReason 
+    const record = await client.models['staff-management-system']['Promotion'].create({
+        userId: targetMember.id,
+        issuerId: interaction.user.id,
+        newRole: newRole.id,
+        reason: finalReason
     });
 
     const placeholders = {
-        '%user-mention%': targetMember.user.toString(), 
-        '%new-role-name%': newRole.name, 
+        '%user-mention%': targetMember.user.toString(),
+        '%new-role-name%': newRole.name,
         '%new-role-mention%': newRole.toString(),
-        '%promoter-mention%': interaction.user.toString(), 
-        '%promoter-name%': interaction.user.username, 
+        '%promoter-mention%': interaction.user.toString(),
+        '%promoter-name%': interaction.user.username,
         '%reason%': finalReason,
-        '%user-avatar%': targetMember.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || '',
-        '%promoter-avatar%': interaction.user.displayAvatarURL({ dynamic: true, format: 'png', size: 1024 }) || ''
+        '%user-avatar%': targetMember.user.displayAvatarURL({
+            dynamic: true,
+            format: 'png',
+            size: 1024
+        }) || '',
+        '%promoter-avatar%': interaction.user.displayAvatarURL({
+            dynamic: true,
+            format: 'png',
+            size: 1024
+        }) || ''
     };
 
-    const targetChannelId = channelOverride 
-    ? channelOverride.id 
+    const targetChannelId = channelOverride
+        ? channelOverride.id
     : getSafeChannelId(config.promotionsChannel);
 
     if (targetChannelId) {
         const channel = await interaction.guild.channels.fetch(targetChannelId).catch(() => null);
         if (channel) {
             let embedTemplate = config.promotionMessage;
-            if (typeof embedTemplate === 'string') { 
-                try { 
-                    embedTemplate = JSON.parse(embedTemplate); 
-                } 
-            catch (e) {} }
-            
-            else if (typeof embedTemplate === 'object') { 
-                embedTemplate = JSON.parse(JSON.stringify(embedTemplate)); 
+            if (typeof embedTemplate === 'string') {
+                try {
+                    embedTemplate = JSON.parse(embedTemplate);
+                }
+            catch (e) {} } else if (typeof embedTemplate === 'object') {
+                embedTemplate = JSON.parse(JSON.stringify(embedTemplate));
             }
 
             if (embedTemplate && embedTemplate.embeds && !embedTemplate._schema) embedTemplate._schema = 'v3';
@@ -588,8 +610,8 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
                 }));
                 return null;
             });
-            
-            if (sentMessage) await record.update({ messageUrl: sentMessage.url }); 
+
+            if (sentMessage) await record.update({messageUrl: sentMessage.url});
         }
     }
 
@@ -598,10 +620,9 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
         if (typeof dmTemplate === 'string') {
             try {
                 dmTemplate = JSON.parse(dmTemplate);
-            } 
-            catch (e) {}
-        } 
-        else if (typeof dmTemplate === 'object') {
+            } catch (e) {
+            }
+        } else if (typeof dmTemplate === 'object') {
             dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
         }
 
@@ -620,11 +641,11 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
             }
         }
     }
-    
-    await interaction.editReply({ 
-        content: localize('staff-management-system', 'succ-promo', { 
-            user: targetMember.user.tag, 
-            role: newRole.name 
+
+    await interaction.editReply({
+        content: localize('staff-management-system', 'succ-promo', {
+            user: targetMember.user.tag,
+            role: newRole.name
         })
     });
 }
@@ -635,17 +656,17 @@ async function generatePromotionHistoryResponse(client, targetUser, page = 1) {
     const limit = 5;
     const offset = (page - 1) * limit;
 
-    const { count, rows } = await Promotion.findAndCountAll({ 
-        where: { 
-            userId: targetUser.id 
-        }, 
-        order: [['createdAt', 'DESC']], 
-        limit, 
-        offset 
+    const {count, rows} = await Promotion.findAndCountAll({
+        where: {
+            userId: targetUser.id
+        },
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
     });
-    if (count === 0) return { 
-        content: localize('staff-management-system', 'info-no-promo', { username: targetUser.username }), 
-        flags: MessageFlags.Ephemeral 
+    if (count === 0) return {
+        content: localize('staff-management-system', 'info-no-promo', {username: targetUser.username}),
+        flags: MessageFlags.Ephemeral
     };
 
     const totalPages = Math.ceil(count / limit) || 1;
@@ -670,19 +691,19 @@ async function generatePromotionHistoryResponse(client, targetUser, page = 1) {
         page, totalPages
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [row.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [row.toJSON()]
     };
 }
 
 async function getPromotionHistory(client, interaction, targetUser) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ephemeral: true});
     const response = await generatePromotionHistoryResponse(client, targetUser, 1);
     if (response.content && response.content.startsWith('ℹ️')) return interaction.editReply(response);
 
-    await interaction.editReply({ 
-        ...response 
+    await interaction.editReply({
+        ...response
     });
 }
 
@@ -699,12 +720,12 @@ async function generatePanelSubpage(client, targetUser, type, page) {
 // Overview page
 async function generateUserPanel(client, targetUser) {
     const embed = applyFooter(client, new EmbedBuilder()
-        .setTitle(localize('staff-management-system', 'panel-title', { 
-            username: targetUser.username 
+        .setTitle(localize('staff-management-system', 'panel-title', {
+            username: targetUser.username
         }))
-        .setDescription(localize('staff-management-system', 'panel-desc', { 
-            mention: targetUser.toString(), 
-            id: targetUser.id 
+        .setDescription(localize('staff-management-system', 'panel-desc', {
+            mention: targetUser.toString(),
+            id: targetUser.id
         }))
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
         .setColor('Blurple')
@@ -749,17 +770,17 @@ async function generateUserPanel(client, targetUser) {
         );
 
     const row = new ActionRowBuilder().addComponents(menu);
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [row.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [row.toJSON()]
     };
 }
 
 // Infractions page
 async function generatePanelInfractions(client, targetUser, page = 1) {
     const Infraction = client.models['staff-management-system']['Infraction'];
-    const allInfractions = await Infraction.findAll({ 
-        where: { userId: targetUser.id } 
+    const allInfractions = await Infraction.findAll({
+        where: {userId: targetUser.id}
     });
     const count = allInfractions.length;
 
@@ -767,7 +788,7 @@ async function generatePanelInfractions(client, targetUser, page = 1) {
     if (count > 3) totalPages = 1 + Math.ceil((count - 3) / 5);
 
     const limit = page === 1 ? 3 : 5;
-    const offset = page === 1 ? 0 : 3 + ((page - 2) * 5); 
+    const offset = page === 1 ? 0 : 3 + ((page - 2) * 5);
 
     const typeCounts = {};
     allInfractions.forEach(inf => { typeCounts[inf.type] = (typeCounts[inf.type] || 0) + 1; });
@@ -779,15 +800,15 @@ async function generatePanelInfractions(client, targetUser, page = 1) {
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
     );
 
-    let desc = localize('staff-management-system', 'p-inf-desc', { 
-        count: count, types: typeStrings || localize('staff-management-system', 'info-none') 
+    let desc = localize('staff-management-system', 'p-inf-desc', {
+        count: count, types: typeStrings || localize('staff-management-system', 'info-none')
     });
 
-    const rows = await Infraction.findAll({ 
-        where: { userId: targetUser.id }, 
-        order: [['createdAt', 'DESC']], 
-        limit, 
-        offset 
+    const rows = await Infraction.findAll({
+        where: {userId: targetUser.id},
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
     });
 
     if (rows.length === 0) {
@@ -813,43 +834,43 @@ async function generatePanelInfractions(client, targetUser, page = 1) {
         page, totalPages
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [menu.toJSON(), paginationRow.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [menu.toJSON(), paginationRow.toJSON()]
     };
 }
 
 // Promotions page
 async function generatePanelPromotions(client, targetUser, page = 1) {
     const Promotion = client.models['staff-management-system']['Promotion'];
-    const count = await Promotion.count({ 
-        where: { userId: targetUser.id } 
+    const count = await Promotion.count({
+        where: {userId: targetUser.id}
     });
 
     let totalPages = 1;
     if (count > 3) totalPages = 1 + Math.ceil((count - 3) / 5);
 
-    const limit = page === 1 
-    ? 3 
+    const limit = page === 1
+        ? 3
     : 5;
-    const offset = page === 1 
-    ? 0 
-    : 3 + ((page - 2) * 5); 
+    const offset = page === 1
+        ? 0
+        : 3 + ((page - 2) * 5);
 
     const embed = applyFooter(client, new EmbedBuilder()
-        .setTitle(localize('staff-management-system', 'p-prom-title', { 
-            username: targetUser.username 
+        .setTitle(localize('staff-management-system', 'p-prom-title', {
+            username: targetUser.username
         }))
         .setColor('Gold')
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
     );
 
     let desc = localize('staff-management-system', 'p-prom-desc', { count: count });
-    const rows = await Promotion.findAll({ 
-        where: { userId: targetUser.id }, 
-        order: [['createdAt', 'DESC']], 
-        limit, 
-        offset 
+    const rows = await Promotion.findAll({
+        where: {userId: targetUser.id},
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
     });
 
     if (rows.length === 0) {
@@ -871,55 +892,55 @@ async function generatePanelPromotions(client, targetUser, page = 1) {
         page, totalPages
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [menu.toJSON(), paginationRow.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [menu.toJSON(), paginationRow.toJSON()]
     };
 }
 
 // Reviews page
 async function generatePanelReviews(client, targetUser, page = 1) {
     const Review = client.models['staff-management-system']['StaffReview'];
-    const allReviews = await Review.findAll({ 
-        where: { targetId: targetUser.id } 
+    const allReviews = await Review.findAll({
+        where: {targetId: targetUser.id}
     });
     const count = allReviews.length;
-    
+
     let totalPages = 1;
     if (count > 3) totalPages = 1 + Math.ceil((count - 3) / 5);
-    
+
     const limit = page === 1 ? 3 : 5;
-    const offset = page === 1 ? 0 : 3 + ((page - 2) * 5); 
-    
-    const avg = count 
-    ? (allReviews.reduce((a, b) => a + b.stars, 0) / count).toFixed(1) 
+    const offset = page === 1 ? 0 : 3 + ((page - 2) * 5);
+
+    const avg = count
+        ? (allReviews.reduce((a, b) => a + b.stars, 0) / count).toFixed(1)
     : 0;
-    
+
     const embed = applyFooter(client, new EmbedBuilder()
-        .setTitle(localize('staff-management-system', 'p-rev-title', { 
-            username: targetUser.username 
+        .setTitle(localize('staff-management-system', 'p-rev-title', {
+            username: targetUser.username
         }))
         .setColor('Gold')
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
     );
-    
+
     let desc = localize('staff-management-system', 'p-rev-desc', { count: count, avg: avg });
-    
-    const rows = await Review.findAll({ 
-        where: { targetId: targetUser.id }, 
-        order: [['createdAt', 'DESC']], 
-        limit, 
-        offset 
+
+    const rows = await Review.findAll({
+        where: {targetId: targetUser.id},
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
     });
     if (rows.length === 0) desc += localize('staff-management-system', 'p-no-hist');
     else desc += rows.map(r => `**${"⭐".repeat(r.stars)}** ${localize('staff-management-system', 'label-by')} <@${r.authorId}>\n"${r.comment}"`).join('\n\n');
-    
+
     embed.setDescription(desc);
-    embed.addFields({ 
-        name: '\u200b', 
-        value: localize('staff-management-system', 'page-count', { 
-            page, total: totalPages 
-        }) 
+    embed.addFields({
+        name: '\u200b',
+        value: localize('staff-management-system', 'page-count', {
+            page, total: totalPages
+        })
     });
 
     const menu = ActionRowBuilder.from((await generateUserPanel(client, targetUser)).components[0]);
@@ -932,71 +953,71 @@ async function generatePanelReviews(client, targetUser, page = 1) {
         page, totalPages
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [menu.toJSON(), paginationRow.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [menu.toJSON(), paginationRow.toJSON()]
     };
 }
 
 // Status page
 async function generatePanelStatus(client, targetUser, page = 1) {
     const LoaRequest = client.models['staff-management-system']['LoaRequest'];
-    const allStatuses = await LoaRequest.findAll({ 
-        where: { userId: targetUser.id } 
+    const allStatuses = await LoaRequest.findAll({
+        where: {userId: targetUser.id}
     });
     const count = allStatuses.length;
-    
+
     let totalPages = 1;
     if (count > 3) totalPages = 1 + Math.ceil((count - 3) / 5);
-    const limit = page === 1 
-    ? 3 
+    const limit = page === 1
+        ? 3
     : 5;
-    const offset = page === 1 
-    ? 0 
-    : 3 + ((page - 2) * 5); 
-    
+    const offset = page === 1
+        ? 0
+        : 3 + ((page - 2) * 5);
+
     const activeStatus = allStatuses.find(s => ['APPROVED', 'PENDING'].includes(s.status) && new Date(s.endDate) > new Date());
     let activeText = localize('staff-management-system', 'info-none');
     if (activeStatus) {
         activeText = `**${activeStatus.type}** (${activeStatus.status})\n${localize('staff-management-system', 'label-end')}: <t:${Math.floor(new Date(activeStatus.endDate).getTime()/1000)}:R>`;
     }
-    
+
     const embed = applyFooter(client, new EmbedBuilder()
-        .setTitle(localize('staff-management-system', 'p-sta-title', { 
-            username: targetUser.username 
+        .setTitle(localize('staff-management-system', 'p-sta-title', {
+            username: targetUser.username
         }))
         .setColor('Green')
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
     );
-    
-    let desc = localize('staff-management-system', 'p-sta-desc', { 
-        count: count, active: activeText 
+
+    let desc = localize('staff-management-system', 'p-sta-desc', {
+        count: count, active: activeText
     });
-    
-    const rows = await LoaRequest.findAll({ 
-        where: { userId: targetUser.id }, 
-        order: [['createdAt', 'DESC']], 
-        limit, 
-        offset 
+
+    const rows = await LoaRequest.findAll({
+        where: {userId: targetUser.id},
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
     });
     if (rows.length === 0) desc += localize('staff-management-system', 'p-no-hist');
     else {
-        const icons = { 
-            APPROVED: '✅', 
-            DENIED: '❌', 
-            ENDED: '⏹️', 
-            PENDING: '🕐' 
+        const icons = {
+            APPROVED: '✅',
+            DENIED: '❌',
+            ENDED: '⏹️',
+            PENDING: '🕐'
         };
         desc += rows.map(r => `**${icons[r.status] || '❓'} ${r.type} - ${r.status}**\n**${localize('staff-management-system', 'general-start')}:** <t:${Math.floor(new Date(r.startDate).getTime()/1000)}:D>\n**${localize('staff-management-system', 'general-end')}:** <t:${Math.floor(new Date(r.endDate).getTime()/1000)}:D>\n**${localize('staff-management-system', 'general-rsn')}:** ${r.reason}`).join('\n\n');
     }
-    
+
     embed.setDescription(desc);
-    embed.addFields({ 
-        name: '\u200b', 
-        value: localize('staff-management-system', 'page-count', { 
-            page, 
-            total: totalPages 
-        }) 
+    embed.addFields({
+        name: '\u200b',
+        value: localize('staff-management-system', 'page-count', {
+            page,
+            total: totalPages
+        })
     });
 
     const menu = ActionRowBuilder.from((await generateUserPanel(client, targetUser)).components[0]);
@@ -1009,9 +1030,9 @@ async function generatePanelStatus(client, targetUser, page = 1) {
         page, totalPages
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [menu.toJSON(), paginationRow.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [menu.toJSON(), paginationRow.toJSON()]
     };
 }
 
@@ -1064,17 +1085,17 @@ async function generatePanelActivity(client, targetUser, page = 1) {
     const count = historyRows.length;
     let totalPages = 1;
     if (count > 3) totalPages = 1 + Math.ceil((count - 3) / 5);
-    const limit = page === 1 
-    ? 3 
+    const limit = page === 1
+        ? 3
     : 5;
-    const offset = page === 1 
-    ? 0 
-    : 3 + ((page - 2) * 5); 
+    const offset = page === 1
+        ? 0
+        : 3 + ((page - 2) * 5);
     const paginatedRows = historyRows.slice(offset, offset + limit);
 
     const embed = applyFooter(client, new EmbedBuilder()
-        .setTitle(localize('staff-management-system', 'p-act-title', { 
-            username: targetUser.username 
+        .setTitle(localize('staff-management-system', 'p-act-title', {
+            username: targetUser.username
         }))
         .setColor('Blue')
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
@@ -1105,21 +1126,21 @@ async function generatePanelActivity(client, targetUser, page = 1) {
         `staff-mgmt_panel-act_${targetUser.id}_${page - 1}`,
         'panel_act_count',
         `staff-mgmt_panel-act_${targetUser.id}_${page + 1}`,
-        page, 
+        page,
         totalPages
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [menu.toJSON(), paginationRow.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [menu.toJSON(), paginationRow.toJSON()]
     };
 }
 
 // Shifts page
 async function generatePanelShifts(client, targetUser) {
     const embed = applyFooter(client, new EmbedBuilder()
-        .setTitle(localize('staff-management-system', 'p-shi-title', { 
-            username: targetUser.username 
+        .setTitle(localize('staff-management-system', 'p-shi-title', {
+            username: targetUser.username
         }))
         .setColor('Purple')
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
@@ -1127,15 +1148,15 @@ async function generatePanelShifts(client, targetUser) {
 
     try {
         const Shift = client.models['staff-management-system']['StaffShift'];
-        const config = getConfig(client, 'shifts') || {}; 
-        const shifts = await Shift.findAll({ 
-            where: { 
-                userId: targetUser.id, 
-                endTime: { [Op.not]: null }, 
-                duration: { [Op.not]: null } 
-            } 
+        const config = getConfig(client, 'shifts') || {};
+        const shifts = await Shift.findAll({
+            where: {
+                userId: targetUser.id,
+                endTime: {[Op.not]: null},
+                duration: {[Op.not]: null}
+            }
         });
-        
+
         const totalShifts = shifts.length;
         const totalSeconds = shifts.reduce((sum, s) => sum + (parseInt(s.duration) || 0), 0);
 
@@ -1149,7 +1170,7 @@ async function generatePanelShifts(client, targetUser) {
         let quotaStr = localize('staff-management-system', 'no-quota-configured');
         const guild = client.guilds.cache.get(client.guildID);
         const member = await guild?.members.fetch(targetUser.id).catch(() => null);
-        
+
         if (member && config.enableQuotas && config.quotas) {
             let bestQuota = null;
             let highestPosition = -1;
@@ -1168,25 +1189,25 @@ async function generatePanelShifts(client, targetUser) {
                 if (timeframe === 'Weekly') cutoff.setDate(cutoff.getDate() - 7);
                 else cutoff.setMonth(cutoff.getMonth() - 1);
 
-                const recentShifts = await Shift.findAll({ 
-                    where: { 
-                        userId: targetUser.id, 
-                        startTime: { [Op.gt]: cutoff }, 
-                        endTime: { [Op.not]: null }, 
-                        duration: { [Op.not]: null } 
-                    } 
+                const recentShifts = await Shift.findAll({
+                    where: {
+                        userId: targetUser.id,
+                        startTime: {[Op.gt]: cutoff},
+                        endTime: {[Op.not]: null},
+                        duration: {[Op.not]: null}
+                    }
                 });
                 const recentSeconds = recentShifts.reduce((sum, s) => sum + (parseInt(s.duration) || 0), 0);
                 const requiredSeconds = bestQuota.hours * 3600;
                 const isMet = recentSeconds >= requiredSeconds;
-                
-                quotaStr = localize('staff-management-system', 'duty-quota-str', { 
-                    timeframe, 
-                    duration: formatDuration(recentSeconds), 
-                    hours: bestQuota.hours, 
-                    result: isMet 
-                    ? localize('staff-management-system', 'duty-quota-met') 
-                    : localize('staff-management-system', 'duty-quota-failed') 
+
+                quotaStr = localize('staff-management-system', 'duty-quota-str', {
+                    timeframe,
+                    duration: formatDuration(recentSeconds),
+                    hours: bestQuota.hours,
+                    result: isMet
+                        ? localize('staff-management-system', 'duty-quota-met')
+                        : localize('staff-management-system', 'duty-quota-failed')
                 });
             }
         }
@@ -1197,18 +1218,18 @@ async function generatePanelShifts(client, targetUser) {
             group: ['userId'],
             order: [[Shift.sequelize.literal('totalDuration'), 'DESC']]
         });
-        
+
         const lbIndex = allResults.findIndex(p => p.userId === targetUser.id);
-        const lbRank = lbIndex !== -1 
-        ? `${lbIndex + 1} / ${allResults.length}` 
+        const lbRank = lbIndex !== -1
+            ? `${lbIndex + 1} / ${allResults.length}`
         : localize('staff-management-system', 'label-unranked');
 
-        embed.setDescription(localize('staff-management-system', 'panel-shifts-desc', { 
-            totalShifts, 
-            totalSeconds: formatDuration(totalSeconds), 
-            lbRank, 
-            breakdownStr, 
-            quotaStr 
+        embed.setDescription(localize('staff-management-system', 'panel-shifts-desc', {
+            totalShifts,
+            totalSeconds: formatDuration(totalSeconds),
+            lbRank,
+            breakdownStr,
+            quotaStr
         }));
 
     } catch (e) {
@@ -1226,9 +1247,9 @@ async function generatePanelShifts(client, targetUser) {
         .setStyle(ButtonStyle.Secondary)
     );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [menu.toJSON(), historyBtnRow.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [menu.toJSON(), historyBtnRow.toJSON()]
     };
 }
 
@@ -1279,9 +1300,9 @@ async function generatePanelDeletion(client, targetUser) {
             .setEmoji('💥')
         );
 
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [new ActionRowBuilder().addComponents(menu).toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [new ActionRowBuilder().addComponents(menu).toJSON()]
     };
 }
 
@@ -1341,44 +1362,44 @@ async function executeDataDeletion(client, targetId, dataType) {
 async function startActivityCheck(client, interactionOrChannel, isAutomated = false) {
     const config = getConfig(client, 'activity-checks');
     const ActivityCheck = client.models['staff-management-system']['ActivityCheck'];
-    
-    if (await ActivityCheck.findOne({ 
-        where: { status: 'ACTIVE' } 
+
+    if (await ActivityCheck.findOne({
+        where: {status: 'ACTIVE'}
     })) {
-        return !isAutomated && interactionOrChannel.editReply 
-        ? interactionOrChannel.editReply({ content: localize('staff-management-system', 'err-ac-act') }) 
+        return !isAutomated && interactionOrChannel.editReply
+            ? interactionOrChannel.editReply({content: localize('staff-management-system', 'err-ac-act')})
         : null;
     }
 
-    let rolesToCheck = config.targetRoles?.length 
-    ? config.targetRoles 
+    let rolesToCheck = config.targetRoles?.length
+        ? config.targetRoles
     : (getConfig(client, 'configuration')?.staffRoles || []);
-    if (!rolesToCheck.length) return !isAutomated && interactionOrChannel.editReply 
-    ? interactionOrChannel.editReply({ 
-        content: localize('staff-management-system', 'err-ac-norole') 
-    }) 
+    if (!rolesToCheck.length) return !isAutomated && interactionOrChannel.editReply
+        ? interactionOrChannel.editReply({
+            content: localize('staff-management-system', 'err-ac-norole')
+        })
     : null;
 
-    const targetChannel = isAutomated 
-    ? interactionOrChannel 
+    const targetChannel = isAutomated
+        ? interactionOrChannel
     : (interactionOrChannel.options.getChannel('channel') || interactionOrChannel.guild.channels.cache.get(getSafeChannelId(config.sendingChannel)) || interactionOrChannel.channel);
-    if (!targetChannel) return !isAutomated && interactionOrChannel.editReply 
-    ? interactionOrChannel.editReply({ 
-        content: localize('staff-management-system', 'err-ac-invchan') 
-    }) 
+    if (!targetChannel) return !isAutomated && interactionOrChannel.editReply
+        ? interactionOrChannel.editReply({
+            content: localize('staff-management-system', 'err-ac-invchan')
+        })
     : null;
 
     const durationHours = config.timeframe || 24;
     const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000);
 
-    let embedTemplate = typeof config.checkMessage === 'string' 
-    ? JSON.parse(config.checkMessage) 
+    let embedTemplate = typeof config.checkMessage === 'string'
+        ? JSON.parse(config.checkMessage)
     : config.checkMessage;
-    let msgOpts = await embedTypeV2(embedTemplate, { 
-        '%end-time%': `<t:${Math.floor(endTime.getTime() / 1000)}:F>`, 
-        '%duration%': durationHours.toString() 
+    let msgOpts = await embedTypeV2(embedTemplate, {
+        '%end-time%': `<t:${Math.floor(endTime.getTime() / 1000)}:F>`,
+        '%duration%': durationHours.toString()
     });
-    
+
     if (msgOpts?.content?.trim() === '') delete msgOpts.content;
     msgOpts.components = [
         new ActionRowBuilder()
@@ -1394,27 +1415,27 @@ async function startActivityCheck(client, interactionOrChannel, isAutomated = fa
 
     try {
         const checkMessage = await targetChannel.send(msgOpts);
-        if (!isAutomated && interactionOrChannel.editReply) await interactionOrChannel.editReply({ 
-            content: localize('staff-management-system', 'succ-ac-start', { 
-                channel: targetChannel.id, 
-                hours: durationHours 
-            }) 
+        if (!isAutomated && interactionOrChannel.editReply) await interactionOrChannel.editReply({
+            content: localize('staff-management-system', 'succ-ac-start', {
+                channel: targetChannel.id,
+                hours: durationHours
+            })
         });
-        
-        const record = await ActivityCheck.create({ 
-            messageId: checkMessage.id, 
-            channelId: targetChannel.id, 
-            endTime, 
-            targetRoles: JSON.stringify(rolesToCheck), 
-            status: 'ACTIVE' 
+
+        const record = await ActivityCheck.create({
+            messageId: checkMessage.id,
+            channelId: targetChannel.id,
+            endTime,
+            targetRoles: JSON.stringify(rolesToCheck),
+            status: 'ACTIVE'
         });
         schedule.scheduleJob(endTime, async () => {
             const currentCheck = await ActivityCheck.findByPk(record.id);
             if (currentCheck && currentCheck.status === 'ACTIVE') await endActivityCheckProcess(client, currentCheck);
         });
     } catch (e) {
-        if (!isAutomated && interactionOrChannel.editReply) interactionOrChannel.editReply({ 
-            content: localize('staff-management-system', 'err-ac-perms', { channel: targetChannel.id }) 
+        if (!isAutomated && interactionOrChannel.editReply) interactionOrChannel.editReply({
+            content: localize('staff-management-system', 'err-ac-perms', {channel: targetChannel.id})
         });
     }
 }
@@ -1432,9 +1453,9 @@ async function endActivityCheckProcess(client, activeCheck) {
             .setColor('#ed4245');
             originalEmbed
             .setTitle(localize('staff-management-system', 'ac-title-end'));
-            await msg.edit({ 
-                embeds: [originalEmbed.toJSON()], 
-                components: [] 
+            await msg.edit({
+                embeds: [originalEmbed.toJSON()],
+                components: []
             });
         }
     } catch (e) {}
@@ -1457,13 +1478,13 @@ async function endActivityCheckProcess(client, activeCheck) {
     const expectedIds = [...expectedMembers.keys()];
     const profiles = await StaffProfile.findAll({
         where: {
-            userId: { [Op.in]: expectedIds }
+            userId: {[Op.in]: expectedIds}
         }
     });
 
     expectedMembers.forEach(member => {
         if (respondedUserIds.has(member.id)) return responded.push(member);
-        
+
         let isException = false;
         const prof = profiles.find(p => p.userId === member.id);
         const isLoa = prof?.activityStatus === 'LOA';
@@ -1474,8 +1495,8 @@ async function endActivityCheckProcess(client, activeCheck) {
         else if (config.exceptionsType === 'LoA and RA' && (isLoa || isRa)) isException = true;
         else if (config.exceptionsType === 'Custom role(s)' && member.roles.cache.some(r => config.customExceptionRoles?.includes(r.id))) isException = true;
 
-        isException 
-        ? exceptions.push(member) 
+        isException
+            ? exceptions.push(member)
         : failed.push(member);
     });
 
@@ -1483,35 +1504,35 @@ async function endActivityCheckProcess(client, activeCheck) {
         .setTitle(localize('staff-management-system', 'ac-res-title'))
         .setColor('Blurple')
         .addFields(
-            { 
-                name: localize('staff-management-system', 'ac-f-res', { 
+            {
+                name: localize('staff-management-system', 'ac-f-res', {
                     count: responded.length }
-                ), 
-                value: responded.length 
-                ? responded.map(m => `<@${m.id}>`).join(', ').substring(0, 1024) 
-                : localize('staff-management-system', 'info-none') 
+                ),
+                value: responded.length
+                    ? responded.map(m => `<@${m.id}>`).join(', ').substring(0, 1024)
+                    : localize('staff-management-system', 'info-none')
             },
-            { 
-                name: localize('staff-management-system', 'ac-f-fail', { 
-                    count: failed.length 
-                }), 
-                value: failed.length 
-                ? failed.map(m => `<@${m.id}>`).join(', ').substring(0, 1024) 
-                : localize('staff-management-system', 'info-none') 
+            {
+                name: localize('staff-management-system', 'ac-f-fail', {
+                    count: failed.length
+                }),
+                value: failed.length
+                    ? failed.map(m => `<@${m.id}>`).join(', ').substring(0, 1024)
+                    : localize('staff-management-system', 'info-none')
             },
-            { 
-                name: localize('staff-management-system', 'ac-f-exc', { 
-                    count: exceptions.length 
-                }), 
-                value: exceptions.length 
-                ? exceptions.map(m => `<@${m.id}>`).join(', ').substring(0, 1024) 
-                : localize('staff-management-system', 'info-none') 
+            {
+                name: localize('staff-management-system', 'ac-f-exc', {
+                    count: exceptions.length
+                }),
+                value: exceptions.length
+                    ? exceptions.map(m => `<@${m.id}>`).join(', ').substring(0, 1024)
+                    : localize('staff-management-system', 'info-none')
             }
         )
     );
 
-    const pingText = (config.pingResults && config.pingRoles?.length) 
-    ? config.pingRoles.map(rId => `<@&${rId}>`).join(' ') 
+    const pingText = (config.pingResults && config.pingRoles?.length)
+        ? config.pingRoles.map(rId => `<@&${rId}>`).join(' ')
     : null;
     const finalMessage = { embeds: [embed.toJSON()] };
     if (pingText) finalMessage.content = pingText;
@@ -1537,16 +1558,16 @@ function initActivityCheckAutomation(client) {
     const config = getConfig(client, 'activity-checks');
     if (!config?.enableActivityChecks || !config?.automatedChecks) return;
 
-    let cronString = config.automatedCheckInterval === 'Cronjob' 
-    ? config.automatedCheckCronjob 
+    let cronString = config.automatedCheckInterval === 'Cronjob'
+        ? config.automatedCheckCronjob
     : null;
     if (!cronString) {
-        const dayMap = { 
-            'Monday': 1, 
-            'Tuesday': 2, 
-            'Wednesday': 3, 
-            'Thursday': 4, 
-            'Friday': 5, 
+        const dayMap = {
+            'Monday': 1,
+            'Tuesday': 2,
+            'Wednesday': 3,
+            'Thursday': 4,
+            'Friday': 5,
             'Saturday': 6,
             'Sunday': 7
         }[config.automatedCheckWeekDay] || 1;
@@ -1576,19 +1597,19 @@ function initActivityCheckAutomation(client) {
 
 // ---------- Reviews ----------
 async function submitReview(client, interaction, targetUser, stars, comment) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ephemeral: true});
     const config = getConfig(client, 'reviews');
-    if (!config?.enableReviews) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-feat-disabled', { 
-            feature: 'Reviews' 
+    if (!config?.enableReviews) return interaction.editReply({
+        content: localize('staff-management-system', 'err-feat-disabled', {
+            feature: 'Reviews'
         })
     });
 
     const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
-    if (!targetMember) return interaction.editReply({ 
-        content: localize('staff-management-system', 'err-not-mem') 
+    if (!targetMember) return interaction.editReply({
+        content: localize('staff-management-system', 'err-not-mem')
     });
-    if (!config.allowSelfRating && targetUser.id === interaction.user.id) return interaction.editReply({ 
+    if (!config.allowSelfRating && targetUser.id === interaction.user.id) return interaction.editReply({
         content: localize('staff-management-system', 'err-self-rate')
     });
 
@@ -1609,63 +1630,63 @@ async function submitReview(client, interaction, targetUser, stars, comment) {
         }
     }
 
-    const review = await client.models['staff-management-system']['StaffReview'].create({ 
-        targetId: targetUser.id, 
-        authorId: interaction.user.id, 
-        stars, 
-        comment 
+    const review = await client.models['staff-management-system']['StaffReview'].create({
+        targetId: targetUser.id,
+        authorId: interaction.user.id,
+        stars,
+        comment
     });
     const channelId = getSafeChannelId(config.reviewLogChannel);
 
     if (channelId) {
         const channel = interaction.guild.channels.cache.get(channelId);
         if (channel) {
-            let msgOpts = await embedTypeV2(config.ratingMessage, { 
-                '%staff-mention%': targetUser.toString(), 
-                '%reviewer-mention%': interaction.user.toString(), 
-                '%stars%': "⭐".repeat(stars), 
-                '%rating%': stars.toString(), 
-                '%comment%': comment, 
-                '%staff-avatar%': targetUser.displayAvatarURL({ dynamic: true }), 
-                '%reviewer-avatar%': interaction.user.displayAvatarURL({ dynamic: true }) 
+            let msgOpts = await embedTypeV2(config.ratingMessage, {
+                '%staff-mention%': targetUser.toString(),
+                '%reviewer-mention%': interaction.user.toString(),
+                '%stars%': '⭐'.repeat(stars),
+                '%rating%': stars.toString(),
+                '%comment%': comment,
+                '%staff-avatar%': targetUser.displayAvatarURL({dynamic: true}),
+                '%reviewer-avatar%': interaction.user.displayAvatarURL({dynamic: true})
             });
             if (msgOpts?.content?.trim() === '') delete msgOpts.content;
             const sentMessage = await channel.send(msgOpts).catch(()=>{});
             if (sentMessage) await review.update({ messageUrl: sentMessage.url });
         }
     }
-    await interaction.editReply({ 
-        content: localize('staff-management-system', 'succ-review', { 
-            tag: targetUser.tag, 
-            stars 
+    await interaction.editReply({
+        content: localize('staff-management-system', 'succ-review', {
+            tag: targetUser.tag,
+            stars
         })
     });
 }
 
 async function generateReviewHistoryResponse(client, targetUser, page = 1) {
-    if (!getConfig(client, 'reviews')?.enableReviews) return { 
-        content: localize('staff-management-system', 'err-feat-disabled', { 
-            feature: 'Reviews' 
-        }), 
-        flags: MessageFlags.Ephemeral 
+    if (!getConfig(client, 'reviews')?.enableReviews) return {
+        content: localize('staff-management-system', 'err-feat-disabled', {
+            feature: 'Reviews'
+        }),
+        flags: MessageFlags.Ephemeral
     };
 
     const limit = 8;
     const offset = (page - 1) * limit;
     const Review = client.models['staff-management-system']['StaffReview'];
 
-    const { count, rows } = await Review.findAndCountAll({ 
-        where: { targetId: targetUser.id }, 
-        order: [['createdAt', 'DESC']], 
-        limit, 
-        offset 
+    const {count, rows} = await Review.findAndCountAll({
+        where: {targetId: targetUser.id},
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
     });
-    const allReviews = await Review.findAll({ 
-        where: { targetId: targetUser.id }, 
-        attributes: ['stars'] 
+    const allReviews = await Review.findAll({
+        where: {targetId: targetUser.id},
+        attributes: ['stars']
     });
-    const avg = allReviews.length 
-    ? (allReviews.reduce((a, b) => a + b.stars, 0) / allReviews.length).toFixed(1) 
+    const avg = allReviews.length
+        ? (allReviews.reduce((a, b) => a + b.stars, 0) / allReviews.length).toFixed(1)
     : 0;
 
     const embed = applyFooter(client, new EmbedBuilder()
@@ -1675,67 +1696,67 @@ async function generateReviewHistoryResponse(client, targetUser, page = 1) {
         .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
     );
 
-    embed.addFields({ 
-        name: localize('staff-management-system', 'label-hist'), 
-        value: rows.length > 0 
+    embed.addFields({
+        name: localize('staff-management-system', 'label-hist'),
+        value: rows.length > 0
         ? rows.map(r => `**${"⭐".repeat(r.stars)}** ${localize('staff-management-system', 'label-by')} <@${r.authorId}>${r.messageUrl 
-            ? ` • [Jump](${r.messageUrl})` 
-            : ''}\n"${r.comment}"`).join('\n\n') 
+            ? ` • [Jump](${r.messageUrl})`
+                : ''}\n"${r.comment}"`).join('\n\n')
         : localize('staff-management-system', 'p-no-hist') });
 
     const row = buildPaginationRow(
-        `staff-mgmt_rev-page_${targetUser.id}_${page - 1}`, 
-        'page_count_disabled', 
-        `staff-mgmt_rev-page_${targetUser.id}_${page + 1}`, 
-        page, 
+        `staff-mgmt_rev-page_${targetUser.id}_${page - 1}`,
+        'page_count_disabled',
+        `staff-mgmt_rev-page_${targetUser.id}_${page + 1}`,
+        page,
         Math.ceil(count / limit) || 1
     );
-    return { 
-        embeds: [embed.toJSON()], 
-        components: [row.toJSON()] 
+    return {
+        embeds: [embed.toJSON()],
+        components: [row.toJSON()]
     };
 }
 
 async function getReviewHistory(client, interaction, targetUser) {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ephemeral: true});
     const response = await generateReviewHistoryResponse(client, targetUser, 1);
     if (response.content && response.content.startsWith('❌')) return interaction.editReply(response);
-    
-    await interaction.editReply({ 
+
+    await interaction.editReply({
         ...response
     });
 }
 
 module.exports = {
-    getConfig, 
+    getConfig,
     getSafeChannelId,
     parseDurationToDays,
-    applyFooter, 
+    applyFooter,
     checkStaffPermissions,
-    buildPaginationRow, 
-    formatDuration, 
-    issueInfraction, 
-    issueSuspension, 
-    getInfractionHistory, 
-    voidInfraction, 
+    buildPaginationRow,
+    formatDuration,
+    issueInfraction,
+    issueSuspension,
+    getInfractionHistory,
+    voidInfraction,
     generateInfractionHistoryResponse,
-    promoteUser, 
-    generatePromotionHistoryResponse, 
-    getPromotionHistory, 
-    generateUserPanel, 
-    generatePanelInfractions, 
-    generatePanelPromotions, 
-    generatePanelActivity, 
-    generatePanelReviews, 
-    generatePanelStatus, 
-    generatePanelShifts, 
-    generatePanelDeletion, 
-    executeDataDeletion, 
+    promoteUser,
+    generatePromotionHistoryResponse,
+    getPromotionHistory,
+    generateUserPanel,
+    generatePanelInfractions,
+    generatePanelPromotions,
+    generatePanelActivity,
+    generatePanelReviews,
+    generatePanelStatus,
+    generatePanelShifts,
+    generatePanelDeletion,
+    executeDataDeletion,
     generatePanelSubpage,
-    startActivityCheck, 
-    initActivityCheckAutomation, 
+    startActivityCheck,
+    initActivityCheckAutomation,
     endActivityCheckProcess,
-    submitReview, 
-    getReviewHistory, 
-    generateReviewHistoryResponse, 
+    submitReview,
+    getReviewHistory,
+    generateReviewHistoryResponse
 };
