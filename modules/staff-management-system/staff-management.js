@@ -1391,13 +1391,29 @@ async function startActivityCheck(client, interactionOrChannel, isAutomated = fa
 
     const durationHours = config.timeframe || 24;
     const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000);
+    const generalConfig = getConfig(client, 'configuration') || {};
 
+    const formatRoleMentions = (roles) => {
+        const roleIds = Array.isArray(roles)
+            ? roles
+            : (roles ? [roles] : []);
+
+        return roleIds.map(roleId => `<@&${roleId}>`).join(' ');
+    };
     let embedTemplate = typeof config.checkMessage === 'string'
         ? JSON.parse(config.checkMessage)
     : config.checkMessage;
+    const initiator = isAutomated
+    ? localize('staff-management-system', 'label-system')
+    : interactionOrChannel.user.toString();
+
     let msgOpts = await embedTypeV2(embedTemplate, {
         '%end-time%': `<t:${Math.floor(endTime.getTime() / 1000)}:F>`,
-        '%duration%': durationHours.toString()
+        '%duration%': durationHours.toString(),
+        '%staff-mention%': formatRoleMentions(generalConfig.staffRoles),
+        '%supervisor-mention%': formatRoleMentions(generalConfig.supervisorRoles),
+        '%management-mention%': formatRoleMentions(generalConfig.managementRoles),
+        '%initiator%': initiator
     });
 
     if (msgOpts?.content?.trim() === '') delete msgOpts.content;

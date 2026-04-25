@@ -92,7 +92,7 @@
       ],
       "default": {
         "_schema": "v3",
-        "content": "%staff%",
+        "content": "%staff-mention%",
         "embeds": [
           {
             "title": "🌟 New Staff Rating",
