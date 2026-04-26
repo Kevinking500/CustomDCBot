@@ -1400,34 +1400,34 @@ async function startActivityCheck(client, interactionOrChannel, isAutomated = fa
 
         return roleIds.map(roleId => `<@&${roleId}>`).join(' ');
     };
-    let embedTemplate = typeof config.checkMessage === 'string'
-        ? JSON.parse(config.checkMessage)
-    : config.checkMessage;
     const initiator = isAutomated
     ? localize('staff-management-system', 'label-system')
     : interactionOrChannel.user.toString();
 
-    let msgOpts = await embedTypeV2(embedTemplate, {
-        '%end-time%': `<t:${Math.floor(endTime.getTime() / 1000)}:F>`,
-        '%duration%': durationHours.toString(),
-        '%staff-mention%': formatRoleMentions(generalConfig.staffRoles),
-        '%supervisor-mention%': formatRoleMentions(generalConfig.supervisorRoles),
-        '%management-mention%': formatRoleMentions(generalConfig.managementRoles),
-        '%initiator%': initiator
-    });
-
-    if (msgOpts?.content?.trim() === '') delete msgOpts.content;
-    msgOpts.components = [
-        new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
+    const responseButtonRow = new ActionRowBuilder()
+    .addComponents(
+        new ButtonBuilder()
             .setCustomId('staff-mgmt_ac-respond')
             .setLabel(localize('staff-management-system', 'ac-confirm-btn'))
             .setStyle(ButtonStyle.Success)
             .setEmoji('✅')
-        )
-        .toJSON()
-    ];
+    )
+    .toJSON();
+
+    let msgOpts = await embedTypeV2(embedTemplate,  {
+            '%end-time%': `<t:${Math.floor(endTime.getTime() / 1000)}:F>`,
+            '%duration%': durationHours.toString(),
+            '%staff-mention%': formatRoleMentions(generalConfig.staffRoles),
+            '%supervisor-mention%': formatRoleMentions(generalConfig.supervisorRoles),
+            '%management-mention%': formatRoleMentions(generalConfig.managementRoles),
+            '%initiator%': initiator
+        },
+        {
+            components: [responseButtonRow]
+        }
+    );
+
+    if (msgOpts?.content?.trim() === '') delete msgOpts.content;
 
     try {
         const checkMessage = await targetChannel.send(msgOpts);
