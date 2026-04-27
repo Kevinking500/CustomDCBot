@@ -117,6 +117,11 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         });
     }
 
+    const canInfract = checkStaffPermissions(interaction.member, config, 'staff');
+    if (!canInfract) return interaction.editReply({
+        content: localize('staff-management-system', 'err-gen-no-perm')
+    });
+
     if (type.toLowerCase() === 'suspension') {
         return interaction.editReply({
             content: localize('staff-management-system', 'err-use-susp')
@@ -249,6 +254,11 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
             content: localize('staff-management-system', 'err-self-infract')
         });
     }
+
+    const canSuspend = checkStaffPermissions(interaction.member, config, 'staff');
+    if (!canSuspend) return interaction.editReply({
+        content: localize('staff-management-system', 'err-gen-no-perm')
+    });
 
     const durationDays = parseDurationToDays(durationInput);
     if (!durationDays)

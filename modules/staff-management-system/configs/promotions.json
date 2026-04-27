@@ -19,7 +19,7 @@
       "name": "enablePromotions",
       "category": "logic",
       "humanName": "Enable Promotions System",
-      "description": "If disabled, the /staff-management promote command will not work.",
+      "description": "Enabling this allows staff members to promote users to higher ranks.",
       "type": "boolean",
       "default": true,
       "elementToggle": true

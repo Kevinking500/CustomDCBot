@@ -29,7 +29,7 @@
       "name": "enableActivityChecks",
       "category": "general",
       "humanName": "Enable Activity Checks",
-      "description": "Allows admins to start an activity check to see who is active.",
+      "description": "Allows admins to start an activity check to see who is active, and also set automatic activity checks.",
       "type": "boolean",
       "default": true,
       "elementToggle": true
