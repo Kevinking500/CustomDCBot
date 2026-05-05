@@ -16,6 +16,25 @@
       "default": 10
     },
     {
+      "name": "enableRolePingThresholds",
+      "humanName": "Enable role-based ping thresholds",
+      "description": "If enabled, specific roles can have custom ping thresholds for this moderation action. This also allows specific roles to be exempted from this specific action.",
+      "type": "boolean",
+      "default": false
+    },
+    {
+      "name": "rolePingThresholds",
+      "humanName": "Role-based ping thresholds",
+      "description": "Set custom ping thresholds per role for this moderation action. If a user has multiple configured roles, the value of their highest configured role is used. Setting a role to 0 exempts that role from this action - exempted roles also override any other role's threshold.",
+      "type": "keyed",
+      "content": {
+        "key": "roleID",
+        "value": "integer"
+      },
+      "default": {},
+      "dependsOn": "enableRolePingThresholds"
+    },
+    {
       "name": "useCustomTimeframe",
       "humanName": "Use a custom timeframe",
       "description": "If enabled, you can choose your own custom timeframe of days in which the pings must occur to trigger the moderation action.",
@@ -60,6 +79,7 @@
       "humanName": "Action log message",
       "description": "The message that will be sent when a user is punished for pinging protected users/roles.",
       "type": "string",
+      "dependsOn": "enableActionLogging",
       "allowEmbed": true,
       "params": [
         {

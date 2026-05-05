@@ -80,7 +80,12 @@
       "description": "Pings in these channels are ignored.",
       "type": "array",
       "content": "channelID",
-      "default": []
+      "default": [],
+      "channelTypes": [
+        "GUILD_TEXT",
+        "GUILD_NEWS",
+        "GUILD_CATEGORY"
+      ]
     },
     {
       "name": "ignoredUsers",
@@ -115,8 +120,8 @@
     {
       "name": "enableAutomod",
       "category": "automod",
-      "humanName": "Enable automod",
-      "description": "If enabled, the bot will utilise Discord's native AutoMod to block the message with a ping of a protected user/role.",
+      "humanName": "Enable AutoMod",
+      "description": "If enabled, the bot will utilise Discord's native AutoMod to block the message with a ping of a protected user/role. Warning: AutoMod does not support whitelisted categories due to limitations in Discord's AutoMod system - instead, it will still block the message but not log it in the history." ,
       "type": "boolean",
       "default": true
     },
@@ -124,7 +129,7 @@
       "name": "autoModLogChannel",
       "category": "automod",
       "humanName": "AutoMod Log Channel",
-      "description": "Channel where AutoMod alerts are sent.",
+      "description": "Channel where AutoMod alerts are sent. It is recommended to keep these in a private channel.",
       "type": "channelID",
       "default": "",
       "channelTypes": [

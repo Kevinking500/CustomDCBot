@@ -1,18 +1,11 @@
-const {
-    fetchModHistory,
-    getPingCountInWindow,
-    generateHistoryResponse,
-    generateActionsResponse
+const { 
+  generateHistoryResponse,
+  generateActionsResponse,
+  generateUserPanel
 } = require('../ping-protection');
-const {localize} = require('../../../src/functions/localize');
-const {truncate, safeSetFooter} = require('../../../src/functions/helpers');
-const {
-    ActionRowBuilder,
-    ButtonBuilder,
-    EmbedBuilder,
-    ButtonStyle,
-    MessageFlags
-} = require('discord.js');
+const { localize } = require('../../../src/functions/localize');
+const { truncate } = require('../../../src/functions/helpers');
+const { EmbedBuilder, MessageFlags } = require('discord.js');
 
 module.exports.run = async function (interaction) {
     const group = interaction.options.getSubcommandGroup(false);
@@ -26,76 +19,30 @@ module.exports.run = async function (interaction) {
 
 // Handles subcommands
 module.exports.subcommands = {
-    'user': {
-        'history': async function (interaction) {
-            const user = interaction.options.getUser('user');
-            const payload = await generateHistoryResponse(interaction.client, user.id, 1);
-            await interaction.reply({
-                ...payload,
-                flags: MessageFlags.Ephemeral
-            });
-        },
-        'actions-history': async function (interaction) {
-            const user = interaction.options.getUser('user');
-            const payload = await generateActionsResponse(interaction.client, user.id, 1);
-            await interaction.reply({
-                ...payload,
-                flags: MessageFlags.Ephemeral
-            });
-        },
-        'panel': async function (interaction) {
-            const user = interaction.options.getUser('user');
-            const pingerId = user.id;
-            const storageConfig = interaction.client.configurations['ping-protection']['storage'];
-            const retentionWeeks = (storageConfig && storageConfig.pingHistoryRetention)
-                ? storageConfig.pingHistoryRetention
-                : 12;
-            const timeframeDays = retentionWeeks * 7;
+  'user': {
+    'history': async function (interaction) {
+      const user = interaction.options.getUser('user');
+      const payload = await generateHistoryResponse(interaction.client, user.id, 1);
+      await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }); 
+    },
+    'actions-history': async function (interaction) {
+      const user = interaction.options.getUser('user');
+      const payload = await generateActionsResponse(interaction.client, user.id, 1);
+      await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
+    },
+    'panel': async function (interaction) {
+      const user = interaction.options.getUser('user');
+      const payload = await generateUserPanel(interaction.client, user);
 
-            const pingCount = await getPingCountInWindow(interaction.client, pingerId, timeframeDays);
-            const modData = await fetchModHistory(interaction.client, pingerId, 1, 1000);
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`ping-protection_history_${user.id}`)
-                    .setLabel(localize('ping-protection', 'btn-history'))
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId(`ping-protection_actions_${user.id}`)
-                    .setLabel(localize('ping-protection', 'btn-actions'))
-                    .setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder()
-                    .setCustomId(`ping-protection_delete_${user.id}`)
-                    .setLabel(localize('ping-protection', 'btn-delete'))
-                    .setStyle(ButtonStyle.Danger)
-            );
-
-            const embed = new EmbedBuilder()
-                .setTitle(localize('ping-protection', 'panel-title', {u: user.tag}))
-                .setDescription(localize('ping-protection', 'panel-description', {
-                    u: user.toString(),
-                    i: user.id
-                }))
-                .setColor('Blue')
-                .setThumbnail(user.displayAvatarURL({dynamic: true}))
-                .addFields([{
-                    name: localize('ping-protection', 'field-quick-history', {w: retentionWeeks}),
-                    value: localize('ping-protection', 'field-quick-desc', {
-                        p: pingCount,
-                        m: modData.total
-                    }),
-                    inline: false
-                }]);
-
-            safeSetFooter(embed, interaction.client);
-            if (!interaction.client.strings.disableFooterTimestamp) embed.setTimestamp();
-
-            await interaction.reply({
-                embeds: [embed.toJSON()],
-                components: [row.toJSON()],
-                flags: MessageFlags.Ephemeral
-            });
-        }
+      await interaction.reply({
+        ...payload,
+        flags: MessageFlags.Ephemeral
+      });
+    }
+  },
+  'list': {
+    'protected': async function (interaction) {
+      await listHandler(interaction, 'protected');
     },
     'list': {
         'protected': async function (interaction) {
