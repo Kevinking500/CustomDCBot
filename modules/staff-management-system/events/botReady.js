@@ -139,19 +139,10 @@ async function checkExpiredSuspensions(client, guild) {
         const profile = await StaffProfile.findByPk(susp.userId);
 
         try {
-            let rolesToRestore = [];
-
-            if (profile?.suspendedRoles) {
-                try {
-                    const parsed = JSON.parse(profile.suspendedRoles);
-                    if (Array.isArray(parsed)) rolesToRestore = parsed;
-                } catch (e) {
-                    client.logger.warn(
-                        `[Staff Management] Failed to parse suspendedRoles for ${susp.userId}: ${e.message}`
-                    );
-                }
-            }
-
+            let rolesToRestore = Array.isArray(profile?.suspendedRoles) 
+            ? profile.suspendedRoles 
+            : [];
+            
             if (member) {
                 if (rolesToRestore.length > 0) {
                     await member.roles.add(rolesToRestore).catch(e => {

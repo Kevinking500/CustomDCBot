@@ -21,7 +21,8 @@
       "humanName": "Enable Reviews System",
       "description": "Enabling this unlocks the staff review system, allowing users to submit ratings with feedback for staff members.",
       "type": "boolean",
-      "default": true
+      "default": true,
+      "elementToggle": true
     },
     {
       "name": "reviewLogChannel",

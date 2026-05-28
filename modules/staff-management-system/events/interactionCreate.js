@@ -163,15 +163,24 @@ module.exports.run = async (client, interaction) => {
                 return interaction.update(payload);
             }
 
-            const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+            let confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+            if (confirmPhrase.length > 100) {
+                confirmPhrase = localize('staff-management-system', 'fallback-conf-phrase');
+            }
+            let delModalLabel = localize('staff-management-system', 'mod-del-lbl');
+            if (delModalLabel.length > 45) {
+                delModalLabel = localize('staff-management-system', 'fallback-del-lbl');
+            }
+            const delModalTitle = localize('staff-management-system', 'mod-del-title');
+
             const modal = new ModalBuilder()
                 .setCustomId(`staff-mgmt_del-confirm_${targetId}_${selection}`)
-                .setTitle(localize('staff-management-system', 'mod-del-title'));
+                .setTitle(delModalTitle);
             modal.addComponents(
                 new ActionRowBuilder().addComponents(
                     new TextInputBuilder()
                         .setCustomId('confirm')
-                        .setLabel(localize('staff-management-system', 'mod-del-lbl'))
+                        .setLabel(delModalLabel)
                         .setStyle(TextInputStyle.Paragraph)
                         .setPlaceholder(confirmPhrase)
                         .setRequired(true)
@@ -195,7 +204,10 @@ module.exports.run = async (client, interaction) => {
             const targetId = parts[2];
             const selection = parts.slice(3).join('_');
 
-            const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+            let confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+            if (confirmPhrase.length > 100) {
+                confirmPhrase = localize('staff-management-system', 'fallback-conf-phrase');
+            }
 
             if (interaction.fields.getTextInputValue('confirm').trim() !== confirmPhrase) {
                 return interaction.editReply({
@@ -524,7 +536,7 @@ module.exports.run = async (client, interaction) => {
                 flags: MessageFlags.Ephemeral
             });
 
-            const targetRoles = JSON.parse(activeCheck.targetRoles || '[]');
+            const targetRoles = activeCheck.targetRoles || '[]';
             const hasRole = targetRoles.length === 0 || interaction.member.roles.cache.some(r => targetRoles.includes(r.id));
             if (!hasRole) return interaction.reply({
                 content: localize('staff-management-system', 'err-ac-not-req'),

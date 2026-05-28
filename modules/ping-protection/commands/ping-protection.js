@@ -52,7 +52,7 @@ module.exports.subcommands = {
             await listHandler(interaction, 'whitelisted');
         }
     }
-};
+}};
 
 // Handles list subcommands
 async function listHandler(interaction, type) {

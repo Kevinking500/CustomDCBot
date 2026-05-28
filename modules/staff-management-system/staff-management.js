@@ -119,16 +119,17 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         content: localize('staff-management-system', 'err-feat-disabled', {feature: 'Infractions'})
     });
 
+    const generalConfig = getConfig(client, 'configuration');
+    const canInfract = checkStaffPermissions(interaction.member, generalConfig, 'supervisor');
+    if (!canInfract) return interaction.editReply({
+        content: localize('staff-management-system', 'err-gen-no-perm')
+    });
+
     if (targetMember.id === interaction.user.id) {
         return interaction.editReply({
             content: localize('staff-management-system', 'err-self-infract')
         });
     }
-
-    const canInfract = checkStaffPermissions(interaction.member, config, 'staff');
-    if (!canInfract) return interaction.editReply({
-        content: localize('staff-management-system', 'err-gen-no-perm')
-    });
 
     if (type.toLowerCase() === 'suspension') {
         return interaction.editReply({
@@ -179,14 +180,6 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
         if (channel) {
             let template = config.infractionMessage;
-            if (typeof template === 'string') {
-                try {
-                    template = JSON.parse(template);
-                } catch (e) {
-                }
-            } else if (typeof template === 'object') {
-                template = JSON.parse(JSON.stringify(template));
-            }
 
             if (template && template.embeds && !template._schema) template._schema = 'v3';
             let msgOpts = await embedTypeV2(template, placeholders);
@@ -205,15 +198,6 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
 
     if (config.dmInfractedUser && config.infractionDmMessage) {
         let dmTemplate = config.infractionDmMessage;
-        if (typeof dmTemplate === 'string') {
-            try {
-                dmTemplate = JSON.parse(dmTemplate);
-            } catch (e) {
-            }
-        } else if (typeof dmTemplate === 'object') {
-            dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
-        }
-
         if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
         const dmOpts = await embedTypeV2(dmTemplate, placeholders);
         if (dmOpts?.content?.trim() === '') delete dmOpts.content;
@@ -257,16 +241,16 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
             })
     });
 
+    const canSuspend = checkStaffPermissions(interaction.member, config, 'supervisor');
+    if (!canSuspend) return interaction.editReply({
+        content: localize('staff-management-system', 'err-gen-no-perm')
+    });
+
     if (targetMember.id === interaction.user.id) {
         return interaction.editReply({
             content: localize('staff-management-system', 'err-self-infract')
         });
     }
-
-    const canSuspend = checkStaffPermissions(interaction.member, config, 'staff');
-    if (!canSuspend) return interaction.editReply({
-        content: localize('staff-management-system', 'err-gen-no-perm')
-    });
 
     const durationDays = parseDurationToDays(durationInput);
     if (!durationDays)
@@ -292,7 +276,7 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
     await client.models['staff-management-system']['StaffProfile'].upsert({
         userId: targetMember.id,
         isSuspended: true,
-        suspendedRoles: JSON.stringify(rolesToRemove)
+        suspendedRoles: rolesToRemove
     });
     if (config.suspensionRole) await targetMember.roles.add(config.suspensionRole).catch(() => {});
 
@@ -329,14 +313,6 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
         const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
         if (channel) {
             let template = config.suspensionMessage;
-            if (typeof template === 'string') {
-                try {
-                    template = JSON.parse(template);
-                } catch (e) {
-                }
-            } else if (typeof template === 'object') {
-                template = JSON.parse(JSON.stringify(template));
-            }
 
             if (template && template.embeds && !template._schema) template._schema = 'v3';
             let msgOpts = await embedTypeV2(template, placeholders);
@@ -355,14 +331,6 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
 
     if (config.dmInfractedUser && config.suspensionDmMessage) {
         let dmTemplate = config.suspensionDmMessage;
-        if (typeof dmTemplate === 'string') {
-            try {
-                dmTemplate = JSON.parse(dmTemplate);
-            } catch (e) {
-            }
-        } else if (typeof dmTemplate === 'object') {
-            dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
-        }
 
         if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
         const dmOpts = await embedTypeV2(dmTemplate, placeholders);
@@ -452,7 +420,7 @@ async function voidInfraction(client, interaction, reference) {
 
         if (member && profile && profile.isSuspended) {
             try {
-                const rolesToRestore = JSON.parse(profile.suspendedRoles || '[]');
+                const rolesToRestore = profile.suspendedRoles || '[]';
                 if (rolesToRestore.length > 0) await member.roles.add(rolesToRestore);
                 if (config.suspensionRole) await member.roles.remove(config.suspensionRole);
                 await profile.update({ isSuspended: false, suspendedRoles: '[]' });
@@ -543,6 +511,12 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
         content: localize('staff-management-system', 'err-feat-disabled', {feature: 'Promotions'})
     });
 
+    const generalConfig = getConfig(client, 'configuration');
+    const canPromote = checkStaffPermissions(interaction.member, generalConfig, 'supervisor');
+    if (!canPromote) return interaction.editReply({
+        content: localize('staff-management-system', 'err-gen-no-perm') 
+    });
+
     if (targetMember.id === interaction.user.id) {
         return interaction.editReply({
             content: localize('staff-management-system', 'err-self-promo')
@@ -602,13 +576,6 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
         const channel = await interaction.guild.channels.fetch(targetChannelId).catch(() => null);
         if (channel) {
             let embedTemplate = config.promotionMessage;
-            if (typeof embedTemplate === 'string') {
-                try {
-                    embedTemplate = JSON.parse(embedTemplate);
-                }
-            catch (e) {} } else if (typeof embedTemplate === 'object') {
-                embedTemplate = JSON.parse(JSON.stringify(embedTemplate));
-            }
 
             if (embedTemplate && embedTemplate.embeds && !embedTemplate._schema) embedTemplate._schema = 'v3';
             let msgOpts = await embedTypeV2(embedTemplate, placeholders);
@@ -635,14 +602,6 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
 
     if (config.dmPromotedUser && config.promotionDmMessage) {
         let dmTemplate = config.promotionDmMessage;
-        if (typeof dmTemplate === 'string') {
-            try {
-                dmTemplate = JSON.parse(dmTemplate);
-            } catch (e) {
-            }
-        } else if (typeof dmTemplate === 'object') {
-            dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
-        }
 
         if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
         const dmOpts = await embedTypeV2(dmTemplate, placeholders);
@@ -1452,7 +1411,7 @@ async function startActivityCheck(client, interactionOrChannel, isAutomated = fa
             messageId: checkMessage.id,
             channelId: targetChannel.id,
             endTime,
-            targetRoles: JSON.stringify(rolesToCheck),
+            targetRoles: rolesToCheck,
             status: 'ACTIVE',
             initiatorId: isAutomated ? null : interactionOrChannel.user.id,
             isAutomated
@@ -1477,7 +1436,7 @@ async function endActivityCheckProcess(client, activeCheck) {
     const logChannel = guild.channels.cache.get(getSafeChannelId(config.logChannel) || getSafeChannelId(getConfig(client, 'configuration')?.generalLogChannel));
     if (!logChannel) return;
 
-    const targetRoles = JSON.parse(activeCheck.targetRoles || '[]');
+    const targetRoles = activeCheck.targetRoles || '[]';
     const ActivityCheckResponse = client.models['staff-management-system']['ActivityCheckResponse'];
     const responses = await ActivityCheckResponse.findAll({
         where: { activityCheckId: activeCheck.id },
