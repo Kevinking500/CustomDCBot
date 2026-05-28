@@ -241,7 +241,8 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
             })
     });
 
-    const canSuspend = checkStaffPermissions(interaction.member, config, 'supervisor');
+    const generalConfig = getConfig(client, 'configuration');
+    const canSuspend = checkStaffPermissions(interaction.member, generalConfig, 'supervisor');
     if (!canSuspend) return interaction.editReply({
         content: localize('staff-management-system', 'err-gen-no-perm')
     });
@@ -276,7 +277,7 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
     await client.models['staff-management-system']['StaffProfile'].upsert({
         userId: targetMember.id,
         isSuspended: true,
-        suspendedRoles: rolesToRemove
+        suspendedRoles: JSON.stringify(rolesToRemove)
     });
     if (config.suspensionRole) await targetMember.roles.add(config.suspensionRole).catch(() => {});
 
@@ -420,10 +421,10 @@ async function voidInfraction(client, interaction, reference) {
 
         if (member && profile && profile.isSuspended) {
             try {
-                const rolesToRestore = profile.suspendedRoles || '[]';
+                const rolesToRestore = JSON.parse(profile.suspendedRoles || '[]');
                 if (rolesToRestore.length > 0) await member.roles.add(rolesToRestore);
                 if (config.suspensionRole) await member.roles.remove(config.suspensionRole);
-                await profile.update({ isSuspended: false, suspendedRoles: '[]' });
+                await profile.update({ isSuspended: false, suspendedRoles: JSON.stringify([]) });
             } catch (e) {
                 return interaction.editReply({
                     content: localize('staff-management-system', 'succ-void-fail', {caseId: record.caseId})
@@ -1411,7 +1412,7 @@ async function startActivityCheck(client, interactionOrChannel, isAutomated = fa
             messageId: checkMessage.id,
             channelId: targetChannel.id,
             endTime,
-            targetRoles: rolesToCheck,
+            targetRoles: JSON.stringify(rolesToCheck),
             status: 'ACTIVE',
             initiatorId: isAutomated ? null : interactionOrChannel.user.id,
             isAutomated
@@ -1436,7 +1437,7 @@ async function endActivityCheckProcess(client, activeCheck) {
     const logChannel = guild.channels.cache.get(getSafeChannelId(config.logChannel) || getSafeChannelId(getConfig(client, 'configuration')?.generalLogChannel));
     if (!logChannel) return;
 
-    const targetRoles = activeCheck.targetRoles || '[]';
+    const targetRoles = JSON.parse(activeCheck.targetRoles || '[]');
     const ActivityCheckResponse = client.models['staff-management-system']['ActivityCheckResponse'];
     const responses = await ActivityCheckResponse.findAll({
         where: { activityCheckId: activeCheck.id },

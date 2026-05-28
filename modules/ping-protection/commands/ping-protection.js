@@ -44,13 +44,8 @@ module.exports.subcommands = {
     'protected': async function (interaction) {
       await listHandler(interaction, 'protected');
     },
-    'list': {
-        'protected': async function (interaction) {
-            await listHandler(interaction, 'protected');
-        },
-        'whitelisted': async function (interaction) {
-            await listHandler(interaction, 'whitelisted');
-        }
+    'whitelisted': async function (interaction) {
+      await listHandler(interaction, 'whitelisted');
     }
 }};
 

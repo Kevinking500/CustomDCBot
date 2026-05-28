@@ -113,7 +113,7 @@ module.exports.run = async function (client, interaction) {
 
         let confirmationPhrase = localize('ping-protection', 'modal-phrase');
         if (confirmationPhrase.length > 100) {
-            confirmationPhrase = localize('ping-protection', 'fallback-conf-phrase');
+            confirmationPhrase = localize('ping-protection', 'fallback-modal-phrase');
         }
 
         const modal = new ModalBuilder()
@@ -148,7 +148,7 @@ module.exports.run = async function (client, interaction) {
 
         let confirmPhrase = localize('ping-protection', 'modal-phrase');
         if (confirmPhrase.length > 100) {
-            confirmPhrase = localize('ping-protection', 'fallback-conf-phrase');
+            confirmPhrase = localize('ping-protection', 'fallback-modal-phrase');
         }
 
         if (interaction.fields.getTextInputValue('confirm').trim() !== confirmPhrase) {
