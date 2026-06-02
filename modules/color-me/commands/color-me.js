@@ -142,7 +142,12 @@ module.exports.subcommands = {
                     await interaction.editReply(embedType(moduleStrings['createdNoIcon'], {}));
                 }
             } catch (e) {
-                await interaction.editReply(embedType(moduleStrings['roleLimit'], {}));
+                if (e && e.code === 30005) {
+                    await interaction.editReply(embedType(moduleStrings['roleLimit'], {}));
+                    return;
+                }
+                client.logger.error(`color-me: failed to create role for user ${interaction.user.id} in guild ${interaction.guild.id}: ${e && e.stack ? e.stack : e}`);
+                throw e;
             }
 
         }
@@ -245,6 +250,9 @@ async function color(interaction, moduleStrings) {
         cancel: false
     };
 }
+
+// Exported for unit testing of the colour-validation logic.
+module.exports.color = color;
 
 /**
  ** Function to handle the cooldown stuff

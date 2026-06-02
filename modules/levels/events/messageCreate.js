@@ -2,7 +2,11 @@ const {
     embedType,
     randomIntFromInterval,
     randomElementFromArray,
-    embedTypeV2, formatDiscordUserName, formatNumber
+    embedTypeV2,
+    formatDiscordUserName,
+    formatNumber,
+    todayInServerTZ,
+    formatVoiceDuration
 } = require('../../../src/functions/helpers');
 const {ChannelType} = require('discord.js');
 
@@ -59,7 +63,7 @@ function getMemberRoleFactor(member) {
 
 module.exports.getMemberRoleFactor = getMemberRoleFactor;
 
-async function grantXPAndLevelUP(client, member, xp, xpType, channel, msg = null) {
+async function grantXPAndLevelUP(client, member, xp, xpType, channel, msg = null, voiceSeconds = 0) {
     const moduleConfig = client.configurations['levels']['config'];
     if (member.roles.cache.some(r => moduleConfig.blacklistedRoles.some(br => String(br) === r.id))) return;
     const moduleStrings = client.configurations['levels']['strings'];
@@ -79,6 +83,15 @@ async function grantXPAndLevelUP(client, member, xp, xpType, channel, msg = null
 
     if (isMaxLevel(user.level, client)) return;
     if (xpType === 'message') user.messages = user.messages + 1;
+
+    const today = todayInServerTZ();
+    if (user.dailyResetDate !== today) {
+        user.dailyMessages = 0;
+        user.dailyVoiceSeconds = 0;
+        user.dailyResetDate = today;
+    }
+    if (xpType === 'message') user.dailyMessages = user.dailyMessages + 1;
+    if (xpType === 'voice' && voiceSeconds > 0) user.dailyVoiceSeconds = user.dailyVoiceSeconds + Math.round(voiceSeconds);
 
 
     const nextLevelXp = calculateLevelXP(client, user.level + 1);
@@ -151,7 +164,14 @@ async function grantXPAndLevelUP(client, member, xp, xpType, channel, msg = null
             '%username%': member.user.username,
             '%newLevel%': displayLevel(user.level, client),
             '%role%': isRewardMessage ? `<@&${moduleConfig.reward_roles[calculatedLevel.toString()]}>` : localize('levels', 'no-role'),
-            '%tag%': formatDiscordUserName(member.user)
+            '%tag%': formatDiscordUserName(member.user),
+            '%xpGained%': formatNumber(Math.round(xp)),
+            '%xpType%': localize('levels', xpType === 'voice' ? 'xp-type-voice' : 'xp-type-message'),
+            '%totalXP%': formatNumber(user.xp),
+            '%nextLevelXP%': formatNumber(calculateLevelXP(client, user.level + 1)),
+            '%totalMessages%': formatNumber(user.messages),
+            '%messagesToday%': formatNumber(user.dailyMessages),
+            '%voiceTimeToday%': formatVoiceDuration(user.dailyVoiceSeconds)
         }, {allowedMentions: {parse: ['users']}}));
         await user.save();
         currentlyLevelingUp.delete(member.user.id);

@@ -19,6 +19,7 @@ module.exports.run = async (client, interaction) => {
     }
     if ((interaction.customId || '').startsWith('cc-') && client.scnxSetup) return require('../functions/scnx-integration').customCommandInteractionClick(interaction);
     if (interaction.isSelectMenu() && interaction.customId.startsWith('select-roles') && client.scnxSetup) return require('../functions/scnx-integration').handleSelectRoles(client, interaction);
+    if (interaction.isButton() && (interaction.customId === 'select-roles-apply' || interaction.customId === 'select-roles-cancel') && client.scnxSetup) return require('../functions/scnx-integration').handleSelectRoles(client, interaction);
     if (interaction.isButton() && interaction.customId.startsWith('srb-') && client.scnxSetup) return require('../functions/scnx-integration').handleRoleButton(client, interaction);
     if (!interaction.commandName) return;
     const command = client.commands.find(c => c.name.toLowerCase() === interaction.commandName.toLowerCase());

@@ -3,8 +3,8 @@
   "humanReadableName": "Level-System",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/levels",
   "commands-dir": "/commands",

@@ -75,6 +75,7 @@ const colorNames = {
     'GREYPLE': 0x99AAB5,
     'DARK_BUT_NOT_BLACK': 0x2C2F33,
     'NOT_QUITE_BLACK': 0x23272A,
+    'BLACK': 0x000000,
     'DARK_NAVY': 0x2C3E50,
     'DARK_GOLD': 0xC27C0E,
     'DARK_RED': 0x992D22,
@@ -94,7 +95,8 @@ const colorNames = {
 function resolveColor(color) {
     if (typeof color !== 'string') return color;
     const upper = color.toUpperCase();
-    if (colorNames[upper]) return colorNames[upper];
+    // Use `in` rather than truthiness so 0x000000 (BLACK) is not treated as a miss.
+    if (upper in colorNames) return colorNames[upper];
     if (color.startsWith('#')) return parseInt(color.replace('#', ''), 16);
     return color;
 }

@@ -2,12 +2,13 @@
   "name": "afk-system",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "commands-dir": "/commands",
   "models-dir": "/models",
   "events-dir": "/events",
+  "on-load-event": "onLoad.js",
   "config-example-files": [
     "config.json"
   ],

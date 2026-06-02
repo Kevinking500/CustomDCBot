@@ -3,7 +3,9 @@ const {
     formatDate,
     formatNumber,
     parseEmbedColor,
-    safeSetFooter
+    safeSetFooter,
+    formatVoiceDuration,
+    todayInServerTZ
 } = require('../../../src/functions/helpers');
 const {MessageEmbed} = require('discord.js');
 const {localize} = require('../../../src/functions/localize');
@@ -40,6 +42,12 @@ module.exports.run = async function (interaction) {
         .addField(moduleStrings.embed.xp, `${formatNumber(isMaxLevel(user.level, interaction.client) ? calculateLevelXP(interaction.client, interaction.client.configurations['levels']['config'].maximumLevel) : user.xp)}/${isMaxLevel(user.level, interaction.client) ? '∞' : formatNumber(nextLevelXp)}`, true)
         .addField(moduleStrings.embed.level, displayLevel(user.level, interaction.client), true);
 
+    const today = todayInServerTZ();
+    const dailyMessages = user.dailyResetDate === today ? user.dailyMessages : 0;
+    const dailyVoiceSeconds = user.dailyResetDate === today ? user.dailyVoiceSeconds : 0;
+    embed.addField(moduleStrings.embed.messagesToday, formatNumber(dailyMessages), true);
+    embed.addField(moduleStrings.embed.voiceTimeToday, formatVoiceDuration(dailyVoiceSeconds), true);
+    
     safeSetFooter(embed, interaction.client);
 
     const roleFactor = getMemberRoleFactor(member);

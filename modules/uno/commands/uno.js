@@ -482,3 +482,15 @@ module.exports.config = {
     description: localize('uno', 'command-description'),
     defaultPermission: true
 };
+
+// Exposed for unit testing of the pure game rules.
+module.exports.__test = {
+    canUseCard,
+    nextPlayer,
+    gameMsg,
+    buildDeck,
+    perPlayerHandler,
+    cards,
+    colors,
+    colorEmojis
+};

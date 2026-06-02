@@ -260,6 +260,14 @@
       "category": "general"
     },
     {
+      "name": "enableLevelCalculator",
+      "humanName": "Enable /calculate-level command",
+      "default": false,
+      "description": "If enabled, server members can use the /calculate-level command to calculate the XP and amount of messages required to reach a specific level based on the configured level curve and XP-per-message range.",
+      "type": "boolean",
+      "category": "general"
+    },
+    {
       "name": "allowCheats",
       "humanName": "Cheats",
       "default": false,

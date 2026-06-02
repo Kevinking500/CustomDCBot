@@ -13,7 +13,7 @@ module.exports.run = async function (interaction) {
     await reloadConfig(interaction.client).catch((async reason => {
         if (interaction.client.logChannel) interaction.client.logChannel.send('⚠️️ ' + localize('reload', 'reload-failed')).catch(() => {
         });
-        await interaction.editReply({content: localize('reload', 'reload-failed-message', {reason})});
+        await interaction.editReply({content: localize('reload', 'reload-failed-message', {r: reason})});
         process.exit(0);
         ;
     })).then(async (res) => {

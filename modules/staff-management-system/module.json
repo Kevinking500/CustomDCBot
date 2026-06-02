@@ -5,7 +5,7 @@
     "name": "Kevin",
     "link": "https://github.com/Kevinking500"
   },
-  "fa-icon": "far fa-gear looks",
+  "fa-icon": "fa-duotone fa-gear",
   "openSourceURL": "https://github.com/Kevinking500/CustomDCBot/tree/main/modules/staff-management-system",
   "commands-dir": "/commands",
   "events-dir": "/events",

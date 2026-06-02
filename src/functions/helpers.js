@@ -25,12 +25,70 @@ const {
     MessageFlags
 } = require('discord.js');
 const {localize} = require('./localize');
-const {PrivatebinClient} = require('@pixelfactory/privatebin');
-const privatebin = new PrivatebinClient('https://paste.scootkit.com');
-const isoCrypto = require('isomorphic-webcrypto');
-const {encode} = require('bs58');
 const crypto = require('crypto');
+const zlib = require('zlib');
+const centra = require('centra');
 const {client} = require('../../main');
+
+const PRIVATEBIN_BASE_URL = 'https://paste.scootkit.com';
+const PRIVATEBIN_PBKDF2_ITERATIONS = 100000;
+const PRIVATEBIN_KEY_BYTES = 32;
+const PRIVATEBIN_GCM_TAG_BITS = 128;
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+function base58Encode(bytes) {
+    if (bytes.length === 0) return '';
+    let zeros = 0;
+    while (zeros < bytes.length && bytes[zeros] === 0) zeros++;
+    const size = Math.ceil((bytes.length - zeros) * 138 / 100) + 1;
+    const b58 = new Uint8Array(size);
+    let length = 0;
+    for (let i = zeros; i < bytes.length; i++) {
+        let carry = bytes[i];
+        let j = 0;
+        for (let k = size - 1; (carry !== 0 || j < length) && k >= 0; k--, j++) {
+            carry += 256 * b58[k];
+            b58[k] = carry % 58;
+            carry = Math.floor(carry / 58);
+        }
+        length = j;
+    }
+    let it = size - length;
+    while (it < size && b58[it] === 0) it++;
+    return '1'.repeat(zeros) + Array.from(b58.slice(it), (b) => BASE58_ALPHABET[b]).join('');
+}
+
+function encryptPrivatebinPaste(text, masterKey, opts) {
+    const compression = opts.compression || 'zlib';
+    const iv = crypto.randomBytes(16);
+    const salt = crypto.randomBytes(8);
+    const derivedKey = crypto.pbkdf2Sync(masterKey, salt, PRIVATEBIN_PBKDF2_ITERATIONS, PRIVATEBIN_KEY_BYTES, 'sha256');
+    const adata = [
+        [
+            iv.toString('base64'),
+            salt.toString('base64'),
+            PRIVATEBIN_PBKDF2_ITERATIONS,
+            256,
+            PRIVATEBIN_GCM_TAG_BITS,
+            'aes',
+            'gcm',
+            compression
+        ],
+        opts.textformat || 'plaintext',
+        opts.opendiscussion ? 1 : 0,
+        opts.burnafterreading ? 1 : 0
+    ];
+    let plaintext = Buffer.from(JSON.stringify({paste: text}), 'utf8');
+    if (compression === 'zlib') plaintext = zlib.deflateRawSync(plaintext);
+    const cipher = crypto.createCipheriv('aes-256-gcm', derivedKey, iv, {authTagLength: PRIVATEBIN_GCM_TAG_BITS / 8});
+    cipher.setAAD(Buffer.from(JSON.stringify(adata), 'utf8'));
+    const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+    const ct = Buffer.concat([encrypted, cipher.getAuthTag()]).toString('base64');
+    return {
+        ct,
+        adata
+    };
+}
 
 /**
  * Will loop asynchrony through every object in the array
@@ -349,13 +407,19 @@ function buildV4Button(comp, args) {
     const label = inputReplacer(args, comp.label, true);
     if (label) btn.setLabel(truncate(label, 80));
 
+    let hasEmoji = false;
     if (comp.emoji) {
         const emoji = typeof comp.emoji === 'string' ? comp.emoji.trim() : comp.emoji;
-        if (emoji && emoji !== '' && emoji !== 'null') btn.setEmoji(emoji);
+        if (emoji && emoji !== '' && emoji !== 'null') {
+            btn.setEmoji(emoji);
+            hasEmoji = true;
+        }
     }
 
     if (comp.disabled) btn.setDisabled(true);
 
+    let isLink = false;
+    let linkUrl = null;
     if (comp.scnx_action) {
         const action = comp.scnx_action;
         if (action.type === 'roleButton') {
@@ -371,16 +435,23 @@ function buildV4Button(comp, args) {
             btn.setDisabled(true);
             btn.setCustomId(`disabled-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
         } else if (action.type === 'linkButton') {
+            isLink = true;
             btn.setStyle(ButtonStyle.Link);
-            if (comp.url) btn.setURL(inputReplacer(args, comp.url).trim());
+            linkUrl = comp.url ? inputReplacer(args, comp.url).trim() : '';
         }
-    } else if (style === 5 && comp.url) {
-        btn.setURL(inputReplacer(args, comp.url).trim());
+    } else if (style === 5) {
+        isLink = true;
+        linkUrl = comp.url ? inputReplacer(args, comp.url).trim() : '';
     } else if (comp.custom_id) {
         btn.setCustomId(comp.custom_id);
     }
 
-    if (!label && !comp.emoji) return null;
+    if (isLink) {
+        if (!linkUrl) return null;
+        btn.setURL(linkUrl);
+    }
+
+    if (!label && !hasEmoji) return null;
     return btn;
 }
 
@@ -409,16 +480,13 @@ function buildV4StringSelect(comp, args, counters) {
     const placeholder = inputReplacer(args, comp.placeholder, true);
     if (placeholder) select.setPlaceholder(truncate(placeholder, 150));
 
-    if (typeof comp.min_values === 'number') select.setMinValues(comp.min_values);
-    if (typeof comp.max_values === 'number') select.setMaxValues(comp.max_values);
-
     const options = [];
     for (const opt of comp.options) {
-        if (!opt.label || !opt.value) continue;
-        const option = {
-            label: truncate(inputReplacer(args, opt.label), 100),
-            value: String(opt.value)
-        };
+        if (opt.value == null) continue;
+        const label = truncate(inputReplacer(args, opt.label, true) || '', 100);
+        const value = String(opt.value);
+        if (!label || !value) continue;
+        const option = {label, value};
         const desc = inputReplacer(args, opt.description, true);
         if (desc) option.description = truncate(desc, 100);
         if (opt.emoji && opt.emoji !== '' && opt.emoji !== 'null') option.emoji = opt.emoji;
@@ -426,6 +494,12 @@ function buildV4StringSelect(comp, args, counters) {
     }
     if (options.length === 0) return null;
     select.addOptions(options);
+
+    if (typeof comp.min_values === 'number') select.setMinValues(Math.max(0, Math.min(comp.min_values, options.length)));
+    if (typeof comp.max_values === 'number') {
+        const min = typeof comp.min_values === 'number' ? Math.max(0, Math.min(comp.min_values, options.length)) : 0;
+        select.setMaxValues(Math.max(min || 1, Math.min(comp.max_values, options.length)));
+    }
     return select;
 }
 
@@ -460,9 +534,10 @@ function buildV4Component(comp, args, counters) {
                 let galleryItemCount = 0;
                 for (const item of comp.items) {
                     if (!item.media || !item.media.url) continue;
+                    const url = inputReplacer(args, item.media.url).trim();
+                    if (!url) continue;
                     try {
-                        const galleryItem = new MediaGalleryItemBuilder()
-                            .setURL(inputReplacer(args, item.media.url).trim());
+                        const galleryItem = new MediaGalleryItemBuilder().setURL(url);
                         if (item.description) galleryItem.setDescription(truncate(inputReplacer(args, item.description), 1024));
                         if (item.spoiler) galleryItem.setSpoiler(true);
                         gallery.addItems(galleryItem);
@@ -476,7 +551,9 @@ function buildV4Component(comp, args, counters) {
             }
             case 13: { // File
                 if (!comp.file || !comp.file.url) return null;
-                const file = new FileBuilder().setURL(inputReplacer(args, comp.file.url).trim());
+                const url = inputReplacer(args, comp.file.url).trim();
+                if (!url) return null;
+                const file = new FileBuilder().setURL(url);
                 if (comp.spoiler) file.setSpoiler(true);
                 return file;
             }
@@ -521,7 +598,9 @@ function buildV4Component(comp, args, counters) {
 
                 if (comp.accessory.type === 11) { // Thumbnail
                     if (comp.accessory.media && comp.accessory.media.url) {
-                        const thumb = new ThumbnailBuilder().setURL(inputReplacer(args, comp.accessory.media.url).trim());
+                        const thumbUrl = inputReplacer(args, comp.accessory.media.url).trim();
+                        if (!thumbUrl) return null;
+                        const thumb = new ThumbnailBuilder().setURL(thumbUrl);
                         if (comp.accessory.description) thumb.setDescription(truncate(inputReplacer(args, comp.accessory.description), 1024));
                         if (comp.accessory.spoiler) thumb.setSpoiler(true);
                         section.setThumbnailAccessory(thumb);
@@ -731,10 +810,115 @@ function formatDurationShort(ms) {
 module.exports.formatDurationShort = formatDurationShort;
 
 /**
- * Posts (encrypted) content to SC Network Paste
+ * Returns today's date as YYYY-MM-DD in the bot's configured timezone.
+ * @returns {string}
+ */
+function todayInServerTZ() {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: client.config.timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).format(new Date());
+}
+
+module.exports.todayInServerTZ = todayInServerTZ;
+
+/**
+ * Formats a duration in seconds as a short, localized human string.
+ * Examples (en): 6125 -> "1h 42m", 125 -> "2m", 30 -> "30s", 0 -> "0m".
+ * @param {number} seconds
+ * @returns {string}
+ */
+function formatVoiceDuration(seconds) {
+    if (!Number.isFinite(seconds) || seconds <= 0) return localize('helpers', 'voice-time-m', {i: 0});
+    if (seconds >= 3600) {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        return localize('helpers', 'voice-time-hm', {
+            h,
+            m
+        });
+    }
+    if (seconds >= 60) return localize('helpers', 'voice-time-m', {i: Math.floor(seconds / 60)});
+    return localize('helpers', 'voice-time-s', {i: Math.floor(seconds)});
+}
+
+module.exports.formatVoiceDuration = formatVoiceDuration;
+
+const PASTE_MAX_ATTEMPTS = 3;
+const PASTE_RETRY_BASE_MS = 1000;
+const PASTE_RETRY_MAX_DELAY_MS = 60000;
+
+/*
+ * PrivateBin returns HTTP 200 with `{status: 1, message: "..."}` for application-level errors
+ * (flood protection, invalid options, oversized paste). axios won't throw in that case, so we
+ * need to inspect the body ourselves — otherwise res.url is undefined and the caller ends up
+ * with a "paste.scootkit.comundefined" URL.
+ */
+class PasteUploadError extends Error {
+    constructor(message, {response = null, cause = null, retryable = false, retryAfterMs = null} = {}) {
+        super(message);
+        this.name = 'PasteUploadError';
+        this.response = response;
+        this.cause = cause;
+        this.retryable = retryable;
+        this.retryAfterMs = retryAfterMs;
+    }
+}
+
+function classifyPrivatebinResponse(res) {
+    if (res && typeof res.url === 'string' && res.url.length > 0) return {ok: true};
+    const message = (res && (res.message || res.error)) || 'PrivateBin response missing url';
+    const lower = String(message).toLowerCase();
+    // Permanent failures we should not retry — there's no point.
+    if (lower.includes('size') || lower.includes('large') || lower.includes('invalid')) {
+        return {ok: false, message, retryable: false};
+    }
+    // Flood protection / temporary unavailability — retry with backoff.
+    const retryable = lower.includes('flood') || lower.includes('wait') || lower.includes('try again') || lower.includes('busy');
+    return {ok: false, message, retryable};
+}
+
+function parseRetryAfterMs(headers) {
+    const retryAfterHeader = headers && (headers['retry-after'] || headers['Retry-After']);
+    if (!retryAfterHeader) return null;
+    const seconds = parseInt(retryAfterHeader, 10);
+    if (!Number.isFinite(seconds) || seconds <= 0) return null;
+    return Math.min(seconds * 1000, PASTE_RETRY_MAX_DELAY_MS);
+}
+
+function classifyHttpStatus(status, headers) {
+    const retryAfterMs = parseRetryAfterMs(headers);
+    if (!status) {
+        // No HTTP response: network error, DNS failure, socket reset, timeout.
+        return {retryable: true, retryAfterMs};
+    }
+    const retryable = status === 408 || status === 425 || status === 429 || (status >= 500 && status < 600);
+    return {retryable, retryAfterMs, status};
+}
+
+function computePasteRetryDelayMs(attempt, retryAfterMs) {
+    if (retryAfterMs) return retryAfterMs;
+    const base = PASTE_RETRY_BASE_MS * Math.pow(2, attempt);
+    const jitter = Math.floor(Math.random() * 500);
+    return Math.min(base + jitter, PASTE_RETRY_MAX_DELAY_MS);
+}
+
+function pasteSleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Posts (encrypted) content to SC Network Paste. Retries transient failures (flood protection,
+ * 5xx, network errors) with exponential backoff and honors Retry-After headers. Throws
+ * PasteUploadError when the paste cannot be created — callers should handle that explicitly
+ * rather than expecting a fallback URL.
+ *
  * @param {String} content Content to post
  * @param {Object} opts Configuration of upload entry
  * @return {Promise<string>} URL to document
+ * @throws {PasteUploadError}
  */
 async function postToSCNetworkPaste(content, opts = {
     expire: '1month',
@@ -744,12 +928,103 @@ async function postToSCNetworkPaste(content, opts = {
     output: 'text',
     compression: 'zlib'
 }) {
-    const key = isoCrypto.getRandomValues(new Uint8Array(32));
-    const res = await privatebin.sendText(content, key, opts);
-    return `https://paste.scootkit.com${res.url}#${encode(key)}`;
+    let lastError = null;
+    for (let attempt = 0; attempt < PASTE_MAX_ATTEMPTS; attempt++) {
+        const key = crypto.randomBytes(PRIVATEBIN_KEY_BYTES);
+        const {
+            ct,
+            adata
+        } = encryptPrivatebinPaste(content, key, opts);
+        let response;
+        try {
+            response = await centra(PRIVATEBIN_BASE_URL, 'POST')
+                .header('X-Requested-With', 'JSONHttpRequest')
+                .body({
+                    v: 2,
+                    ct,
+                    adata,
+                    meta: {expire: opts.expire}
+                }, 'json')
+                .send();
+        } catch (networkError) {
+            const {
+                retryable,
+                retryAfterMs
+            } = classifyHttpStatus(null, {});
+            lastError = new PasteUploadError(
+                `PrivateBin network error: ${networkError.message || networkError}`,
+                {
+                    cause: networkError,
+                    retryable,
+                    retryAfterMs
+                }
+            );
+            if (!retryable || attempt === PASTE_MAX_ATTEMPTS - 1) throw lastError;
+            await pasteSleep(computePasteRetryDelayMs(attempt, retryAfterMs));
+            continue;
+        }
+        const status = response.statusCode;
+        if (status < 200 || status >= 300) {
+            const {
+                retryable,
+                retryAfterMs
+            } = classifyHttpStatus(status, response.headers);
+            lastError = new PasteUploadError(
+                `PrivateBin HTTP error (${status})`,
+                {
+                    cause: null,
+                    retryable,
+                    retryAfterMs
+                }
+            );
+            if (!retryable || attempt === PASTE_MAX_ATTEMPTS - 1) throw lastError;
+            await pasteSleep(computePasteRetryDelayMs(attempt, retryAfterMs));
+            continue;
+        }
+        let res;
+        try {
+            res = await response.json();
+        } catch (parseError) {
+            lastError = new PasteUploadError('PrivateBin returned non-JSON response', {
+                cause: parseError,
+                retryable: false
+            });
+            throw lastError;
+        }
+        const classification = classifyPrivatebinResponse(res);
+        if (classification.ok) {
+            return `${PRIVATEBIN_BASE_URL}${res.url}#${base58Encode(key)}`;
+        }
+        lastError = new PasteUploadError(`PrivateBin rejected paste: ${classification.message}`, {
+            response: res,
+            retryable: classification.retryable
+        });
+        if (!classification.retryable || attempt === PASTE_MAX_ATTEMPTS - 1) throw lastError;
+        await pasteSleep(computePasteRetryDelayMs(attempt, null));
+    }
+    throw lastError;
 }
 
 module.exports.postToSCNetworkPaste = postToSCNetworkPaste;
+module.exports.PasteUploadError = PasteUploadError;
+
+// Internal building blocks exposed for unit tests; not part of the public bot API.
+module.exports.__test = {
+    base58Encode,
+    encryptPrivatebinPaste,
+    classifyHttpStatus,
+    parseRetryAfterMs,
+    computePasteRetryDelayMs,
+    classifyPrivatebinResponse,
+    formatV4BuilderError,
+    mapButtonStyle,
+    getGlobalArgs,
+    buildV4Button,
+    buildV4StringSelect,
+    buildV4Component,
+    embedTypeSchemaV2,
+    embedTypeSchemaV4
+};
 
 /**
  * Genrate a random string (cryptographically unsafe)
@@ -760,9 +1035,10 @@ module.exports.postToSCNetworkPaste = postToSCNetworkPaste;
 module.exports.randomString = function (length, characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') {
     let result = '';
     const charactersLength = characters.length;
+    if (charactersLength === 0) return result;
     for (let i = 0; i < length; i++) {
-        result = result + characters.charAt(Math.floor(Math.random() *
-            charactersLength));
+        // crypto.randomInt -> unbiased, unpredictable character pick.
+        result = result + characters.charAt(crypto.randomInt(charactersLength));
     }
     return result;
 };
@@ -831,18 +1107,20 @@ module.exports.pufferStringToSize = pufferStringToSize;
  * @param  {Array<object>} sites Array of MessageEmbeds (https://discord.js.org/#/docs/main/stable/class/MessageEmbed)
  * @param  {Array<string>} allowedUserIDs Array of User-IDs of users allowed to use the pagination
  * @param {Object} messageOrInteraction Message or [CommandInteraction](https://discord.js.org/#/docs/main/stable/class/CommandInteraction) to respond to
+ * @param {Boolean} ephemeral If the reply should be ephemeral (only when responding to an interaction)
  * @return {string}
  * @author Simon Csaba <mail@scderox.de>
  */
-async function sendMultipleSiteButtonMessage(channel, sites = [], allowedUserIDs = [], messageOrInteraction = null) {
+async function sendMultipleSiteButtonMessage(channel, sites = [], allowedUserIDs = [], messageOrInteraction = null, ephemeral = false) {
     if (sites.length === 1) {
-        if (messageOrInteraction) return messageOrInteraction.reply({embeds: [sites[0]]});
+        if (messageOrInteraction) return messageOrInteraction.reply({embeds: [sites[0]], ephemeral});
         return await channel.send({embeds: [sites[0]]});
     }
     let m;
     if (messageOrInteraction) m = await messageOrInteraction.reply({
         components: [{type: 'ACTION_ROW', components: getButtons(1)}],
         embeds: [sites[0]],
+        ephemeral,
         fetchReply: true
     });
     else m = await channel.send({components: [{type: 'ACTION_ROW', components: getButtons(1)}], embeds: [sites[0]]});
@@ -862,9 +1140,13 @@ async function sendMultipleSiteButtonMessage(channel, sites = [], allowedUserIDs
         });
     });
     c.on('end', () => {
-        m.edit({
+        const payload = {
             components: [{type: 'ACTION_ROW', components: getButtons(currentSite, true)}],
             embeds: [sites[currentSite - 1]]
+        };
+        if (ephemeral && messageOrInteraction) messageOrInteraction.editReply(payload).catch(() => {
+        });
+        else m.edit(payload).catch(() => {
         });
     });
 
@@ -937,7 +1219,12 @@ module.exports.checkForUpdates = checkForUpdates;
  * @returns {number} Random integer
  */
 function randomIntFromInterval(min, max) {
-    return Math.floor(Math.random() * (max - min + 1) + min);
+    // Cryptographically secure, unbiased integer in [min, max] inclusive.
+    // crypto.randomInt does rejection sampling internally (no modulo bias) and is
+    // unpredictable, unlike Math.random. Tolerant of swapped args / non-integers.
+    const lo = Math.ceil(Math.min(min, max));
+    const hi = Math.floor(Math.max(min, max));
+    return hi > lo ? crypto.randomInt(lo, hi + 1) : lo;
 }
 
 module.exports.randomIntFromInterval = randomIntFromInterval;
@@ -950,7 +1237,8 @@ module.exports.randomIntFromInterval = randomIntFromInterval;
 function randomElementFromArray(array) {
     if (array.length === 0) return null;
     if (array.length === 1) return array[0];
-    return array[Math.floor(Math.random() * array.length)];
+    // crypto.randomInt(max) -> unbiased index in [0, length-1].
+    return array[crypto.randomInt(array.length)];
 }
 
 module.exports.randomElementFromArray = randomElementFromArray;
@@ -1138,7 +1426,7 @@ module.exports.moduleEnabled = moduleEnabled;
  */
 module.exports.formatNumber = function (number, options = {}) {
     if (typeof number === 'string') number = parseFloat(number);
-    return new Intl.NumberFormat(client.locale.split('_')[0], options).format(number);
+    return new Intl.NumberFormat(client.bcp47Locale, options).format(number);
 };
 
 /**
@@ -1153,7 +1441,8 @@ module.exports.hashMD5 = function (string) {
 module.exports.shuffleArray = function (input) {
     const array = [...input];
     for (let i = array.length - 1; i >= 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
+        // Fisher-Yates with a cryptographically secure, unbiased index in [0, i].
+        const j = crypto.randomInt(i + 1);
         [array[i], array[j]] = [array[j], array[i]];
     }
     return array;

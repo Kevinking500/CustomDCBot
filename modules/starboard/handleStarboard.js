@@ -13,6 +13,7 @@ module.exports = async (client, msgReaction, user, isReactionRemove = false) => 
     if (!msg.guild) return;
     if (msg.guild.id !== client.guildID) return;
     if (msgReaction.partial) msgReaction = await msgReaction.fetch();
+    if (msg.partial) await msg.fetch();
 
     const starConfig = client.configurations['starboard']['config'];
     if (!starConfig || starConfig.emoji !== msgReaction.emoji.toString()) return;
@@ -20,7 +21,7 @@ module.exports = async (client, msgReaction, user, isReactionRemove = false) => 
 
     const channel = client.channels.cache.get(starConfig.channelId);
     if (!channel) return disableModule('starboard', localize('partner-list', 'channel-not-found', {c: starConfig.channelId}));
-    if ((msg.channel.nsfw && !channel.nsfw) || starConfig.excludedChannels.includes(msg.channel.id) || starConfig.excludedRoles.some(r => msg.member.roles.cache.has(r))) return;
+    if ((msg.channel.nsfw && !channel.nsfw) || starConfig.excludedChannels.includes(msg.channel.id) || starConfig.excludedRoles.some(r => msg.member?.roles.cache.has(r))) return;
     if (!starConfig.selfStar && user.id === msg.author.id) return msgReaction.users.remove(user.id).catch(() => {
     });
 

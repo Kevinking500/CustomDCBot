@@ -23,6 +23,8 @@
         "level": "Level",
         "joinedAt": "Joined server",
         "roleFactor": "Role Factor(s)",
+        "messagesToday": "Messages today",
+        "voiceTimeToday": "Voice time today",
         "color": "GREEN"
       },
       "description": "Embed which gets send if !profile gets executed",
@@ -86,6 +88,34 @@
         {
           "name": "newLevel",
           "description": "New level of the user"
+        },
+        {
+          "name": "xpGained",
+          "description": "XP gained from this action"
+        },
+        {
+          "name": "xpType",
+          "description": "Type of XP gain (Message or Voice)"
+        },
+        {
+          "name": "totalXP",
+          "description": "Total XP after gaining XP"
+        },
+        {
+          "name": "nextLevelXP",
+          "description": "XP needed for the next level"
+        },
+        {
+          "name": "totalMessages",
+          "description": "Lifetime message count"
+        },
+        {
+          "name": "messagesToday",
+          "description": "Messages sent today (resets at midnight)"
+        },
+        {
+          "name": "voiceTimeToday",
+          "description": "Voice time today (resets at midnight)"
         }
       ],
       "category": "general"
@@ -123,6 +153,34 @@
         {
           "name": "role",
           "description": "Mention of the role (No ping)"
+        },
+        {
+          "name": "xpGained",
+          "description": "XP gained from this action"
+        },
+        {
+          "name": "xpType",
+          "description": "Type of XP gain (Message or Voice)"
+        },
+        {
+          "name": "totalXP",
+          "description": "Total XP after gaining XP"
+        },
+        {
+          "name": "nextLevelXP",
+          "description": "XP needed for the next level"
+        },
+        {
+          "name": "totalMessages",
+          "description": "Lifetime message count"
+        },
+        {
+          "name": "messagesToday",
+          "description": "Messages sent today (resets at midnight)"
+        },
+        {
+          "name": "voiceTimeToday",
+          "description": "Voice time today (resets at midnight)"
         }
       ],
       "category": "general"

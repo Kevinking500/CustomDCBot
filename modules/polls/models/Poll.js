@@ -11,7 +11,12 @@ module.exports = class Poll extends Model {
             options: DataTypes.JSON,
             votes: DataTypes.JSON, // {1: ["userIDHere"], 2: ["as"] }
             expiresAt: DataTypes.DATE,
-            channelID: DataTypes.STRING
+            channelID: DataTypes.STRING,
+            maxSelections: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+                defaultValue: 1
+            } // Max selections per voter. 0 = unlimited.
         }, {
             tableName: 'polls_Poll',
             timestamps: true,

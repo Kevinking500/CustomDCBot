@@ -1,11 +1,13 @@
 const {ChannelType} = require('discord.js');
-const {embedType, disableModule, migrate} = require('../../../src/functions/helpers');
+const {
+    embedType,
+    disableModule
+} = require('../../../src/functions/helpers');
 const {localize} = require('../../../src/functions/localize');
 
 module.exports.run = async function (client) {
     const moduleConfig = client.configurations['tickets']['config'];
     const messageModel = client.models['tickets']['TicketMessage'];
-    await migrate('tickets', 'TicketV1', 'Ticket');
     for (const element of moduleConfig) {
         for (const element2 of moduleConfig) {
             if (moduleConfig.indexOf(element) === moduleConfig.indexOf(element2) && moduleConfig.indexOf(element) !== moduleConfig.indexOf(element2)) return disableModule('tickets', localize('tickets', 'button-not-uniqe'));

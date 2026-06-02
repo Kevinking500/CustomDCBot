@@ -618,3 +618,5 @@ module.exports.updateShopItem = updateShopItem;
 module.exports.createShopMsg = createShopMsg;
 module.exports.shopMsg = shopMsg;
 module.exports.createLeaderboard = leaderboard;
+module.exports.topTen = topTen;
+module.exports.getUser = getUser;

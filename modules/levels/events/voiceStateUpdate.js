@@ -8,14 +8,20 @@ function isChannelBlacklisted(client, channel) {
     return blacklist.includes(channel.id) || blacklist.includes(channel.parentId) || blacklist.includes(channel.parent?.parentId);
 }
 
+module.exports.isChannelBlacklisted = isChannelBlacklisted;
+
 function isRoleBlacklisted(client, member) {
     return member.roles.cache.some(r => client.configurations['levels']['config'].blacklistedRoles.some(br => String(br) === r.id));
 }
+
+module.exports.isRoleBlacklisted = isRoleBlacklisted;
 
 function hasHumanCompany(channel) {
     if (!channel) return false;
     return channel.members.filter(m => !m.user.bot).size >= 2;
 }
+
+module.exports.hasHumanCompany = hasHumanCompany;
 
 function isEligible(client, voiceState) {
     if (!voiceState || !voiceState.channel) return false;
@@ -27,6 +33,8 @@ function isEligible(client, voiceState) {
     if (!hasHumanCompany(voiceState.channel)) return false;
     return true;
 }
+
+module.exports.isEligible = isEligible;
 
 async function startVoiceSession(client, voiceState) {
     if (states.has(voiceState.member.id)) return;
@@ -68,7 +76,8 @@ async function grantXP(client, member, overrideStateData) {
     const moduleConfig = client.configurations['levels']['config'];
     const timeInMinutes = (diff / (1000 * 60));
     const xp = Math.round(moduleConfig['voiceXPPerMinute'] * timeInMinutes);
-    await grantXPAndLevelUP(client, member, xp, 'voice', stateData.channel);
+    const voiceSeconds = Math.round(diff / 1000);
+    await grantXPAndLevelUP(client, member, xp, 'voice', stateData.channel, null, voiceSeconds);
 }
 
 async function updateChannelSessions(client, channel) {

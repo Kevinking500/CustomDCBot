@@ -9,6 +9,7 @@
   "openSourceURL": "https://github.com/hfgd123/CustomDCBot/tree/main/modules/nicknames",
   "fa-icon": "fa-solid fa-user-pen",
   "events-dir": "/events",
+  "on-load-event": "onLoad.js",
   "models-dir": "/models",
   "config-example-files": [
     "configs/config.json",

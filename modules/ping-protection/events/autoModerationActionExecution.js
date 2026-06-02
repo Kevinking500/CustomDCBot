@@ -1,4 +1,7 @@
-const { processPing, isWhitelistedChannel } = require('../ping-protection');
+const {
+    processPing,
+    isWhitelistedChannel
+} = require('../ping-protection');
 
 // Handles auto mod actions
 module.exports.run = async function (client, execution) {

@@ -6,7 +6,7 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const { Op } = require('sequelize');
 const schedule = require('node-schedule');
-const { embedTypeV2, safeSetFooter, dateToDiscordTimestamp } = require('../../src/functions/helpers');
+const {embedTypeV2, safeSetFooter, dateToDiscordTimestamp} = require('../../src/functions/helpers');
 const { localize } = require('../../src/functions/localize');
 
 // --- Local helpers ---
@@ -605,8 +605,9 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
             if (typeof embedTemplate === 'string') {
                 try {
                     embedTemplate = JSON.parse(embedTemplate);
+                } catch (e) {
                 }
-            catch (e) {} } else if (typeof embedTemplate === 'object') {
+            } else if (typeof embedTemplate === 'object') {
                 embedTemplate = JSON.parse(JSON.stringify(embedTemplate));
             }
 
@@ -1411,31 +1412,29 @@ async function startActivityCheck(client, interactionOrChannel, isAutomated = fa
     const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000);
     const generalConfig = getConfig(client, 'configuration') || {};
     const initiator = isAutomated
-    ? localize('staff-management-system', 'label-system')
-    : interactionOrChannel.user.toString();
+        ? localize('staff-management-system', 'label-system')
+        : interactionOrChannel.user.toString();
 
     const responseButtonRow = new ActionRowBuilder()
-    .addComponents(
-        new ButtonBuilder()
-            .setCustomId('staff-mgmt_ac-respond')
-            .setLabel(localize('staff-management-system', 'ac-confirm-btn'))
-            .setStyle(ButtonStyle.Success)
-            .setEmoji('✅')
-    )
-    .toJSON();
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('staff-mgmt_ac-respond')
+                .setLabel(localize('staff-management-system', 'ac-confirm-btn'))
+                .setStyle(ButtonStyle.Success)
+                .setEmoji('✅')
+        )
+        .toJSON();
 
-    let msgOpts = await embedTypeV2(config.checkMessage,  {
-            '%end-time%': dateToDiscordTimestamp(endTime, 'F'),
-            '%duration%': durationHours.toString(),
-            '%staff-mention%': formatRoleMentions(generalConfig.staffRoles),
-            '%supervisor-mention%': formatRoleMentions(generalConfig.supervisorRoles),
-            '%management-mention%': formatRoleMentions(generalConfig.managementRoles),
-            '%initiator%': initiator
-        },
-        {
-            components: [responseButtonRow]
-        }
-    );
+    let msgOpts = await embedTypeV2(config.checkMessage, {
+        '%end-time%': dateToDiscordTimestamp(endTime, 'F'),
+        '%duration%': durationHours.toString(),
+        '%staff-mention%': formatRoleMentions(generalConfig.staffRoles),
+        '%supervisor-mention%': formatRoleMentions(generalConfig.supervisorRoles),
+        '%management-mention%': formatRoleMentions(generalConfig.managementRoles),
+        '%initiator%': initiator
+    }, {
+        components: [responseButtonRow]
+    });
 
     if (msgOpts?.content?.trim() === '') delete msgOpts.content;
 
@@ -1495,8 +1494,8 @@ async function endActivityCheckProcess(client, activeCheck) {
         }
     });
     const initiator = (activeCheck.isAutomated || !activeCheck.initiatorId)
-    ? localize('staff-management-system', 'label-system')
-    : `<@${activeCheck.initiatorId}>`;
+        ? localize('staff-management-system', 'label-system')
+        : `<@${activeCheck.initiatorId}>`;
 
     expectedMembers.forEach(member => {
         if (respondedUserIds.has(member.id)) return responded.push(member);
@@ -1542,7 +1541,8 @@ async function endActivityCheckProcess(client, activeCheck) {
 
             await msg.edit(endedMessage);
         }
-    } catch (e) {}
+    } catch (e) {
+    }
 
     const embed = applyFooter(client, new EmbedBuilder()
         .setTitle(localize('staff-management-system', 'ac-res-title'))
@@ -1743,8 +1743,8 @@ async function generateReviewHistoryResponse(client, targetUser, page = 1) {
     embed.addFields({
         name: localize('staff-management-system', 'label-hist'),
         value: rows.length > 0
-        ? rows.map(r => `**${"⭐".repeat(r.stars)}** ${localize('staff-management-system', 'label-by')} <@${r.authorId}>${r.messageUrl 
-            ? ` • [Jump](${r.messageUrl})`
+        ? rows.map(r => `**${"⭐".repeat(r.stars)}** ${localize('staff-management-system', 'label-by')} <@${r.authorId}>${r.messageUrl
+                ? ` • [Jump](${r.messageUrl})`
                 : ''}\n"${r.comment}"`).join('\n\n')
         : localize('staff-management-system', 'p-no-hist') });
 
@@ -1802,5 +1802,6 @@ module.exports = {
     endActivityCheckProcess,
     submitReview,
     getReviewHistory,
-    generateReviewHistoryResponse
+    generateReviewHistoryResponse,
+    getIsoWeekNumber
 };

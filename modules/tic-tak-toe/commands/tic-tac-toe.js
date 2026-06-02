@@ -2,6 +2,79 @@ const {localize} = require('../../../src/functions/localize');
 const {ComponentType} = require('discord.js');
 const {randomElementFromArray} = require('../../../src/functions/helpers');
 
+/**
+ * Returns true if every cell of the 3x3 grid is filled (non-null).
+ * @param {Object} grid grid[row][col] -> owner id or null
+ * @returns {boolean}
+ */
+function isBoardFull(grid) {
+    for (const rID in grid) {
+        for (const id in grid[rID]) {
+            if (grid[rID][id] === null) return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Detects whether `playerId` has a winning line on the 3x3 grid.
+ * Mirrors the original in-game neighbour/diagonal scan: a win is two same-owner
+ * neighbours in a horizontal or vertical direction from one of the player's
+ * cells, or a full diagonal through the centre.
+ * @param {Object} grid grid[row][col] -> owner id or null (rows/cols are "1".."3")
+ * @param {string} playerId owner id to test for a win
+ * @returns {boolean}
+ */
+function detectWin(grid, playerId) {
+    /**
+     * @param {string|number} rID
+     * @param {string|number} id
+     * @returns {{below: (boolean|null), left: (boolean|null), above: (boolean|null), right: (boolean|null)}|void}
+     */
+    function checkBlock(rID, id) {
+        rID = parseInt(rID);
+        id = parseInt(id);
+        const value = grid[rID][id];
+        if (value !== playerId) return;
+        let above, below;
+        if (!grid[rID - 1]) above = null;
+        else above = grid[rID - 1][id] === value;
+        if (!grid[rID + 1]) below = null;
+        else below = grid[rID + 1][id] === value;
+        const left = typeof grid[rID][id - 1] === 'undefined' ? null : (grid[rID][id - 1] === value);
+        const right = typeof grid[rID][id + 1] === 'undefined' ? null : (grid[rID][id + 1] === value);
+        return {
+            above,
+            below,
+            left,
+            right
+        };
+    }
+
+    for (const rID in grid) {
+        for (const id in grid[rID]) {
+            const cB = checkBlock(rID, id);
+            if (!cB) continue;
+            let x = 0;
+            let y = 0;
+            if (cB.above) y++;
+            if (cB.below) y++;
+            if (cB.left) x++;
+            if (cB.right) x++;
+            let diagPass = false;
+            if (parseInt(rID) === 2 && parseInt(id) === 2) {
+                if (grid[1][1] === playerId && grid[3][3] === playerId) diagPass = true;
+                if (grid[1][3] === playerId && grid[3][1] === playerId) diagPass = true;
+            }
+            if (x === 2 || y === 2 || diagPass) return true;
+        }
+    }
+    return false;
+}
+
+module.exports.detectWin = detectWin;
+module.exports.isBoardFull = isBoardFull;
+
 module.exports.run = async function (interaction) {
     const member = interaction.options.getMember('user', true);
     if (member.user.id === interaction.user.id) return interaction.reply({
@@ -71,57 +144,16 @@ module.exports.run = async function (interaction) {
      */
     function checkGameEnded() {
         if (ended) return true;
-        let allPassed = true;
         const lastUser = currentUser.user.id === interaction.user.id ? member : interaction.member;
 
-        /**
-         * Returns values from blocks above, below, left and right if the block is user owned
-         * @param rID ID of the row
-         * @param id ID of column
-         * @private
-         * @returns {{below: boolean, left: boolean, above: boolean, right: boolean}|void}
-         */
-        function checkBlock(rID, id) {
-            rID = parseInt(rID);
-            id = parseInt(id);
-            const value = grid[rID][id];
-            if (value !== lastUser.user.id) return;
-            let above, below;
-            if (!grid[rID - 1]) above = null;
-            else above = grid[rID - 1][id] === value;
-            if (!grid[rID + 1]) below = null;
-            else below = grid[rID + 1][id] === value;
-            const left = typeof grid[rID][id - 1] === 'undefined' ? null : (grid[rID][id - 1] === value);
-            const right = typeof grid[rID][id + 1] === 'undefined' ? null : (grid[rID][id + 1] === value);
-            return {above, below, left, right};
+        if (detectWin(grid, lastUser.user.id)) {
+            ended = true;
+            gameEndReasonType = 'win';
+            currentUser = lastUser;
+            return true;
         }
 
-        for (const rID in grid) {
-            for (const id in grid[rID]) {
-                if (grid[rID][id] === null) allPassed = false;
-                const cB = checkBlock(rID, id);
-                if (!cB) continue;
-                let x = 0;
-                let y = 0;
-                if (cB.above) y++;
-                if (cB.below) y++;
-                if (cB.left) x++;
-                if (cB.right) x++;
-                let diagPass = false;
-                if (parseInt(rID) === 2 && parseInt(id) === 2) {
-                    if (grid[1][1] === lastUser.user.id && grid[3][3] === lastUser.user.id) diagPass = true;
-                    if (grid[1][3] === lastUser.user.id && grid[3][1] === lastUser.user.id) diagPass = true;
-                }
-                if (x === 2 || y === 2 || diagPass) {
-                    ended = true;
-                    gameEndReasonType = 'win';
-                    currentUser = lastUser;
-                    return true;
-                }
-            }
-        }
-
-        if (allPassed) {
+        if (isBoardFull(grid)) {
             ended = true;
             gameEndReasonType = 'draw';
             return true;

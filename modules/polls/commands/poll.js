@@ -1,6 +1,6 @@
 const {ChannelType} = require('discord.js');
 const {truncate} = require('../../../src/functions/helpers');
-const durationParser = require('parse-duration');
+const durationParser = require('../../../src/functions/parseDuration');
 const {localize} = require('../../../src/functions/localize');
 const {createPoll, updateMessage} = require('../polls');
 
@@ -17,11 +17,16 @@ module.exports.subcommands = {
         for (let step = 1; step <= 10; step++) {
             if (interaction.options.getString(`option${step}`)) options.push(interaction.options.getString(`option${step}`));
         }
+        let maxSelections = interaction.options.getInteger('max-selections');
+        if (typeof maxSelections !== 'number') maxSelections = 1;
+        if (maxSelections > options.length) maxSelections = options.length;
+        if (maxSelections < 0) maxSelections = 1;
         await createPoll({
             description: (interaction.options.getBoolean('public') ? '[PUBLIC]' : '') + interaction.options.getString('description', true),
             channel: interaction.options.getChannel('channel', true),
             endAt: endAt,
-            options
+            options,
+            maxSelections
         }, interaction.client);
         await interaction.editReply({
             content: localize('polls', 'created-poll', {c: interaction.options.getChannel('channel').toString()})
@@ -122,6 +127,14 @@ module.exports.config = {
                         name: 'public',
                         required: false,
                         description: localize('polls', 'command-poll-create-public-description')
+                    },
+                    {
+                        type: 'INTEGER',
+                        name: 'max-selections',
+                        required: false,
+                        minValue: 0,
+                        maxValue: 10,
+                        description: localize('polls', 'command-poll-create-max-selections-description')
                     }
                 ]
             },

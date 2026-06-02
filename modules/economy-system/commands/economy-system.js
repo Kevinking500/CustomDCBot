@@ -49,7 +49,7 @@ async function cooldown (command, duration, userId, client) {
 module.exports.subcommands = {
     'work': async function (interaction) {
         if (!await cooldown('work', interaction.config['workCooldown'] * 60000, interaction.user.id, interaction.client)) return interaction.reply(embedType(interaction.str['cooldown'], {}, {ephemeral: !interaction.config['publicCommandReplies']}));
-        const moneyToAdd = randomIntFromInterval(parseInt(interaction.config['maxWorkMoney']), parseInt(interaction.config['minWorkMoney']));
+        const moneyToAdd = randomIntFromInterval(parseInt(interaction.config['minWorkMoney']), parseInt(interaction.config['maxWorkMoney']));
         await editBalance(interaction.client, interaction.user.id, 'add', moneyToAdd);
         interaction.reply(embedType(randomElementFromArray(interaction.str['workSuccess']), {'%earned%': `${moneyToAdd} ${interaction.config['currencySymbol']}`}, {ephemeral: !interaction.config['publicCommandReplies']}));
         createLeaderboard(interaction.client);
@@ -91,7 +91,7 @@ module.exports.subcommands = {
                 c: interaction.config['currencySymbol']
             }));
         } else {
-            const money = randomIntFromInterval(parseInt(interaction.config['maxCrimeMoney']), parseInt(interaction.config['minCrimeMoney']));
+            const money = randomIntFromInterval(parseInt(interaction.config['minCrimeMoney']), parseInt(interaction.config['maxCrimeMoney']));
             await editBalance(interaction.client, interaction.user.id, 'add', money);
             interaction.reply(embedType(randomElementFromArray(interaction.str['crimeSuccess']), {'%earned%': `${money} ${interaction.config['currencySymbol']}`}, {ephemeral: !interaction.config['publicCommandReplies']}));
             createLeaderboard(interaction.client);
@@ -140,8 +140,6 @@ module.exports.subcommands = {
     },
     'add': async function (interaction) {
         if (!interaction.client.configurations['economy-system']['config']['admins'].includes(interaction.user.id) && !interaction.client.config['botOperators'].includes(interaction.user.id)) return interaction.reply(embedType(interaction.client.strings['not_enough_permissions'], {}, {ephemeral: !interaction.config['publicCommandReplies']}));
-        console.log(interaction.options.getUser('user').id);
-        console.log(interaction.user.id);
         if (interaction.options.getUser('user').id === interaction.user.id && !interaction.client.configurations['economy-system']['config']['selfBalance']) {
             if (interaction.client.logChannel) interaction.client.logChannel.send(localize('economy-system', 'admin-self-abuse'));
             return interaction.reply({

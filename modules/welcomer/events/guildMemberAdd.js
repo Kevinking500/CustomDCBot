@@ -93,10 +93,23 @@ module.exports.run = async function (client, guildMember) {
 function assignJoinRoles(guildMember, moduleConfig) {
     if (moduleConfig['give-roles-on-join'].length === 0) return;
     setTimeout(async () => {
-        if (!guildMember.doNotGiveWelcomeRole) {
+        if (guildMember.doNotGiveWelcomeRole) return;
+        const client = guildMember.client;
+        const roleIDs = moduleConfig['give-roles-on-join'];
+        try {
             const m = await guildMember.fetch(true);
-            m.roles.add(moduleConfig['give-roles-on-join']).then(() => {
-            });
+            await m.roles.add(roleIDs, '[welcomer] ' + localize('welcomer', 'audit-log-reason-join-roles'));
+        } catch (e) {
+            const sentryId = client.captureException ? client.captureException(e, {
+                module: 'welcomer',
+                userID: guildMember.id,
+                roleIDs
+            }) : null;
+            client.logger.error(localize('welcomer', 'assign-role-failed', {
+                u: guildMember.id,
+                r: roleIDs.join(', '),
+                e: (e && e.message) ? e.message : String(e)
+            }) + (sentryId ? ` [Sentry: ${sentryId}]` : ''));
         }
     }, 500);
 }

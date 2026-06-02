@@ -2,7 +2,6 @@ const {moderationAction} = require('../moderationActions');
 const {activateLockdown, isLockdownActive} = require('../lockdown');
 const {embedType} = require('../../../src/functions/helpers');
 const {localize} = require('../../../src/functions/localize');
-const stopPhishing = require('stop-discord-phishing');
 
 // Cache resolved invite codes to guild IDs to avoid repeated API calls
 const inviteGuildCache = new Map();
@@ -115,13 +114,6 @@ async function performBadWordAndInviteProtection(msg) {
     const moduleConfig = msg.client.configurations['moderation']['config'];
     const roles = Array.from(msg.member.roles.cache.filter(f => !f.managed).keys());
     if (msg.member.roles.cache.find(r => moduleConfig['moderator-roles_level2'].includes(r.id) || moduleConfig['moderator-roles_level3'].includes(r.id) || moduleConfig['moderator-roles_level4'].includes(r.id))) return;
-    if (moduleConfig['action_on_scam_link'] !== 'none') {
-        if (await stopPhishing.checkMessage(msg.content, moduleConfig['action_on_scam_link'] === 'suspicious')) {
-            await msg.delete();
-            await moderationAction(msg.client, moduleConfig['action_on_scam_link'], msg.client, msg.member, localize('moderation', 'scam-url-sent', {c: msg.channel.toString()}), {roles});
-            return;
-        }
-    }
     let containsBlacklistedWord = false;
     moduleConfig['blacklisted_words'].forEach(word => {
         if (msg.content.toLowerCase().includes(word.toLowerCase())) containsBlacklistedWord = true;

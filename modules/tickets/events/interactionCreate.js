@@ -24,14 +24,20 @@ module.exports.run = async function (client, interaction) {
                 }
             });
             if (!ticket) return;
+
+            /*
+             * Acknowledge immediately: locking the channel and sending messages can take
+             * longer than Discord's 3s interaction window, which would otherwise expire the
+             * token and produce an "Unknown interaction" error when we reply below.
+             */
+            await interaction.deferReply({ephemeral: true});
             await interaction.channel.send({
                 content: localize('tickets', 'closing-ticket', {u: interaction.user.toString()}),
                 allowedMentions: {parse: []}
             });
             await lockChannel(interaction.channel, [], localize('tickets', 'ticket-closed-audit-log', {u: formatDiscordUserName(interaction.user)}));
 
-            interaction.reply({
-                ephemeral: true,
+            await interaction.editReply({
                 content: localize('tickets', 'ticket-closed-successfully')
             });
             ticket.open = false;
@@ -75,6 +81,13 @@ module.exports.run = async function (client, interaction) {
             }, 20000);
         }
         if (interaction.customId.startsWith('create-ticket-') && parseFloat(interaction.customId.replaceAll('create-ticket-', '')) === moduleConfig.indexOf(element)) {
+
+            /*
+             * Acknowledge immediately: creating the channel, sending the creation message and
+             * pinning it routinely take longer than Discord's 3s interaction window. Replying
+             * only after that work expired the token and surfaced as "Unknown interaction".
+             */
+            await interaction.deferReply({ephemeral: true});
             const existingTicket = await client.models['tickets']['Ticket'].findOne({
                 where: {
                     userID: interaction.user.id,
@@ -85,8 +98,7 @@ module.exports.run = async function (client, interaction) {
             if (existingTicket) {
                 const ticketChannel = await interaction.guild.channels.fetch(existingTicket.channelID).catch(() => {
                 });
-                if (ticketChannel) return interaction.reply({
-                    ephemeral: true,
+                if (ticketChannel) return await interaction.editReply({
                     content: localize('tickets', 'existing-ticket', {c: `<#${existingTicket.channelID}>`})
                 });
                 existingTicket.open = false;
@@ -142,8 +154,7 @@ module.exports.run = async function (client, interaction) {
                 }]
             }]));
             await msg.pin();
-            interaction.reply({
-                ephemeral: true,
+            await interaction.editReply({
                 content: '✅ ' + localize('tickets', 'ticket-created', {c: channel.toString()})
             });
         }

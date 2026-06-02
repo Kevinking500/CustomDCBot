@@ -157,6 +157,12 @@ function mentionUsers(game) {
     return mention || null;
 }
 
+module.exports.findWinner = findWinner;
+module.exports.mentionUsers = mentionUsers;
+module.exports.resetGame = resetGame;
+module.exports._rpsgames = rpsgames;
+module.exports._moves = moves;
+
 module.exports.run = async function (interaction) {
     const member = interaction.options.getMember('user');
 

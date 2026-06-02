@@ -2,8 +2,8 @@
   "name": "ping-on-vc-join",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/ping-on-vc-join",
   "fa-icon": "fa-solid fa-volume-high",
