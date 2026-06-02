@@ -1323,7 +1323,13 @@ async function lockChannel(channel, allowedRoles = [], reason = localize('main',
         }
 
         const everyoneRole = channel.guild.roles.everyone;
-        await channel.permissionOverwrites.create(everyoneRole, {
+
+        /*
+         * Use edit (not create) so we MERGE into any existing @everyone overwrite.
+         * create() replaces the overwrite wholesale, which would wipe a pre-existing
+         * VIEW_CHANNEL deny and leave e.g. a closed ticket visible to @everyone (#cmpwxd).
+         */
+        await channel.permissionOverwrites.edit(everyoneRole, {
             SendMessages: false,
             SendMessagesInThreads: false
         }, {reason});

@@ -15,7 +15,10 @@ const {
     unlockChannel,
     disableModule
 } = require('../../src/functions/helpers');
-const {ChannelType} = require('discord.js');
+const {
+    ChannelType,
+    PermissionFlagsBits
+} = require('discord.js');
 
 beforeEach(() => {
     mainStub.client.config = {
@@ -66,6 +69,62 @@ describe('lockChannel (thread branch)', () => {
         };
         await lockChannel(channel);
         expect(setLocked).toHaveBeenCalledWith(true, expect.any(String));
+    });
+});
+
+/*
+ * Regression for bug #cmpwxd: closing a ticket left it visible to @everyone.
+ * lockChannel must MERGE into the existing @everyone overwrite (which already
+ * denies VIEW_CHANNEL) rather than replace it wholesale - otherwise the
+ * VIEW_CHANNEL deny is wiped and the closed ticket becomes public.
+ */
+describe('lockChannel (normal channel branch)', () => {
+    test('updates the @everyone overwrite via edit (merge) so VIEW_CHANNEL deny is preserved', async () => {
+        const create = jest.fn().mockResolvedValue();
+        const edit = jest.fn().mockResolvedValue();
+        const everyoneRole = {id: 'guild-1'};
+
+        /*
+         * Existing @everyone overwrite already denies SendMessages (and VIEW_CHANNEL),
+         * matching how the tickets module locks down the channel on creation.
+         */
+        const everyoneOverwrite = {
+            id: 'guild-1',
+            type: 'role',
+            deny: {has: perm => perm === PermissionFlagsBits.SendMessages}
+        };
+
+        const channel = {
+            id: 'ticket-chan',
+            type: ChannelType.GuildText,
+            parent: null,
+            permissionOverwrites: {
+                cache: new Map([['guild-1', everyoneOverwrite]]),
+                create,
+                edit
+            },
+            guild: {roles: {everyone: everyoneRole}},
+            client: {
+                user: {id: 'bot-user'},
+                guild: {members: {me: {roles: {botRole: {id: 'bot-role'}}}}},
+                models: {
+                    ChannelLock: {
+                        findOne: jest.fn().mockResolvedValue(null),
+                        create: jest.fn().mockResolvedValue()
+                    }
+                },
+                logger: {
+                    error: jest.fn(),
+                    warn: jest.fn()
+                }
+            }
+        };
+
+        await lockChannel(channel, [], 'closing ticket');
+
+        expect(edit).toHaveBeenCalledWith(everyoneRole, expect.objectContaining({SendMessages: false}), expect.anything());
+        // A wholesale create() would drop the pre-existing VIEW_CHANNEL deny.
+        expect(create).not.toHaveBeenCalledWith(everyoneRole, expect.anything(), expect.anything());
     });
 });
 
