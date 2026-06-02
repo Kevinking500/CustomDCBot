@@ -4,7 +4,7 @@ const {Sequelize} = require('sequelize');
 const migration = require(path.join('..', '..', 'modules', 'economy-system', 'migrations', 'economy_Shop__V1.js'));
 
 function makeSequelize() {
-    return new Sequelize('sqlite::memory:', {logging: false});
+    return new Sequelize({dialect: 'sqlite', storage: ':memory:', logging: false});
 }
 
 describe('economy_Shop__V1 migration', () => {

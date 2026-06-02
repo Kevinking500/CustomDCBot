@@ -7,7 +7,7 @@ const {
 const migration = require(path.join('..', '..', 'modules', 'levels', 'migrations', 'levels_User__V1.js'));
 
 function makeSequelize() {
-    return new Sequelize('sqlite::memory:', {logging: false});
+    return new Sequelize({dialect: 'sqlite', storage: ':memory:', logging: false});
 }
 
 async function createLegacyLevelsTable(sequelize) {

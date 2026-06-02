@@ -40,7 +40,7 @@ describe('migration filename helpers', () => {
 });
 
 function makeMarkerModel() {
-    const sequelize = new Sequelize('sqlite::memory:', {logging: false});
+    const sequelize = new Sequelize({dialect: 'sqlite', storage: ':memory:', logging: false});
 
     class DatabaseSchemeVersion extends Model {
     }

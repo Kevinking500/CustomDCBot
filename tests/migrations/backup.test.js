@@ -28,7 +28,7 @@ function makeClient(dataDir) {
 }
 
 async function makeSequelizeWithUsers() {
-    const sequelize = new Sequelize('sqlite::memory:', {logging: false});
+    const sequelize = new Sequelize({dialect: 'sqlite', storage: ':memory:', logging: false});
     const queryInterface = sequelize.getQueryInterface();
     await queryInterface.createTable('users', {
         id: {
