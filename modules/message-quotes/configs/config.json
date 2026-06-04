@@ -1,0 +1,108 @@
+{
+    "description": "Configure the message quoting system",
+    "humanName": "Configuration",
+    "filename": "config.json",
+    "content": [
+        {
+            "name": "roles",
+            "humanName": "Blacklist roles",
+            "description": "Roles that are excluded from quoting",
+            "default": [],
+            "type": "array",
+            "content": "roleID"
+        },
+        {
+            "name": "channels",
+            "humanName": "Blacklist channels",
+            "description": "Channels that are excluded from quoting (Channels and categories worked)",
+            "default": [],
+            "type": "array",
+            "content": "channelID"
+        },
+        {
+            "name": "withAttachments",
+            "humanName": "Attach files?",
+            "default": false,
+            "description": "Should all attachments be quoted? (Must be disabled for components v2!)",
+            "type": "boolean"
+        },
+        {
+            "name": "noBots",
+            "humanName": "Ignore bot messages?",
+            "default": true,
+            "description": "Bot messages are not included in the quote when activated",
+            "type": "boolean"
+        },
+        {
+            "name": "asReply",
+            "humanName": "Reply to messages?",
+            "default": true,
+            "description": "Reply to the message that triggered the quote (Ignored when \"Delete trigger\" is enabled)",
+            "type": "boolean"
+        },
+        {
+            "name": "deleteOrigin",
+            "humanName": "Delete trigger?",
+            "default": false,
+            "description": "When enabled, the trigger message will be deleted",
+            "type": "boolean"
+        },
+        {
+            "name": "message",
+            "humanName": "Message",
+            "description": "Message in which the quote is returned",
+            "default": {
+                "title": "Quote from #%channelName%",
+                "url": "%link%",
+                "description": ">>> %content%",
+                "image": "%image%",
+                "color": "#2ECC71",
+                "author": {
+                    "name": "%userName%",
+                    "img": "%userAvatar%"
+                }
+            },
+            "type": "string",
+            "allowEmbed": true,
+            "allowGeneratedImage": true,
+            "params": [
+                {
+                    "name": "%userID%",
+                    "description": "Od of the user"
+                },
+                {
+                    "name": "%userName%",
+                    "description": "Username of the user"
+                },
+                {
+                    "name": "%userAvatar%",
+                    "description": "Avatar of the user"
+                },
+                {
+                    "name": "%channelID%",
+                    "description": "Id of the channel from which the quote originates"
+                },
+                {
+                    "name": "%channelName%",
+                    "description": "Name of the channel from which the quote originates"
+                },
+                {
+                    "name": "%timestamp%",
+                    "description": "Shows when the original message was sent (Used discord timestamp)"
+                },
+                {
+                    "name": "%link%",
+                    "description": "Message-link of the original message"
+                },
+                {
+                    "name": "%image%",
+                    "description": "First image of the message, if available"
+                },
+                {
+                    "name": "%content%",
+                    "description": "Message content of the quote"
+                }
+            ]
+        }
+    ]
+}

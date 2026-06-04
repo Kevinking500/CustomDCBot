@@ -1,0 +1,18 @@
+{
+  "name": "message-quotes",
+  "humanReadableName": "Message quotes",
+  "description": "",
+  "fa-icon": "fas fa-chat",
+  "author": {
+    "name": "Jean S.",
+    "link": "https://github.com/JeanCoding16"
+  },
+  "openSourceURL": "https://github.com/ScootKit/CustomDCBot/tree/main/modules/message-quotes",
+  "tags": [
+    "community"
+  ],
+  "events-dir": "/events",
+  "config-example-files": [
+      "configs/config.json"
+  ]
+}
