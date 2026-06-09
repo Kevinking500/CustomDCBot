@@ -14,7 +14,7 @@
         {
             "name": "channels",
             "humanName": "Blacklist channels",
-            "description": "Channels that are excluded from quoting (Channels and categories worked)",
+            "description": "Channels that are excluded from quoting (Channels and categories are supported; a category excludes all its channels)",
             "default": [],
             "type": "array",
             "content": "channelID"
@@ -23,7 +23,7 @@
             "name": "withAttachments",
             "humanName": "Attach files?",
             "default": false,
-            "description": "Should all attachments be quoted? (Must be disabled for components v2!)",
+            "description": "Should all attachments be quoted? (Deactivation recommended if \"Message\" components v2 are used)",
             "type": "boolean"
         },
         {
@@ -31,6 +31,13 @@
             "humanName": "Ignore bot messages?",
             "default": true,
             "description": "Bot messages are not included in the quote when activated",
+            "type": "boolean"
+        },
+        {
+            "name": "selfQuote",
+            "humanName": "Allow Self-quotes?",
+            "default": true,
+            "description": "Can users quote their own messages?",
             "type": "boolean"
         },
         {
@@ -68,7 +75,7 @@
             "params": [
                 {
                     "name": "%userID%",
-                    "description": "Od of the user"
+                    "description": "Id of the user"
                 },
                 {
                     "name": "%userName%",

@@ -1,8 +1,8 @@
 {
   "name": "message-quotes",
   "humanReadableName": "Message quotes",
-  "description": "",
-  "fa-icon": "fas fa-chat",
+  "description": "Quotes a Discord message when a user has pastes a message link.",
+  "fa-icon": "fas fa-quote-left",
   "author": {
     "name": "Jean S.",
     "link": "https://github.com/JeanCoding16"
