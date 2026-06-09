@@ -82,6 +82,10 @@
                     "description": "Username of the user"
                 },
                 {
+                    "name": "%displayName%",
+                    "description": "Displays the user's nickname"
+                },
+                {
                     "name": "%userAvatar%",
                     "description": "Avatar of the user"
                 },

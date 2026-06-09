@@ -1,7 +1,8 @@
 const { 
     embedType,
     embedTypeV2,
-    formatDiscordUserName 
+    formatDiscordUserName,
+    archiveDiscordAttachment
 } = require('../../../src/functions/helpers');
 const cooldowns = new Map();
 
@@ -10,14 +11,13 @@ module.exports.run = async (client, msg) => {
     if (!msg.content || msg.author.bot || msg.system) return;
     if (!msg.guild || !msg.member) return;
     if (msg.guild.id !== client.guildID) return;
-    
+   
     const now = Date.now();
     const cooldownAmount = 5 * 1000;
     if (cooldowns.has(msg.author.id)) {
         const expirationTime = cooldowns.get(msg.author.id) + cooldownAmount;
         if (now < expirationTime) return;
     }
-    cooldowns.set(msg.author.id, now);
     
     const moduleConfig = client.configurations['message-quotes']['config'] || {};
     
@@ -34,6 +34,8 @@ module.exports.run = async (client, msg) => {
     const discordLinkRegex = /https:\/\/discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/i;
     const match = msg.content.match(discordLinkRegex);
     if (!match) return;
+    
+    cooldowns.set(msg.author.id, now);
     
     const [_, guildId, channelId, messageId] = match;
     if (guildId !== msg.guild.id) return;
@@ -70,10 +72,17 @@ module.exports.run = async (client, msg) => {
             }
         }
         
-        const firstAttachment = targetMsg.attachments.first();
         let finalImage = '';
+        const firstAttachment = targetMsg.attachments.first();
         if (firstAttachment) {
-            finalImage = firstAttachment.url;
+            finalImage = await archiveDiscordAttachment(client, firstAttachment.url, {
+            displayName: `Quote by ${formatDiscordUserName(targetMsg.author)} in #${targetChannel.name}`.slice(0, 100),
+            tags: ['message-quotes'],
+            uploaderDiscordID: targetMsg.author.id
+        });
+        } else {
+            const imgMatch = targetMsg.content.match(/https?:\/\/\S+\.(?:png|jpe?g|gif|webp)/i);
+            if (imgMatch) finalImage = imgMatch[0];
         }
         
         const userAvatar = targetMsg.author.displayAvatarURL();
