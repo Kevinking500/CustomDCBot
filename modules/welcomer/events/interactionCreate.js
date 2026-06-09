@@ -1,5 +1,6 @@
 const {localize} = require('../../../src/functions/localize');
 const {embedType, formatDiscordUserName} = require('../../../src/functions/helpers');
+const {ComponentType} = require('discord.js');
 
 module.exports.run = async function (client, interaction) {
     if (!interaction.isButton()) return;
@@ -20,7 +21,10 @@ module.exports.run = async function (client, interaction) {
         content: '⚠️ ' + localize('welcomer', 'channel-not-found', {c: channelConfig.sendChannel})
     });
     await interaction.update({
-        components: interaction.message.components.filter(f => f.components[0].customId !== interaction.customId)
+        components: interaction.message.components.filter(f => {
+            if (f.type !== ComponentType.ActionRow) return true;
+            return !f.components.some(child => child.customId === interaction.customId);
+        })
     });
     const user = await client.users.fetch(userID);
     sendChannel.send(embedType(channelConfig['welcome-button-message'], {

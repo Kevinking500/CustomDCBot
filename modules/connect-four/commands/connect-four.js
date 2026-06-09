@@ -145,6 +145,11 @@ function checkWin(grid, color, position, y) {
     }
 }
 
+module.exports.gameMessage = gameMessage;
+module.exports.checkWin = checkWin;
+module.exports.checkWinDiag = checkWinDiag;
+module.exports.checkWinDiagLeft = checkWinDiagLeft;
+
 module.exports.run = async function (interaction) {
     const member = interaction.options.getMember('user');
     if (member.id === interaction.user.id) return interaction.reply({

@@ -70,6 +70,8 @@ if (args[0] && args[1]) {
 }
 
 client.locale = process.argv.find(a => a.startsWith('--lang')) ? (process.argv.find(a => a.startsWith('--lang')).split('--lang=')[1] || 'de') : 'en';
+// Locale file names use underscores (e.g. "zh_Hans"), but Intl/toLocale* APIs require BCP 47 tags ("zh-Hans"). Keep both shapes.
+client.bcp47Locale = client.locale.replace('_', '-');
 module.exports.client = client;
 log4js.configure({
     pm2: process.argv.includes('--pm2-setup'),
@@ -160,15 +162,36 @@ let modulesLoaded = false;
 async function startUp() {
     if (config.timezone !== process.env.TZ) {
         process.env.TZ = config.timezone;
-        logger.info(`Successfully set timezone to ${config.timezone}. The time is ${new Date().toLocaleString(client.locale.split('_')[0])}.`);
+        logger.info(`Successfully set timezone to ${config.timezone}. The time is ${new Date().toLocaleString(client.bcp47Locale)}.`);
     }
     if (scnxSetup) client.scnxHost = client.config.scnxHostOverwirde || 'https://scnx.app';
+    // parse-duration v2 is ESM-only. Resolve the dynamic import once now so the
+    // sync wrapper used across modules has its underlying function available.
+    await require('./src/functions/parseDuration').init();
     if (!modulesLoaded) {
         modulesLoaded = true;
         await loadModelsInDir('/src/models');
+        const NicknameManager = require('./src/functions/nicknameManager');
+        client.nicknameManager = new NicknameManager(client);
+        client.nicknameManager.install();
         await loadModules();
         await loadEventsInDir('./src/events');
+        // Expose the loaded models on `client` before db.sync so the migration runner
+        // (which receives `client`) can reach `client.models.DatabaseSchemeVersion`.
+        // The post-login handler at line ~248 reassigns the same reference; that
+        // assignment is redundant but harmless.
+        client.models = models;
         await db.sync();
+        try {
+            await require('./src/functions/migrations/runMigrations').runAllMigrations(client, {
+                onMigrationStart: module.exports.migrationStart,
+                onMigrationEnd: module.exports.migrationEnd
+            });
+        } catch (e) {
+            logger.fatal(`[migrations] failed: ${e.stack || e}`);
+            logger.fatal('[migrations] aborting boot to avoid running with a partially migrated schema.');
+            process.exit(1);
+        }
     }
     logger.info(localize('main', 'sync-db'));
     if (scnxSetup) await require('./src/functions/scnx-integration').beforeInit(client);
@@ -269,9 +292,9 @@ async function startUp() {
     client.commands = commands;
     client.strings = jsonfile.readFileSync(`${confDir}/strings.json`);
     client.botReadyAt = new Date();
-    client.emit('botReady');
     await client.guild.members.fetch({withPresences: true}).catch(() => {
     });
+    client.emit('botReady');
     if (scnxSetup) await require('./src/functions/scnx-integration').init(client);
     logger.info(localize('main', 'bot-ready'));
     if (client.logChannel) client.logChannel.send('🚀 ' + localize('main', 'bot-ready'));
@@ -322,6 +345,7 @@ module.exports.migrationEnd = function () {
 // Starting bot
 db.authenticate().then(startUp).catch((e) => {
     logger.fatal(localize('main', 'db-connect-error', {e: e.message || e}));
+    if (!scnxSetup) console.error(e);
     process.exit(1);
 });
 

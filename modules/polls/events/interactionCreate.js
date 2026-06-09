@@ -17,16 +17,17 @@ module.exports.run = async (client, interaction) => {
     }
 
     if (interaction.isButton() && interaction.customId === 'polls-own-vote') {
-        let userVoteCat = null;
+        const userVoteCats = [];
         for (const id in poll.votes) {
-            if (poll.votes[id].includes(interaction.user.id)) userVoteCat = id;
+            if (poll.votes[id].includes(interaction.user.id)) userVoteCats.push(id);
         }
-        if (!userVoteCat) return interaction.reply({
+        if (userVoteCats.length === 0) return interaction.reply({
             content: '⚠️ ' + localize('polls', 'not-voted-yet'),
             ephemeral: true
         });
+        const votedLabels = userVoteCats.map(c => poll.options[c - 1]).join(', ');
         return interaction.reply({
-            content: localize('polls', 'you-voted', {o: poll.options[userVoteCat - 1]}) + (!expired ? '\n' + localize('polls', 'change-opinion') : ''),
+            content: localize('polls', 'you-voted', {o: votedLabels}) + (!expired ? '\n' + localize('polls', 'change-opinion') : ''),
             ephemeral: true,
             components: [
                 {
@@ -68,6 +69,12 @@ module.exports.run = async (client, interaction) => {
 
     if (poll.expiresAt && new Date(poll.expiresAt).getTime() <= new Date().getTime()) return;
     if (interaction.isButton() && (interaction.customId || '').startsWith('polls-rem-vot-')) {
+
+        /*
+         * Acknowledge before persisting and re-rendering the poll message (a REST edit),
+         * otherwise the reply can land after Discord's 3s window has expired the token.
+         */
+        await interaction.deferReply({ephemeral: true});
         const o = poll.votes;
         poll.votes = {};
         for (const id in o) {
@@ -76,24 +83,32 @@ module.exports.run = async (client, interaction) => {
         poll.votes = o;
         await poll.save();
         await updateMessage(interaction.channel, poll, interaction.customId.replaceAll('polls-rem-vot-', ''));
-        return await interaction.reply({
-            content: '✅ ' + localize('polls', 'removed-vote'),
-            ephemeral: true
+        return await interaction.editReply({
+            content: '✅ ' + localize('polls', 'removed-vote')
         });
     }
     if (interaction.isSelectMenu() && interaction.customId === 'polls-vote') {
+
+        /*
+         * Acknowledge before persisting and re-rendering the poll message (a REST edit),
+         * otherwise the reply can land after Discord's 3s window has expired the token.
+         */
+        await interaction.deferReply({ephemeral: true});
         const o = poll.votes;
         poll.votes = {};
         for (const id in o) {
             if (o[(parseInt(id)).toString()] && o[(parseInt(id)).toString()].includes(interaction.user.id)) o[(parseInt(id)).toString()].splice(o[(parseInt(id)).toString()].indexOf(interaction.user.id), 1);
         }
-        o[(parseInt(interaction.values[0]) + 1).toString()].push(interaction.user.id);
+        for (const value of interaction.values) {
+            const key = (parseInt(value) + 1).toString();
+            if (!o[key]) o[key] = [];
+            if (!o[key].includes(interaction.user.id)) o[key].push(interaction.user.id);
+        }
         poll.votes = o;
         await poll.save();
         await updateMessage(interaction.message.channel, poll, interaction.message.id);
-        await interaction.reply({
-            content: localize('polls', 'voted-successfully'),
-            ephemeral: true
+        await interaction.editReply({
+            content: localize('polls', 'voted-successfully')
         });
     }
 };

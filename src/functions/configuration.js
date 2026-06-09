@@ -282,6 +282,7 @@ async function checkModuleConfig(moduleName, afterCheckEventFile = null) {
 module.exports.loadAllConfigs = loadAllConfigs;
 module.exports.loadConfigLocalization = loadConfigLocalization;
 module.exports.isLocalizedObject = isLocalizedObject;
+module.exports.checkType = checkType;
 
 /**
  * Check type of one field

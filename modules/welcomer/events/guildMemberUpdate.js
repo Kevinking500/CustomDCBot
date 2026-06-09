@@ -7,6 +7,7 @@ const {
 } = require('../../../src/functions/helpers');
 const {localize} = require('../../../src/functions/localize');
 const {assignJoinRoles} = require('./guildMemberAdd');
+const {handleRoleRemoval, handleHoldingRelease, checkWatchdog} = require('../baseRoles');
 
 module.exports.run = async function (client, oldGuildMember, newGuildMember) {
     const moduleConfig = client.configurations['welcomer']['config'];
@@ -15,6 +16,10 @@ module.exports.run = async function (client, oldGuildMember, newGuildMember) {
     if (oldGuildMember.pending && !newGuildMember.pending && !moduleConfig['assign-roles-immediately']) assignJoinRoles(newGuildMember, moduleConfig);
 
     if (newGuildMember.guild.id !== client.guild.id) return;
+
+    handleRoleRemoval(client, oldGuildMember, newGuildMember);
+    handleHoldingRelease(client, oldGuildMember, newGuildMember);
+    checkWatchdog(client, oldGuildMember, newGuildMember);
 
     if (!oldGuildMember.premiumSince && newGuildMember.premiumSince) {
         await sendBoostMessage('boost');

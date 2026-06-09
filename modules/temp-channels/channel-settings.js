@@ -1,6 +1,7 @@
 const {client} = require('../../main');
 const {Op} = require('sequelize');
 const {embedType, formatDiscordUserName} = require('../../src/functions/helpers');
+const {TextDisplayBuilder} = require('discord.js');
 const {localize} = require('../../src/functions/localize');
 
 /**
@@ -224,7 +225,11 @@ module.exports.usersList = async function (interaction) {
         interaction.editReply(embedType(listMsg, {'%users%': allowedUsers}, {ephemeral: true}));
     } else {
         const result = embedType(listMsg, {}, {ephemeral: true});
-        if (result.content) result.content += ' ' + allowedUsers;
+        const schema = listMsg && typeof listMsg === 'object' ? (listMsg._schema || 'v2') : 'v2';
+        if (schema === 'v4') {
+            if (!result.components) result.components = [];
+            result.components.push(new TextDisplayBuilder().setContent(allowedUsers.trim()));
+        } else if (result.content) result.content += ' ' + allowedUsers;
         else if (result.embeds && result.embeds[0]) result.embeds[0].description = (result.embeds[0].description || '') + '\n' + allowedUsers;
         interaction.editReply(result);
     }

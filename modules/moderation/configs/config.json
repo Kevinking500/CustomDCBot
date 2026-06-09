@@ -133,34 +133,6 @@
       "category": "automod"
     },
     {
-      "name": "action_on_scam_link",
-      "humanName": "Action on Scam-Link",
-      "default": "none",
-      "description": "What should the bot do if someone posts an suspicious or confirmed scam link?",
-      "type": "select",
-      "content": [
-        "none",
-        "warn",
-        "mute",
-        "kick",
-        "quarantine",
-        "ban"
-      ],
-      "category": "automod"
-    },
-    {
-      "name": "scam_link_level",
-      "humanName": "Level of Scam-Link-Detection",
-      "default": "confirmed",
-      "description": "Select the Level of Scam-Link-Filter. \"confirmed\" only contains verified Scam-Domains, while \"suspicious\" may contain not-harmful domains.",
-      "type": "select",
-      "content": [
-        "confirmed",
-        "suspicious"
-      ],
-      "category": "automod"
-    },
-    {
       "name": "whitelisted_channels_for_invite_blocking",
       "humanName": "Whitelisted channels for invite-ban",
       "default": [],

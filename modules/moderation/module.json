@@ -2,8 +2,8 @@
   "name": "moderation",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "commands-dir": "/commands",
   "events-dir": "/events",

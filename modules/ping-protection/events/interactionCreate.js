@@ -10,8 +10,11 @@ const {
     setDeletionCooldown,
     getDeletionTypeLocaleKey
 } = require('../ping-protection');
-const { localize } = require('../../../src/functions/localize');
-const { safeSetFooter, dateToDiscordTimestamp } = require('../../../src/functions/helpers.js');
+const {localize} = require('../../../src/functions/localize');
+const {
+    safeSetFooter,
+    dateToDiscordTimestamp
+} = require('../../../src/functions/helpers.js');
 const {
     MessageFlags,
     ModalBuilder,
@@ -27,7 +30,7 @@ const {
 // Interaction handler
 module.exports.run = async function (client, interaction) {
     if (!client.botReadyAt) return;
-    const isAdmin = interaction.member?.permissions?.has('Administrator')
+    const isAdmin = interaction.member?.permissions?.has('Administrator');
 
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ping-protection_panel-menu_')) {
         if (!isAdmin) {
@@ -180,7 +183,7 @@ module.exports.run = async function (client, interaction) {
             const embed = new EmbedBuilder()
                 .setTitle(localize('ping-protection', 'del-all-title'))
                 .setDescription(localize('ping-protection', 'del-all-desc'))
-                .setColor('DarkRed')
+                .setColor('DarkRed');
 
             safeSetFooter(embed, client);
             if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
@@ -250,7 +253,8 @@ module.exports.run = async function (client, interaction) {
                     const targetUser = await client.users.fetch(targetId).catch(() => null);
                     if (targetUser && interaction.message) {
                         const payload = await generateUserPanel(client, targetUser);
-                        await interaction.message.edit(payload).catch(() => {});
+                        await interaction.message.edit(payload).catch(() => {
+                        });
                     }
 
                     await btnInt.update({
@@ -269,7 +273,8 @@ module.exports.run = async function (client, interaction) {
                         content: localize('ping-protection', 'err-del-time'),
                         embeds: [],
                         components: []
-                    }).catch(() => {});
+                    }).catch(() => {
+                    });
                 }
             });
 
@@ -288,7 +293,8 @@ module.exports.run = async function (client, interaction) {
         const targetUser = await client.users.fetch(targetId).catch(() => null);
         if (targetUser && interaction.message) {
             const payload = await generateUserPanel(client, targetUser);
-            await interaction.message.edit(payload).catch(() => {});
+            await interaction.message.edit(payload).catch(() => {
+            });
         }
 
         return interaction.reply({
@@ -302,7 +308,7 @@ module.exports.run = async function (client, interaction) {
 
     // User panel dropdown and pages handler
     if (interaction.isButton() && interaction.customId.startsWith('ping-protection_')) {
-        
+
         if (interaction.customId.startsWith('ping-protection_hist-page_')) {
             const parts = interaction.customId.split('_');
             const userId = parts[2];

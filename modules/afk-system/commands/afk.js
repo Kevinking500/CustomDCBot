@@ -1,5 +1,5 @@
 const {localize} = require('../../../src/functions/localize');
-const {embedType, truncate, formatDiscordUserName} = require('../../../src/functions/helpers');
+const {embedType} = require('../../../src/functions/helpers');
 
 module.exports.subcommands = {
     'end': async function (interaction) {
@@ -12,19 +12,9 @@ module.exports.subcommands = {
             ephemeral: true,
             content: '⚠️ ' + localize('afk-system', 'no-running-session')
         });
-        if (session.nickname) await interaction.member.setNickname(session.nickname, '[afk-system] ' + localize('afk-system', 'afk-nickname-change-audit-log')).catch(e => {
-            interaction.client.logger.warn(localize('afk-system', 'can-not-edit-nickname', {
-                e,
-                u: formatDiscordUserName(interaction.user)
-            }));
-        });
-        else await interaction.member.setNickname(null, '[afk-system] ' + localize('afk-system', 'afk-nickname-change-audit-log')).catch(e => {
-            interaction.client.logger.warn(localize('afk-system', 'can-not-edit-nickname', {
-                e,
-                u: formatDiscordUserName(interaction.user)
-            }));
-        });
         await session.destroy();
+        interaction.client.nicknameManager.attachMember(interaction.member);
+        interaction.client.nicknameManager.requestUpdate(interaction.member.id);
         interaction.reply(embedType(interaction.client.configurations['afk-system']['config']['sessionEndedSuccessfully'], {}, {ephemeral: true}));
     },
     'start': async function(interaction) {
@@ -39,16 +29,11 @@ module.exports.subcommands = {
         });
         await interaction.client.models['afk-system']['AFKUser'].create({
             userID: interaction.user.id,
-            nickname: interaction.member.nickname,
             afkMessage: interaction.options.getString('reason'),
             autoEnd: typeof interaction.options.getBoolean('auto-end') === 'boolean' ? interaction.options.getBoolean('auto-end') : true
         });
-        await interaction.member.setNickname('[AFK] ' + truncate(interaction.member.nickname || interaction.user.username, 32 - 6)).catch(e => {
-            interaction.client.logger.warn(localize('afk-system', 'can-not-edit-nickname', {
-                e,
-                u: formatDiscordUserName(interaction.user)
-            }));
-        });
+        interaction.client.nicknameManager.attachMember(interaction.member);
+        interaction.client.nicknameManager.requestUpdate(interaction.member.id);
         interaction.reply(embedType(interaction.client.configurations['afk-system']['config']['sessionStartedSuccessfully'], {}, {ephemeral: true}));
     }
 };

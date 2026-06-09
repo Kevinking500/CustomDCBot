@@ -2,8 +2,8 @@
   "name": "welcomer",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "fa-icon": "fas fa-door-open",
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/welcomer",

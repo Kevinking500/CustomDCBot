@@ -1,5 +1,5 @@
 const {localize} = require('../../../src/functions/localize');
-const durationParser = require('parse-duration');
+const durationParser = require('../../../src/functions/parseDuration');
 const {createTemporaryRoleAction, createTemporaryRoleChangeAction} = require('../temporaryRoles');
 const {client} = require('../../../main');
 const {formatDate} = require('../../../src/functions/helpers');
@@ -44,7 +44,7 @@ module.exports.subcommands = {
         const member = interaction.options.getMember('user');
         member.roles.add(interaction.options.getRole('role'), localize('admin-tools', `audit-log-add${interaction.removeDate ? '-duration' : ''}`, {
             u: interaction.user.username,
-            t: interaction.removeDate?.toLocaleString(interaction.client.locale.split('_')[0])
+            t: interaction.removeDate?.toLocaleString(interaction.client.bcp47Locale)
         })).then(() => {
             if (interaction.removeDate) createTemporaryRoleChangeAction(client, 'remove', interaction.removeDate, interaction.options.getRole('role').id, interaction.options.getUser('user').id);
             interaction.editReply({
@@ -71,7 +71,7 @@ module.exports.subcommands = {
         const member = interaction.options.getMember('user');
         member.roles.remove(interaction.options.getRole('role'), localize('admin-tools', `audit-log-remove${interaction.removeDate ? '-duration' : ''}`, {
             u: interaction.user.username,
-            t: interaction.removeDate?.toLocaleString(interaction.client.locale.split('_')[0])
+            t: interaction.removeDate?.toLocaleString(interaction.client.bcp47Locale)
         })).then(() => {
             if (interaction.removeDate) createTemporaryRoleChangeAction(client, 'add', interaction.removeDate, interaction.options.getRole('role').id, interaction.options.getUser('user').id);
             interaction.editReply({

@@ -31,7 +31,8 @@ async function createPoll(data, client) {
         options: data.options,
         channelID: data.channel.id,
         expiresAt: data.endAt,
-        votes: votes
+        votes: votes,
+        maxSelections: typeof data.maxSelections === 'number' ? data.maxSelections : 1
     });
 
     if (data.endAt) {
@@ -76,6 +77,12 @@ async function updateMessage(channel, data, mID = null) {
     embed.addField(strings.embed.options, s);
     embed.addField(strings.embed.liveView, p);
     embed.addField(strings.embed.visibility, localize('polls', `poll-${data.description.startsWith('[PUBLIC]') ? 'public' : 'private'}`));
+    const optionCount = Object.keys(data.options).length;
+    const rawMaxSelections = typeof data.maxSelections === 'number' ? data.maxSelections : 1;
+    const effectiveMax = (rawMaxSelections === 0 || rawMaxSelections > optionCount) ? optionCount : rawMaxSelections;
+    if (effectiveMax > 1) {
+        embed.addField(localize('polls', 'max-selections-field'), rawMaxSelections === 0 ? localize('polls', 'max-selections-unlimited') : localize('polls', 'max-selections-limit', {n: effectiveMax}));
+    }
 
     const options = [];
     for (const vId in data.options) {
@@ -108,7 +115,7 @@ async function updateMessage(channel, data, mID = null) {
                 disabled: expired,
                 customId: 'polls-vote',
                 min_values: 1,
-                max_values: 1,
+                max_values: effectiveMax,
                 placeholder: localize('polls', 'vote'),
                 options
             }]

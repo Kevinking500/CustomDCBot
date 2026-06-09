@@ -3,8 +3,8 @@
   "fa-icon": "fa-solid fa-circle-info",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "commands-dir": "/commands",
   "config-example-files": [

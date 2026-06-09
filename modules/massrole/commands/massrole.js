@@ -206,7 +206,10 @@ function checkTarget(interaction) {
     } else if (interaction.options.getString('target') === 'humans') {
         target = 'humans';
     }
+    return target;
 }
+
+module.exports.checkTarget = checkTarget;
 
 
 module.exports.config = {

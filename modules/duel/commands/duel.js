@@ -2,6 +2,31 @@ const {localize} = require('../../../src/functions/localize');
 const {ComponentType, MessageEmbed} = require('discord.js');
 const {safeSetFooter} = require('../../../src/functions/helpers');
 
+const DUEL_ACTION_ORDER = ['reload', 'guard', 'gun'];
+
+/**
+ * Sorts a pair of duel actions by their canonical priority (reload < guard < gun).
+ * The sorted pair, joined with '-', is the key used to look up the round result.
+ * @param {String} a First player's action
+ * @param {String} b Second player's action
+ * @returns {Array<String>} The two actions in canonical order
+ */
+function sortDuelAnswers(a, b) {
+    return [a, b].sort((x, y) => DUEL_ACTION_ORDER.indexOf(x) - DUEL_ACTION_ORDER.indexOf(y));
+}
+
+/**
+ * The duel ends when one player shoots (gun) while the other was reloading.
+ * @param {Array<String>} sortedAnswers Pair of actions in canonical order
+ * @returns {Boolean} Whether this round ends the game
+ */
+function isDuelGameOver(sortedAnswers) {
+    return sortedAnswers.join('-') === 'reload-gun';
+}
+
+module.exports.sortDuelAnswers = sortDuelAnswers;
+module.exports.isDuelGameOver = isDuelGameOver;
+
 module.exports.run = async function (interaction) {
     const member = interaction.options.getMember('user', true);
     if (member.user.id === interaction.user.id) return interaction.reply({
@@ -105,7 +130,7 @@ module.exports.run = async function (interaction) {
                 if (currentAnswers[member.user.id] === 'gun' && guardAfterEachOther[interaction.user.id] >= 5) currentAnswers[interaction.user.id] = 'reload';
                 if (currentAnswers[interaction.user.id] === 'gun' && guardAfterEachOther[member.user.id] >= 5) currentAnswers[member.user.id] = 'reload';
                 if ((currentAnswers[interaction.user.id] === 'gun' && guardAfterEachOther[member.user.id] >= 5) || currentAnswers[member.user.id] === 'gun' && guardAfterEachOther[interaction.user.id] >= 5) guardOver = true;
-                const answers = [currentAnswers[member.user.id], currentAnswers[interaction.user.id]].sort((a, b) => ['reload', 'guard', 'gun'].indexOf(a) - ['reload', 'guard', 'gun'].indexOf(b));
+                const answers = sortDuelAnswers(currentAnswers[member.user.id], currentAnswers[interaction.user.id]);
                 const params = {};
                 const actionTo = {
                     'reload': 'r',
@@ -115,7 +140,7 @@ module.exports.run = async function (interaction) {
                 params[actionTo[currentAnswers[member.user.id]] + '1'] = member.user.toString();
                 params[actionTo[currentAnswers[interaction.user.id]] + (params[actionTo[currentAnswers[interaction.user.id]] + '1'] ? '2' : '1')] = interaction.user.toString();
                 lastRoundString = localize('duel', (guardOver ? 'guard-over-' : '') + answers.join('-'), params);
-                if (answers.join('-') === 'reload-gun') ended = true;
+                if (isDuelGameOver(answers)) ended = true;
                 currentAnswers = {};
             }
         }

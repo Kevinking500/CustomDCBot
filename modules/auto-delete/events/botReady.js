@@ -64,3 +64,5 @@ function findUniqueChannels(arrayToFilter) {
 
     return arrayToFilter.filter((channel, index) => uniqueConfigChannelIds[channel.channelID] === index);
 }
+
+module.exports.findUniqueChannels = findUniqueChannels;

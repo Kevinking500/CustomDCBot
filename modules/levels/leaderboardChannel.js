@@ -53,13 +53,15 @@ module.exports.updateLeaderBoard = async function (client, force = false) {
         const member = channel.guild.members.cache.get(user.userID);
         if (!member) continue;
         if (i >= client.configurations['levels']['config']['leaderboard-channel-max-amount']) continue;
-        i++;
-        leaderboardString = leaderboardString + localize('levels', 'leaderboard-notation', {
-            p: i,
+        const entry = localize('levels', 'leaderboard-notation', {
+            p: i + 1,
             u: client.configurations['levels']['config']['useTags'] ? formatDiscordUserName(member.user) : member.user.toString(),
             l: displayLevel(user.level, client),
             xp: formatNumber(isMaxLevel(user.level, client) ? calculateLevelXP(client, client.configurations['levels']['config'].maximumLevel - 1) : user.xp)
         }) + '\n';
+        if (leaderboardString.length + entry.length > 1024) break;
+        leaderboardString += entry;
+        i++;
     }
     if (leaderboardString.length === 0) leaderboardString = localize('levels', 'no-user-on-leaderboard');
 

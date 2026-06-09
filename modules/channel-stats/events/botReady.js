@@ -81,3 +81,6 @@ async function channelNameReplacer(client, channel, input) {
         .split('%emojiCount%').join(channel.guild.emojis.cache.size)
         .split('%currentTime%').join(formatDate(new Date(), true)).trim();
 }
+
+// Exported for unit testing of the placeholder-replacement logic.
+module.exports.channelNameReplacer = channelNameReplacer;

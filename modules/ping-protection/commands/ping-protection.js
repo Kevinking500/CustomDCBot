@@ -1,11 +1,14 @@
-const { 
-  generateHistoryResponse,
-  generateActionsResponse,
-  generateUserPanel
+const {
+    generateHistoryResponse,
+    generateActionsResponse,
+    generateUserPanel
 } = require('../ping-protection');
-const { localize } = require('../../../src/functions/localize');
-const { truncate } = require('../../../src/functions/helpers');
-const { EmbedBuilder, MessageFlags } = require('discord.js');
+const {localize} = require('../../../src/functions/localize');
+const {truncate, safeSetFooter} = require('../../../src/functions/helpers');
+const {
+    EmbedBuilder,
+    MessageFlags
+} = require('discord.js');
 
 module.exports.run = async function (interaction) {
     const group = interaction.options.getSubcommandGroup(false);
@@ -19,35 +22,41 @@ module.exports.run = async function (interaction) {
 
 // Handles subcommands
 module.exports.subcommands = {
-  'user': {
-    'history': async function (interaction) {
-      const user = interaction.options.getUser('user');
-      const payload = await generateHistoryResponse(interaction.client, user.id, 1);
-      await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }); 
+    'user': {
+        'history': async function (interaction) {
+            const user = interaction.options.getUser('user');
+            const payload = await generateHistoryResponse(interaction.client, user.id, 1);
+            await interaction.reply({
+                ...payload,
+                flags: MessageFlags.Ephemeral
+            });
+        },
+        'actions-history': async function (interaction) {
+            const user = interaction.options.getUser('user');
+            const payload = await generateActionsResponse(interaction.client, user.id, 1);
+            await interaction.reply({
+                ...payload,
+                flags: MessageFlags.Ephemeral
+            });
+        },
+        'panel': async function (interaction) {
+            const user = interaction.options.getUser('user');
+            const payload = await generateUserPanel(interaction.client, user);
+            await interaction.reply({
+                ...payload,
+                flags: MessageFlags.Ephemeral
+            });
+        }
     },
-    'actions-history': async function (interaction) {
-      const user = interaction.options.getUser('user');
-      const payload = await generateActionsResponse(interaction.client, user.id, 1);
-      await interaction.reply({ ...payload, flags: MessageFlags.Ephemeral });
-    },
-    'panel': async function (interaction) {
-      const user = interaction.options.getUser('user');
-      const payload = await generateUserPanel(interaction.client, user);
-
-      await interaction.reply({
-        ...payload,
-        flags: MessageFlags.Ephemeral
-      });
+    'list': {
+        'protected': async function (interaction) {
+            await listHandler(interaction, 'protected');
+        },
+        'whitelisted': async function (interaction) {
+            await listHandler(interaction, 'whitelisted');
+        }
     }
-  },
-  'list': {
-    'protected': async function (interaction) {
-      await listHandler(interaction, 'protected');
-    },
-    'whitelisted': async function (interaction) {
-      await listHandler(interaction, 'whitelisted');
-    }
-}};
+};
 
 // Handles list subcommands
 async function listHandler(interaction, type) {

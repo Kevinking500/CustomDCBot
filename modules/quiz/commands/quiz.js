@@ -1,5 +1,5 @@
 const {ChannelType, ComponentType, MessageEmbed} = require('discord.js');
-const durationParser = require('parse-duration');
+const durationParser = require('../../../src/functions/parseDuration');
 const {
     formatDate,
     shuffleArray,
@@ -68,13 +68,20 @@ async function create(interaction) {
         });
 
         if (interaction.options.getString('duration')) endAt = new Date(new Date().getTime() + durationParser(interaction.options.getString('duration')));
+        const imageURL = interaction.options.getString('image');
+        if (imageURL && !/^https?:\/\//i.test(imageURL)) return i.update({
+            content: localize('quiz', 'invalid-image-url'),
+            components: []
+        });
         await createQuiz({
             description: interaction.options.getString('description', true),
             channel: interaction.options.getChannel('channel', true),
             endAt,
             options,
             canChangeVote: interaction.options.getBoolean('canchange') || false,
-            type: interaction.options.getSubcommand() === 'create-bool' ? 'bool' : 'normal'
+            type: interaction.options.getSubcommand() === 'create-bool' ? 'bool' : 'normal',
+            imageURL: imageURL || null,
+            headline: interaction.options.getString('headline') || null
         }, interaction.client);
         i.update({
             content: localize('quiz', 'created', {c: interaction.options.getChannel('channel').toString()}),
@@ -129,6 +136,8 @@ module.exports.subcommands = {
         quiz.endAt = new Date(new Date().getTime() + durationParser(quiz.duration));
         quiz.canChangeVote = false;
         quiz.private = true;
+        quiz.imageURL = quiz.imageURL || null;
+        quiz.headline = quiz.headline || null;
         createQuiz(quiz, interaction.client, interaction);
 
         interaction.client.models['quiz']['QuizUser'].update(updatedUser, {where: {userID: interaction.user.id}});
@@ -226,6 +235,18 @@ module.exports.config = {
                         name: 'canchange',
                         required: false,
                         description: localize('quiz', 'cmd-create-canchange-description')
+                    },
+                    {
+                        type: 'STRING',
+                        name: 'image',
+                        required: false,
+                        description: localize('quiz', 'cmd-create-image-description')
+                    },
+                    {
+                        type: 'STRING',
+                        name: 'headline',
+                        required: false,
+                        description: localize('quiz', 'cmd-create-headline-description')
                     }]
             },
             {
@@ -256,6 +277,18 @@ module.exports.config = {
                         name: 'duration',
                         required: false,
                         description: localize('quiz', 'cmd-create-endAt-description')
+                    },
+                    {
+                        type: 'STRING',
+                        name: 'image',
+                        required: false,
+                        description: localize('quiz', 'cmd-create-image-description')
+                    },
+                    {
+                        type: 'STRING',
+                        name: 'headline',
+                        required: false,
+                        description: localize('quiz', 'cmd-create-headline-description')
                     }]
             },
             {

@@ -5,7 +5,7 @@ module.exports.run = async function (interaction) {
     const content = interaction.options.getString('emote', true);
     let emote = content.replace('<', '').replace('>', '');
     emote = emote.split(':');
-    if (!emote[2] || !emote[1]) return interaction.reply({
+    if (!emote[2] || !emote[1] || !/^\d+$/.test(emote[2])) return interaction.reply({
         content: '⚠️ ' + localize('admin-tools', 'emoji-too-much-data'),
         ephemeral: true
     });

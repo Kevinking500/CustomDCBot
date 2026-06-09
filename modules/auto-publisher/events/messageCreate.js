@@ -9,7 +9,7 @@ module.exports.run = async (client, msg) => {
         const config = client.configurations['auto-publisher']['config'];
         if (config.ignoreBots && msg.author.bot) return;
         if (!config.blacklist) config.blacklist = [];
-        if (!config.whitelist) config.blacklist = [];
+        if (!config.whitelist) config.whitelist = [];
         if (!config.mode) config.mode = 'all';
         if (config.mode === 'blacklist' && config.blacklist.includes(msg.channel.id)) return;
         if (config.mode === 'whitelist' && !config.whitelist.includes(msg.channel.id)) return;

@@ -1556,3 +1556,11 @@ module.exports.buttonHandlers = {
     handleDutyAdminVoidAllSubmit,
     handleDutyAdminAddTimeSubmit
 };
+
+// Exported for unit testing of the pure duty helpers.
+module.exports._test = {
+    getLookbackDate,
+    canUseDutyAdmin,
+    applyBreakElapsedToShift,
+    getQuotaForMember
+};

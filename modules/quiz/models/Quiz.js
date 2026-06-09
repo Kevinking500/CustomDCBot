@@ -14,7 +14,15 @@ module.exports = class QuizList extends Model {
             channelID: DataTypes.STRING,
             canChangeVote: DataTypes.BOOLEAN,
             private: DataTypes.BOOLEAN,
-            type: DataTypes.STRING // normal, bool
+            type: DataTypes.STRING, // normal, bool
+            imageURL: {
+                type: DataTypes.STRING,
+                allowNull: true
+            },
+            headline: {
+                type: DataTypes.STRING,
+                allowNull: true
+            }
         }, {
             tableName: 'quiz_Quiz',
             timestamps: true,

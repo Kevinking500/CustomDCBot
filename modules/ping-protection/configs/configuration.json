@@ -121,7 +121,7 @@
       "name": "enableAutomod",
       "category": "automod",
       "humanName": "Enable AutoMod",
-      "description": "If enabled, the bot will utilise Discord's native AutoMod to block the message with a ping of a protected user/role. Warning: AutoMod does not support whitelisted categories due to limitations in Discord's AutoMod system - instead, it will still block the message but not log it in the history." ,
+      "description": "If enabled, the bot will utilise Discord's native AutoMod to block the message with a ping of a protected user/role. Warning: AutoMod does not support whitelisted categories due to limitations in Discord's AutoMod system - instead, it will still block the message but not log it in the history.",
       "type": "boolean",
       "default": true
     },

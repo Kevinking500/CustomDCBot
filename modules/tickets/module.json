@@ -2,8 +2,8 @@
   "name": "tickets",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "fa-icon": "fas fa-ticket-simple",
   "events-dir": "/events",
