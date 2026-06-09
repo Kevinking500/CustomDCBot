@@ -82,7 +82,6 @@ async function checkExpiredSuspensions(client, guild) {
 
         try {
             let rolesToRestore = [];
-
             if (profile?.suspendedRoles) {
                 try {
                     const parsed = JSON.parse(profile.suspendedRoles);
@@ -93,7 +92,7 @@ async function checkExpiredSuspensions(client, guild) {
                     );
                 }
             }
-
+            
             if (member) {
                 if (rolesToRestore.length > 0) {
                     await member.roles.add(rolesToRestore).catch(e => {

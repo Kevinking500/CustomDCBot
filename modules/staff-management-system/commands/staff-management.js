@@ -138,10 +138,6 @@ async function handleProfileView(client, interaction, targetUser) {
     };
 
     let embedTemplate = config.profileEmbedMessage;
-    if (typeof embedTemplate === 'string') {
-        try { embedTemplate = JSON.parse(embedTemplate); } catch (e) {}
-    }
-
     let msgOpts = await embedTypeV2(embedTemplate, placeholders);
 
     if (!msgOpts) {
