@@ -3,17 +3,38 @@ const {
     ApplicationCommandOptionType,
     ApplicationCommandType,
     ChannelType,
-    GatewayIntentBits,
     Partials,
     PermissionFlagsBits,
     PermissionsBitField
 } = Discord;
+// Parsing parameters (confDir must be resolved before the client so module-driven intents can be computed)
+let confDir = `${__dirname}/config`;
+let dataDir = `${__dirname}/data`;
+const args = process.argv.slice(2);
+if (args[0] === '--help' || args[0] === '-h') {
+    process.exit();
+}
+if (args[0] && args[1]) {
+    confDir = args[0];
+    dataDir = args[1];
+}
+
+// Compute the gateway intents required by the currently-enabled modules before constructing the client
+const {computeRequiredIntents} = require('./src/functions/intents');
+const {
+    flags,
+    names,
+    unknown,
+    pairingInjected
+} = computeRequiredIntents(confDir, `${__dirname}/modules`);
+if (unknown.length) throw new Error(`Unknown gateway intent(s) declared in a module.json: ${unknown.join(', ')}`);
+
 const client = new Discord.Client({
     partials: [Partials.Message, Partials.GuildMember, Partials.GuildScheduledEvent, Partials.Reaction, Partials.User, Partials.Channel], // Most of these are not needed, but enabling them does not increase CPU / RAM usage and does not introduce problems, as we handle them in the event emitter system
     allowedMentions: {parse: ['users', 'roles']}, // Disables @everyone mentions because everyone hates them
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.DirectMessages, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildPresences, GatewayIntentBits.GuildInvites, GatewayIntentBits.GuildEmojisAndStickers, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.GuildEmojisAndStickers, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildWebhooks, GatewayIntentBits.AutoModerationExecution, GatewayIntentBits.GuildModeration]
+    intents: flags
 });
+client._activeIntents = names;
 client.on('error', (err) => {
     const {localize: loc} = require('./src/functions/localize');
     const sentryId = client.captureException ? client.captureException(err, {source: 'discord-client-error'}) : null;
@@ -43,11 +64,7 @@ const jsonfile = require('jsonfile');
 const centra = require('centra');
 const readline = require('readline');
 
-// Parsing parameters
 let config;
-let confDir = `${__dirname}/config`;
-let dataDir = `${__dirname}/data`;
-const args = process.argv.slice(2);
 let scnxSetup = false; // If enabled some other (closed-sourced) files get imported and executed
 if (process.argv.includes('--scnx-enabled')) scnxSetup = true;
 client.scnxSetup = scnxSetup;
@@ -60,13 +77,6 @@ if (scnxSetup) {
     };
 } else {
     client.sanitizePath = (s) => s;
-}
-if (args[0] === '--help' || args[0] === '-h') {
-    process.exit();
-}
-if (args[0] && args[1]) {
-    confDir = args[0];
-    dataDir = args[1];
 }
 
 client.locale = process.argv.find(a => a.startsWith('--lang')) ? (process.argv.find(a => a.startsWith('--lang')).split('--lang=')[1] || 'de') : 'en';
@@ -139,7 +149,13 @@ const {
     truncate
 } = require('./src/functions/helpers');
 const {localize} = require('./src/functions/localize');
+const {registerEncryptionHooks} = require('./src/functions/secure-storage/hooks');
 logger.info(localize('main', 'startup-info', {l: logger.level}));
+logger.info(localize('main', 'intents-loaded', {
+    count: names.length,
+    intents: names.join(', ')
+}));
+if (pairingInjected) logger.warn(localize('main', 'intents-pairing-injected'));
 
 let moduleConf = {};
 try {
@@ -176,11 +192,8 @@ async function startUp() {
         client.nicknameManager.install();
         await loadModules();
         await loadEventsInDir('./src/events');
-        // Expose the loaded models on `client` before db.sync so the migration runner
-        // (which receives `client`) can reach `client.models.DatabaseSchemeVersion`.
-        // The post-login handler at line ~248 reassigns the same reference; that
-        // assignment is redundant but harmless.
         client.models = models;
+        registerEncryptionHooks(models, {warn: (m) => logger.warn(m)});
         await db.sync();
         try {
             await require('./src/functions/migrations/runMigrations').runAllMigrations(client, {
@@ -292,8 +305,11 @@ async function startUp() {
     client.commands = commands;
     client.strings = jsonfile.readFileSync(`${confDir}/strings.json`);
     client.botReadyAt = new Date();
-    await client.guild.members.fetch({withPresences: true}).catch(() => {
-    });
+    // Only fetch members when the enabled modules requested GuildMembers; else Discord rejects it and the caches stay empty.
+    if (client._activeIntents.includes('GuildMembers')) {
+        await client.guild.members.fetch({withPresences: client._activeIntents.includes('GuildPresences')}).catch(() => {
+        });
+    }
     client.emit('botReady');
     if (scnxSetup) await require('./src/functions/scnx-integration').init(client);
     logger.info(localize('main', 'bot-ready'));

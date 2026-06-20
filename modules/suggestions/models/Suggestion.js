@@ -8,11 +8,11 @@ module.exports = class Suggestion extends Model {
                 type: DataTypes.INTEGER,
                 primaryKey: true
             },
-            suggestion: DataTypes.STRING,
+            suggestion: DataTypes.TEXT,
             messageID: DataTypes.STRING,
             suggesterID: DataTypes.STRING,
             comments: DataTypes.JSON,
-            adminAnswer: DataTypes.JSON
+            adminAnswer: DataTypes.TEXT
         }, {
             tableName: 'suggestions_Suggestion',
             timestamps: true,

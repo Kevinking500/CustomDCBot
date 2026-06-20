@@ -20,5 +20,8 @@
     "community"
   ],
   "humanReadableName": "Economy",
-  "description": "A simple economy-system, containing a shop system, message-drops and commands to earn money"
+  "description": "A simple economy-system, containing a shop system, message-drops and commands to earn money",
+  "intents": [
+    "GuildMessages"
+  ]
 }

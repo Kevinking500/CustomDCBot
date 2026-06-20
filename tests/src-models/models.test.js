@@ -120,8 +120,8 @@ describe('models - ChannelLock schema', () => {
         expect(attrs.permissions).toBe(DataTypes.JSON);
     });
 
-    test('lockReason is STRING', () => {
-        expect(attrs.lockReason).toBe(DataTypes.STRING);
+    test('lockReason is TEXT', () => {
+        expect(attrs.lockReason).toBe(DataTypes.TEXT);
     });
 
     test('table name and timestamps', () => {

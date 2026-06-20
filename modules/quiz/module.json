@@ -19,5 +19,11 @@
   "tags": [
     "fun"
   ],
-  "openSourceURL": "https://github.com/DEVTomatoCake/ScootKit-CustomBot/tree/main/modules/quiz"
+  "openSourceURL": "https://github.com/DEVTomatoCake/ScootKit-CustomBot/tree/main/modules/quiz",
+  "intents": [
+    "GuildMembers"
+  ],
+  "intentReasons": {
+    "GuildMembers": "Resolves member names for quiz participants and the scoreboard."
+  }
 }

@@ -14,5 +14,8 @@
     "bot"
   ],
   "humanReadableName": "Reaction Roles",
-  "description": "Let users assign roles to themselves the good old way - by adding and removing a reaction."
+  "description": "Let users assign roles to themselves the good old way - by adding and removing a reaction.",
+  "intents": [
+    "GuildMessageReactions"
+  ]
 }

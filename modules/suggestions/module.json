@@ -17,5 +17,12 @@
   ],
   "humanReadableName": "Suggestions",
   "events-dir": "/events",
-  "description": "Advanced module to manage suggestions on your guild"
+  "description": "Advanced module to manage suggestions on your guild",
+  "intents": [
+    "GuildMessages",
+    "MessageContent"
+  ],
+  "intentReasons": {
+    "MessageContent": "Reads message text to turn it into a suggestion entry."
+  }
 }

@@ -8,7 +8,7 @@ module.exports = class ChannelLock extends Model {
                 primaryKey: true
             },
             permissions: DataTypes.JSON,
-            lockReason: DataTypes.STRING
+            lockReason: DataTypes.TEXT
         }, {
             tableName: 'system_ChannelLock',
             timestamps: true,

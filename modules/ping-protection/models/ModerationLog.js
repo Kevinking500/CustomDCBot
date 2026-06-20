@@ -21,7 +21,7 @@ module.exports = class PingProtectionModerationLog extends Model {
                 allowNull: false
             },
             reason: {
-                type: DataTypes.STRING,
+                type: DataTypes.TEXT,
                 allowNull: true
             },
             actionDuration: {

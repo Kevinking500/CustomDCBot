@@ -18,5 +18,11 @@
     "administration"
   ],
   "humanReadableName": "Welcome and Boosts",
-  "description": "Simple module to say \"Hi\" to new members, give them roles automatically and say \"thanks\" to users who boosted"
+  "description": "Simple module to say \"Hi\" to new members, give them roles automatically and say \"thanks\" to users who boosted",
+  "intents": [
+    "GuildMembers"
+  ],
+  "intentReasons": {
+    "GuildMembers": "Sends welcome and leave messages, assigns autoroles and enforces base roles as members join."
+  }
 }

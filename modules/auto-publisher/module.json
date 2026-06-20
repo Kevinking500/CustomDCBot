@@ -15,5 +15,8 @@
     "tools"
   ],
   "humanReadableName": "Automatic Publishing",
-  "description": "Publishes messages in announcement channels"
+  "description": "Publishes messages in announcement channels",
+  "intents": [
+    "GuildMessages"
+  ]
 }

@@ -16,5 +16,13 @@
   "tags": [
     "community"
   ],
-  "openSourceURL": "https://github.com/DEVTomatoCake/ScootKit-CustomBot/tree/main/modules/starboard"
+  "openSourceURL": "https://github.com/DEVTomatoCake/ScootKit-CustomBot/tree/main/modules/starboard",
+  "intents": [
+    "GuildMessageReactions",
+    "GuildMessages",
+    "MessageContent"
+  ],
+  "intentReasons": {
+    "MessageContent": "Reads a starred message's text and attachments to render it on the starboard."
+  }
 }

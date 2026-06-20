@@ -15,5 +15,6 @@
   ],
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/fun",
   "humanReadableName": "Fun-Commands",
-  "description": "Some random fun commands like /hug or /random"
+  "description": "Some random fun commands like /hug or /random",
+  "intents": []
 }

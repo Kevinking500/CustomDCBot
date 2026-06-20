@@ -16,5 +16,13 @@
     "bot"
   ],
   "humanReadableName": "Betterstatus",
-  "description": "Give you more features to make your status even better - change it when someone joins, change it every x seconds and more!"
+  "description": "Give you more features to make your status even better - change it when someone joins, change it every x seconds and more!",
+  "intents": [
+    "GuildMembers",
+    "GuildPresences"
+  ],
+  "intentReasons": {
+    "GuildMembers": "Tracks members joining and leaving to keep member-count placeholders in the bot's status accurate.",
+    "GuildPresences": "Reads members' online status to show live online-member counts in the bot's status."
+  }
 }

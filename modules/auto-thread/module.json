@@ -15,5 +15,8 @@
   ],
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/auto-thread",
   "humanReadableName": "Automatic Thread-Creation",
-  "description": "Automatically creates a thread under each message that gets posted in a selected channel"
+  "description": "Automatically creates a thread under each message that gets posted in a selected channel",
+  "intents": [
+    "GuildMessages"
+  ]
 }

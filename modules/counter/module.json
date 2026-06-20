@@ -17,5 +17,12 @@
   ],
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/counter",
   "humanReadableName": "Count-Game",
-  "description": "Allow your users to count together"
+  "description": "Allow your users to count together",
+  "intents": [
+    "GuildMessages",
+    "MessageContent"
+  ],
+  "intentReasons": {
+    "MessageContent": "Reads each message in the counting channel to check the number typed is the correct next count."
+  }
 }

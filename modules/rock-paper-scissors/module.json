@@ -14,5 +14,6 @@
   "tags": [
     "fun"
   ],
-  "openSourceURL": "https://github.com/DEVTomatoCake/ScootKit-CustomBot/tree/main/modules/rock-paper-scissors"
+  "openSourceURL": "https://github.com/DEVTomatoCake/ScootKit-CustomBot/tree/main/modules/rock-paper-scissors",
+  "intents": []
 }

@@ -18,5 +18,12 @@
   ],
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/guess-the-number",
   "humanReadableName": "Guess the number",
-  "description": "Select a number and let your users guess"
+  "description": "Select a number and let your users guess",
+  "intents": [
+    "GuildMessages",
+    "MessageContent"
+  ],
+  "intentReasons": {
+    "MessageContent": "Reads members' messages in the channel to check the number they guessed against the hidden target."
+  }
 }

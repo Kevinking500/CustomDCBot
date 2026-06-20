@@ -20,5 +20,13 @@
   "tags": [
     "fun"
   ],
-  "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/tic-tak-toe"
+  "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/tic-tak-toe",
+  "intents": [
+    "GuildMembers",
+    "GuildPresences"
+  ],
+  "intentReasons": {
+    "GuildMembers": "Resolves member names for opponents and the scoreboard.",
+    "GuildPresences": "Filters out offline members when picking a random opponent."
+  }
 }

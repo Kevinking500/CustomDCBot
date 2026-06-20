@@ -18,5 +18,11 @@
   "tags": [
     "community"
   ],
-  "description": "Simple module to edit user nicknames based on roles!"
+  "description": "Simple module to edit user nicknames based on roles!",
+  "intents": [
+    "GuildMembers"
+  ],
+  "intentReasons": {
+    "GuildMembers": "Watches member updates to keep role-based nickname decorations in sync."
+  }
 }

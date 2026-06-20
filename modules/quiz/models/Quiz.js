@@ -7,7 +7,7 @@ module.exports = class QuizList extends Model {
                 type: DataTypes.STRING,
                 primaryKey: true
             },
-            description: DataTypes.STRING,
+            description: DataTypes.TEXT,
             options: DataTypes.JSON,
             votes: DataTypes.JSON, // {1: ["userIDHere"], 2: ["as"] }
             expiresAt: DataTypes.DATE,
@@ -20,7 +20,7 @@ module.exports = class QuizList extends Model {
                 allowNull: true
             },
             headline: {
-                type: DataTypes.STRING,
+                type: DataTypes.TEXT,
                 allowNull: true
             }
         }, {

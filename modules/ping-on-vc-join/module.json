@@ -16,5 +16,8 @@
     "support"
   ],
   "humanReadableName": "Voice-Channel Actions",
-  "description": "Sends messages when someone joins a voicechat and assign roles to users in Voice-Channels"
+  "description": "Sends messages when someone joins a voicechat and assign roles to users in Voice-Channels",
+  "intents": [
+    "GuildVoiceStates"
+  ]
 }

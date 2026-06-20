@@ -16,5 +16,9 @@
     "administration"
   ],
   "humanReadableName": "Auto-Message-Delete",
-  "description": "This module allows you to delete messages from a channel after a specified timeout to keep your channel clean"
+  "description": "This module allows you to delete messages from a channel after a specified timeout to keep your channel clean",
+  "intents": [
+    "GuildVoiceStates",
+    "GuildMessages"
+  ]
 }

@@ -19,5 +19,15 @@
   ],
   "fa-icon": "fa-duotone fa-clock-alarm",
   "humanReadableName": "Ping-Protection",
-  "description": "Powerful and highly customizable ping-protection module to protect members/roles from unwanted mentions with moderation capabilities."
+  "description": "Powerful and highly customizable ping-protection module to protect members/roles from unwanted mentions with moderation capabilities.",
+  "intents": [
+    "GuildMembers",
+    "GuildMessages",
+    "MessageContent",
+    "AutoModerationExecution"
+  ],
+  "intentReasons": {
+    "GuildMembers": "Enumerates the holders of protected roles to detect unwanted mentions.",
+    "MessageContent": "Scans message content and mentions to catch pings of protected roles and users."
+  }
 }

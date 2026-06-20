@@ -221,7 +221,9 @@
     "channel-not-on-guild": "Channel with ID \"%id\" is not on your server",
     "channel-invalid-type": "Channel with ID \"%id\" has a type that can not be used for this field",
     "role-not-found": "Role with ID \"%id\" could not be found on your server",
-    "config-reload": "Reloading all configuration..."
+    "config-reload": "Reloading all configuration...",
+    "intents-unknown": "⚠️ Ignoring unknown gateway intent name(s) declared in configuration: %intents",
+    "intents-restart-required": "⚠️ A newly enabled module needs gateway intent(s) not currently active: %intents. Restart the bot to activate its features."
   },
   "connect-four": {
     "tie": "It's a tie!",
@@ -531,6 +533,8 @@
   },
   "main": {
     "startup-info": "SCNX-CustomBot v2 - Log-Level: %l",
+    "intents-loaded": "Loaded %count gateway intent(s): %intents",
+    "intents-pairing-injected": "MessageContent was requested without a message intent; GuildMessages was added automatically. Check module.json declarations.",
     "missing-moduleconf": "Missing moduleConfig-file. Automatically disabling all modules and overwriting modules.json later",
     "sync-db": "Synced database",
     "login-error": "Bot could not log in. Error: %e",

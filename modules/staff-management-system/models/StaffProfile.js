@@ -34,11 +34,11 @@ module.exports = class StaffManagementProfile extends Model {
                 allowNull: true
             },
             customNickname: {
-                type: DataTypes.STRING,
+                type: DataTypes.TEXT,
                 allowNull: true
             },
             customIntro: {
-                type: DataTypes.STRING(1024),
+                type: DataTypes.TEXT,
                 allowNull: true
             },
             onBreak: {

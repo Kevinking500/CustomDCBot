@@ -13,6 +13,13 @@
   ],
   "events-dir": "/events",
   "config-example-files": [
-      "configs/config.json"
-  ]
+    "configs/config.json"
+  ],
+  "intents": [
+    "GuildMessages",
+    "MessageContent"
+  ],
+  "intentReasons": {
+    "MessageContent": "Reads a linked message's text, attachments and stickers to render the quote."
+  }
 }

@@ -17,5 +17,6 @@
     "tools"
   ],
   "humanReadableName": "Automatic Messages",
-  "description": "You can - with this module - send automatic messages"
+  "description": "You can - with this module - send automatic messages",
+  "intents": []
 }
