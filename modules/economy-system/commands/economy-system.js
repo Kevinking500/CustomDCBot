@@ -46,6 +46,180 @@ async function cooldown (command, duration, userId, client) {
     }
 }
 
+/**
+ * Replies with the balance embed for a user. Shared core for /economy balance and the "View Balance"
+ * context command.
+ * @param {object} interaction - the slash or context-menu interaction (must have str/config set)
+ * @param {object} user - the resolved User whose balance should be shown
+ * @returns {Promise<*>} the interaction reply
+ */
+async function sendBalance(interaction, user) {
+    const balanceV = await interaction.client.models['economy-system']['Balance'].findOne({
+        where: {
+            id: user.id
+        }
+    });
+    if (!balanceV) return interaction.reply(embedType(interaction.str['userNotFound'], {'%user%': formatDiscordUserName(user)}), {ephemeral: !interaction.config['publicCommandReplies']});
+    return interaction.reply(embedType(interaction.str['balanceReply'], {
+        '%user%': formatDiscordUserName(user),
+        '%balance%': `${balanceV['balance']} ${interaction.client.configurations['economy-system']['config']['currencySymbol']}`,
+        '%bank%': `${balanceV['bank']} ${interaction.client.configurations['economy-system']['config']['currencySymbol']}`,
+        '%total%': `${parseInt(balanceV['balance']) + parseInt(balanceV['bank'])} ${interaction.client.configurations['economy-system']['config']['currencySymbol']}`
+    }, {ephemeral: !interaction.config['publicCommandReplies']}));
+}
+
+module.exports.sendBalance = sendBalance;
+
+/*
+ * Reply router: editReply when the interaction was already deferred/replied (context modal-submit path),
+ * otherwise reply normally (slash subcommands).
+ */
+function respond(interaction, payload) {
+    if (interaction.deferred || interaction.replied) return interaction.editReply(payload);
+    return interaction.reply(payload);
+}
+
+/*
+ * Shared admin guard for add/remove/set: only economy admins / bot operators, self-targeting blocked
+ * unless selfBalance is on. Returns true to proceed; otherwise it has already replied.
+ */
+async function adminGuard(interaction, user) {
+    if (!interaction.client.configurations['economy-system']['config']['admins'].includes(interaction.user.id) && !interaction.client.config['botOperators'].includes(interaction.user.id)) {
+        await interaction.reply(embedType(interaction.client.strings['not_enough_permissions'], {}, {ephemeral: !interaction.config['publicCommandReplies']}));
+        return false;
+    }
+    if (user.id === interaction.user.id && !interaction.client.configurations['economy-system']['config']['selfBalance']) {
+        if (interaction.client.logChannel) interaction.client.logChannel.send(localize('economy-system', 'admin-self-abuse'));
+        await interaction.reply({
+            content: localize('economy-system', 'admin-self-abuse-answer', {u: interaction.user.toString()}),
+            ephemeral: !interaction.config['publicCommandReplies']
+        });
+        return false;
+    }
+    return true;
+}
+
+/*
+ * Shared rob core: robs `user` on behalf of interaction.user. interaction.str/config must already be set.
+ */
+async function robUser(interaction, user) {
+    const robbedUser = await interaction.client.models['economy-system']['Balance'].findOne({
+        where: {
+            id: user.id
+        }
+    });
+    if (!robbedUser) return interaction.reply(embedType(interaction.str['userNotFound'], {'%user%': formatDiscordUserName(user)}), {ephemeral: !interaction.config['publicCommandReplies']});
+    if (!await cooldown('rob', interaction.config['robCooldown'] * 60000, interaction.user.id, interaction.client)) return interaction.reply(embedType(interaction.str['cooldown'], {}, {ephemeral: !interaction.config['publicCommandReplies']}));
+    let toRob = parseInt(robbedUser.balance) * (parseInt(interaction.config['robPercent']) / 100);
+    if (toRob >= parseInt(interaction.config['maxRobAmount'])) toRob = parseInt(interaction.config['maxRobAmount']);
+    await editBalance(interaction.client, interaction.user.id, 'add', toRob);
+    await editBalance(interaction.client, user.id, 'remove', toRob);
+    interaction.reply(embedType(interaction.str['robSuccess'], {
+        '%earned%': `${toRob} ${interaction.config['currencySymbol']}`,
+        '%user%': `<@${user.id}>`
+    }, {ephemeral: !interaction.config['publicCommandReplies']}));
+    createLeaderboard(interaction.client);
+    interaction.client.logger.info('[economy-system] ' + localize('economy-system', 'crime-earned-money', {
+        u: formatDiscordUserName(interaction.user),
+        v: formatDiscordUserName(user),
+        m: toRob,
+        c: interaction.config['currencySymbol']
+    }));
+    if (interaction.client.logChannel) interaction.client.logChannel.send('[economy-system] ' + localize('economy-system', 'crime-earned-money', {
+        v: formatDiscordUserName(user),
+        u: formatDiscordUserName(interaction.user),
+        m: toRob,
+        c: interaction.config['currencySymbol']
+    }));
+}
+
+/*
+ * Shared "add money" core: adds `amount` to `user`'s wallet. Assumes the admin guard has passed.
+ */
+async function addMoney(interaction, user, amount) {
+    await editBalance(interaction.client, user.id, 'add', parseInt(amount));
+    respond(interaction, {
+        content: localize('economy-system', 'added-money', {
+            i: amount,
+            c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
+            u: formatDiscordUserName(user)
+        }),
+        ephemeral: !interaction.config['publicCommandReplies']
+    });
+    interaction.client.logger.info(`[economy-system] ` + localize('economy-system', 'added-money-log', {
+        v: formatDiscordUserName(user),
+        i: amount,
+        c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
+        u: formatDiscordUserName(interaction.user)
+    }));
+    if (interaction.client.logChannel) interaction.client.logChannel.send(`[economy-system] ` + localize('economy-system', 'added-money-log', {
+        v: formatDiscordUserName(user),
+        i: amount,
+        c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
+        u: formatDiscordUserName(interaction.user)
+    }));
+}
+
+/*
+ * Shared "remove money" core: removes `amount` from `user`'s wallet. Assumes the admin guard has passed.
+ */
+async function removeMoney(interaction, user, amount) {
+    await editBalance(interaction.client, user.id, 'remove', parseInt(amount));
+    respond(interaction, {
+        content: localize('economy-system', 'removed-money', {
+            i: amount,
+            c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
+            u: formatDiscordUserName(user)
+        }),
+        ephemeral: !interaction.config['publicCommandReplies']
+    });
+    interaction.client.logger.info(`[economy-system] ` + localize('economy-system', 'removed-money-log', {
+        v: formatDiscordUserName(user),
+        i: amount,
+        c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
+        u: formatDiscordUserName(interaction.user)
+    }));
+    if (interaction.client.logChannel) interaction.client.logChannel.send(`[economy-system] ` + localize('economy-system', 'removed-money-log', {
+        v: formatDiscordUserName(user),
+        i: amount,
+        c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
+        u: formatDiscordUserName(interaction.user)
+    }));
+}
+
+/*
+ * Shared "set balance" core: sets `user`'s wallet to `amount`. Assumes the admin guard has passed.
+ */
+async function setMoney(interaction, user, amount) {
+    await editBalance(interaction.client, user.id, 'set', parseInt(amount));
+    respond(interaction, {
+        content: localize('economy-system', 'set-money', {
+            i: amount,
+            c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
+            u: formatDiscordUserName(user)
+        }),
+        ephemeral: !interaction.config['publicCommandReplies']
+    });
+    interaction.client.logger.info(`[economy-system] ` + localize('economy-system', 'set-money-log', {
+        v: formatDiscordUserName(user),
+        i: amount,
+        c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
+        u: formatDiscordUserName(interaction.user)
+    }));
+    if (interaction.client.logChannel) interaction.client.logChannel.send(`[economy-system] ` + localize('economy-system', 'set-money-log', {
+        v: formatDiscordUserName(user),
+        i: amount,
+        c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
+        u: formatDiscordUserName(interaction.user)
+    }));
+}
+
+module.exports.adminGuard = adminGuard;
+module.exports.robUser = robUser;
+module.exports.addMoney = addMoney;
+module.exports.removeMoney = removeMoney;
+module.exports.setMoney = setMoney;
+
 module.exports.subcommands = {
     'work': async function (interaction) {
         if (!await cooldown('work', interaction.config['workCooldown'] * 60000, interaction.user.id, interaction.client)) return interaction.reply(embedType(interaction.str['cooldown'], {}, {ephemeral: !interaction.config['publicCommandReplies']}));
@@ -108,129 +282,24 @@ module.exports.subcommands = {
         }
     },
     'rob': async function (interaction) {
-        const user = await interaction.options.getUser('user');
-        const robbedUser = await interaction.client.models['economy-system']['Balance'].findOne({
-            where: {
-                id: user.id
-            }
-        });
-        if (!robbedUser) return interaction.reply(embedType(interaction.str['userNotFound'], {'%user%': formatDiscordUserName(user)}), {ephemeral: !interaction.config['publicCommandReplies']});
-        if (!await cooldown('rob', interaction.config['robCooldown'] * 60000, interaction.user.id, interaction.client)) return interaction.reply(embedType(interaction.str['cooldown'], {}, {ephemeral: !interaction.config['publicCommandReplies']}));
-        let toRob = parseInt(robbedUser.balance) * (parseInt(interaction.config['robPercent']) / 100);
-        if (toRob >= parseInt(interaction.config['maxRobAmount'])) toRob = parseInt(interaction.config['maxRobAmount']);
-        await editBalance(interaction.client, interaction.user.id, 'add', toRob);
-        await editBalance(interaction.client, user.id, 'remove', toRob);
-        interaction.reply(embedType(interaction.str['robSuccess'], {
-            '%earned%': `${toRob} ${interaction.config['currencySymbol']}`,
-            '%user%': `<@${user.id}>`
-        }, {ephemeral: !interaction.config['publicCommandReplies']}));
-        createLeaderboard(interaction.client);
-        interaction.client.logger.info('[economy-system] ' + localize('economy-system', 'crime-earned-money', {
-            u: formatDiscordUserName(interaction.user),
-            v: formatDiscordUserName(user),
-            m: toRob,
-            c: interaction.config['currencySymbol']
-        }));
-        if (interaction.client.logChannel) interaction.client.logChannel.send('[economy-system] ' + localize('economy-system', 'crime-earned-money', {
-            v: formatDiscordUserName(user),
-            u: formatDiscordUserName(interaction.user),
-            m: toRob,
-            c: interaction.config['currencySymbol']
-        }));
+        return robUser(interaction, await interaction.options.getUser('user'));
     },
     'add': async function (interaction) {
-        if (!interaction.client.configurations['economy-system']['config']['admins'].includes(interaction.user.id) && !interaction.client.config['botOperators'].includes(interaction.user.id)) return interaction.reply(embedType(interaction.client.strings['not_enough_permissions'], {}, {ephemeral: !interaction.config['publicCommandReplies']}));
-        if (interaction.options.getUser('user').id === interaction.user.id && !interaction.client.configurations['economy-system']['config']['selfBalance']) {
-            if (interaction.client.logChannel) interaction.client.logChannel.send(localize('economy-system', 'admin-self-abuse'));
-            return interaction.reply({
-                content: localize('economy-system', 'admin-self-abuse-answer', {u: interaction.user.toString()}),
-                ephemeral: !interaction.config['publicCommandReplies']
-            });
-        }
-        await editBalance(interaction.client, await interaction.options.getUser('user').id, 'add', parseInt(interaction.options.get('amount')['value']));
-        interaction.reply({
-            content: localize('economy-system', 'added-money', {
-                i: interaction.options.get('amount')['value'],
-                c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
-                u: formatDiscordUserName(interaction.options.getUser('user'))
-            }),
-            ephemeral: !interaction.config['publicCommandReplies']
-        });
-
-        interaction.client.logger.info(`[economy-system] ` + localize('economy-system', 'added-money-log', {
-            v: formatDiscordUserName(interaction.options.getUser('user')),
-            i: interaction.options.get('amount')['value'],
-            c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
-            u: formatDiscordUserName(interaction.user)
-        }));
-        if (interaction.client.logChannel) interaction.client.logChannel.send(`[economy-system] ` + localize('economy-system', 'added-money-log', {
-            v: formatDiscordUserName(interaction.options.getUser('user')),
-            i: interaction.options.get('amount')['value'],
-            c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
-            u: formatDiscordUserName(interaction.user)
-        }));
+        const user = interaction.options.getUser('user');
+        console.log(user.id);
+        console.log(interaction.user.id);
+        if (!await adminGuard(interaction, user)) return;
+        return addMoney(interaction, user, interaction.options.get('amount')['value']);
     },
     'remove': async function (interaction) {
-        if (!interaction.client.configurations['economy-system']['config']['admins'].includes(interaction.user.id) && !interaction.client.config['botOperators'].includes(interaction.user.id)) return interaction.reply(embedType(interaction.client.strings['not_enough_permissions'], {}, {ephemeral: !interaction.config['publicCommandReplies']}));
-        if (interaction.options.getUser('user').id === interaction.user.id && !interaction.client.configurations['economy-system']['config']['selfBalance']) {
-            if (interaction.client.logChannel) interaction.client.logChannel.send(localize('economy-system', 'admin-self-abuse'));
-            return interaction.reply({
-                content: localize('economy-system', 'admin-self-abuse-answer', {u: interaction.user.toString()}),
-                ephemeral: !interaction.config['publicCommandReplies']
-            });
-        }
-        await editBalance(interaction.client, interaction.options.getUser('user').id, 'remove', parseInt(interaction.options.get('amount')['value']));
-        interaction.reply({
-            content: localize('economy-system', 'removed-money', {
-                i: interaction.options.get('amount')['value'],
-                c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
-                u: formatDiscordUserName(interaction.options.getUser('user'))
-            }),
-            ephemeral: !interaction.config['publicCommandReplies']
-        });
-        interaction.client.logger.info(`[economy-system] ` + localize('economy-system', 'removed-money-log', {
-            v: formatDiscordUserName(interaction.options.getUser('user')),
-            i: interaction.options.get('amount')['value'],
-            c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
-            u: formatDiscordUserName(interaction.user)
-        }));
-        if (interaction.client.logChannel) interaction.client.logChannel.send(`[economy-system] ` + localize('economy-system', 'removed-money-log', {
-            v: formatDiscordUserName(interaction.options.getUser('user')),
-            i: interaction.options.get('amount')['value'],
-            c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
-            u: formatDiscordUserName(interaction.user)
-        }));
+        const user = interaction.options.getUser('user');
+        if (!await adminGuard(interaction, user)) return;
+        return removeMoney(interaction, user, interaction.options.get('amount')['value']);
     },
     'set': async function (interaction) {
-        if (!interaction.client.configurations['economy-system']['config']['admins'].includes(interaction.user.id) && !interaction.client.config['botOperators'].includes(interaction.user.id)) return interaction.reply(embedType(interaction.client.strings['not_enough_permissions'], {}, {ephemeral: !interaction.config['publicCommandReplies']}));
-        if (interaction.options.getUser('user').id === interaction.user.id && !interaction.client.configurations['economy-system']['config']['selfBalance']) {
-            if (interaction.client.logChannel) interaction.client.logChannel.send(localize('economy-system', 'admin-self-abuse'));
-            return interaction.reply({
-                content: localize('economy-system', 'admin-self-abuse-answer', {u: interaction.user.toString()}),
-                ephemeral: !interaction.config['publicCommandReplies']
-            });
-        }
-        await editBalance(interaction.client, interaction.options.getUser('user').id, 'set', parseInt(interaction.options.get('balance')['value']));
-        interaction.reply({
-            content: localize('economy-system', 'set-money', {
-                i: interaction.options.get('balance')['value'],
-                c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
-                u: formatDiscordUserName(interaction.options.getUser('user'))
-            }),
-            ephemeral: !interaction.config['publicCommandReplies']
-        });
-        interaction.client.logger.info(`[economy-system] ` + localize('economy-system', 'set-money-log', {
-            v: formatDiscordUserName(interaction.options.getUser('user')),
-            i: interaction.options.get('balance')['value'],
-            c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
-            u: formatDiscordUserName(interaction.user)
-        }));
-        if (interaction.client.logChannel) interaction.client.logChannel.send(`[economy-system] ` + localize('economy-system', 'set-money-log', {
-            v: formatDiscordUserName(interaction.options.getUser('user')),
-            i: interaction.options.get('balance')['value'],
-            c: interaction.client.configurations['economy-system']['config']['currencySymbol'],
-            u: formatDiscordUserName(interaction.user)
-        }));
+        const user = interaction.options.getUser('user');
+        if (!await adminGuard(interaction, user)) return;
+        return setMoney(interaction, user, interaction.options.get('balance')['value']);
     },
     'daily': async function (interaction) {
         if (!await cooldown('daily', 86400000, interaction.user.id, interaction.client)) return interaction.reply(embedType(interaction.str['cooldown'], {}, {ephemeral: !interaction.config['publicCommandReplies']}));
@@ -265,18 +334,7 @@ module.exports.subcommands = {
     'balance': async function (interaction) {
         let user = interaction.options.getUser('user');
         if (!user) user = interaction.user;
-        const balanceV = await interaction.client.models['economy-system']['Balance'].findOne({
-            where: {
-                id: user.id
-            }
-        });
-        if (!balanceV) return interaction.reply(embedType(interaction.str['userNotFound'], {'%user%': formatDiscordUserName(user)}), {ephemeral: !interaction.config['publicCommandReplies']});
-        interaction.reply(embedType(interaction.str['balanceReply'], {
-            '%user%': formatDiscordUserName(user),
-            '%balance%': `${balanceV['balance']} ${interaction.client.configurations['economy-system']['config']['currencySymbol']}`,
-            '%bank%': `${balanceV['bank']} ${interaction.client.configurations['economy-system']['config']['currencySymbol']}`,
-            '%total%': `${parseInt(balanceV['balance']) + parseInt(balanceV['bank'])} ${interaction.client.configurations['economy-system']['config']['currencySymbol']}`
-        }, {ephemeral: !interaction.config['publicCommandReplies']}));
+        return sendBalance(interaction, user);
     },
     'deposit': async function (interaction) {
         let amount = interaction.options.get('amount')['value'];

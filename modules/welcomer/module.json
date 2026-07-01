@@ -8,6 +8,7 @@
   "fa-icon": "fas fa-door-open",
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/welcomer",
   "events-dir": "/events",
+  "commands-dir": "/commands",
   "models-dir": "/models",
   "config-example-files": [
     "configs/channels.json",

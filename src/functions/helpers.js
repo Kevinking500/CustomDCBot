@@ -1486,3 +1486,23 @@ module.exports.archiveDiscordAttachment = async function (client, url, meta = {}
     const result = await module.exports.tryArchiveDiscordAttachment(client, url, meta);
     return result ? result.url : url;
 };
+
+/**
+ * Checks whether a guild member is actually allowed to send a message into a
+ * given channel. Used to stop context-menu commands from being abused as a
+ * proxy to post publicly into channels the invoking member cannot send in
+ * (e.g. while timed-out or in a read-only/restricted channel).
+ * Requires ViewChannel plus SendMessages, or SendMessagesInThreads for
+ * thread/forum-post targets.
+ * @param {GuildMember} member The member who wants to post
+ * @param {GuildChannel|ThreadChannel} channel The channel that would be posted into
+ * @returns {boolean} True if the member may send in the channel
+ */
+module.exports.memberCanSendInChannel = function (member, channel) {
+    if (!member || !channel || typeof channel.permissionsFor !== 'function') return false;
+    const perms = channel.permissionsFor(member);
+    if (!perms) return false;
+    if (!perms.has(PermissionFlagsBits.ViewChannel)) return false;
+    const isThread = typeof channel.isThread === 'function' && channel.isThread();
+    return perms.has(isThread ? PermissionFlagsBits.SendMessagesInThreads : PermissionFlagsBits.SendMessages);
+};

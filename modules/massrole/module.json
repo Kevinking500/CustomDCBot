@@ -8,6 +8,7 @@
   },
   "openSourceURL": "https://github.com/hfgd123/CustomDCBot/tree/main/modules/massrole",
   "commands-dir": "/commands",
+  "events-dir": "/events",
   "fa-icon": "fa-solid fa-users-viewfinder",
   "config-example-files": [
     "configs/config.json",

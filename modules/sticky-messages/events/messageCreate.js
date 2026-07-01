@@ -1,4 +1,8 @@
 const {embedTypeV2} = require('../../../src/functions/helpers');
+const {
+    protectMessage,
+    unprotectMessage
+} = require('../../../src/functions/protectedMessages');
 const channelData = {};
 const sendPending = new Set();
 
@@ -9,6 +13,9 @@ const sendPending = new Set();
  */
 async function deleteMessage(clientId, channel) {
     if (!channelData[channel.id]) return;
+
+    // Stop protecting the sticky from auto-delete - it is about to be removed.
+    unprotectMessage(channel.client, channel.id, channelData[channel.id].msg);
 
     let message;
     message = await channel.messages.fetch(channelData[channel.id].msg).catch(async () => {
@@ -30,6 +37,8 @@ module.exports.deleteMessage = deleteMessage;
  */
 async function sendMessage(channel, configMsg) {
     sendPending.add(channel.id);
+    // Drop any stale protection from a previous sticky we may not have cleared.
+    if (channelData[channel.id]) unprotectMessage(channel.client, channel.id, channelData[channel.id].msg);
     channelData[channel.id] = {
         msg: null,
         timeout: null,
@@ -41,6 +50,8 @@ async function sendMessage(channel, configMsg) {
         timeout: null,
         time: Date.now()
     };
+    // Shield the freshly posted sticky from the auto-delete module.
+    protectMessage(channel.client, channel.id, sentMessage.id);
     sendPending.delete(channel.id);
 }
 

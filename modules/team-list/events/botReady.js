@@ -5,7 +5,24 @@ const {
     safeSetFooter
 } = require('../../../src/functions/helpers');
 const {localize} = require('../../../src/functions/localize');
+const {
+    protectMessage,
+    unprotectMessage,
+    registerProtectedMessageProvider
+} = require('../../../src/functions/protectedMessages');
 const {MessageEmbed} = require('discord.js');
+
+// Restore auto-delete protection for the team list from the database on startup.
+registerProtectedMessageProvider(async (client) => {
+    if (!client.modules['team-list']?.enabled) return [];
+    const rows = await client.models['team-list']['TeamListMessage'].findAll({attributes: ['channelID', 'messageID']});
+    return rows
+        .filter(r => r.channelID && r.messageID)
+        .map(r => ({
+            channelId: r.channelID,
+            messageId: r.messageID
+        }));
+});
 const schedule = require('node-schedule');
 
 const statusIcons = {
@@ -120,10 +137,13 @@ async function updateEmbedsIfNeeded(client) {
         try {
             if (message) {
                 await message.edit({embeds: [embed]});
+                protectMessage(client, channel.id, message.id);
             } else {
+                if (messageData.messageID) unprotectMessage(client, channel.id, messageData.messageID);
                 message = await channel.send({embeds: [embed]});
                 messageData.messageID = message.id;
                 await messageData.save();
+                protectMessage(client, channel.id, message.id);
             }
         } catch (e) {
             client.logger.error(`[team-list] Failed to send/edit message in channel ${channelConfig['channelID']}: ${e.message}`);

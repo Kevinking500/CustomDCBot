@@ -17,12 +17,16 @@ const {
 } = require('../events/messageCreate');
 const {client} = require('../../../main');
 
-module.exports.run = async function (interaction) {
+/**
+ * Renders a member's level/rank profile and replies (ephemeral). Shared core for /profile and the
+ * "View Level Profile" context command.
+ * @param {object} interaction - the slash or context-menu interaction
+ * @param {object} member - the resolved GuildMember whose profile should be shown
+ * @returns {Promise<*>} the interaction reply
+ */
+async function sendProfile(interaction, member) {
     const moduleStrings = interaction.client.configurations['levels']['strings'];
     const moduleConfig = interaction.client.configurations['levels']['config'];
-
-    let member = interaction.member;
-    if (interaction.options.getUser('user')) member = await interaction.guild.members.fetch(interaction.options.getUser('user').id);
 
     const user = await interaction.client.models['levels']['User'].findOne({
         where: {
@@ -59,11 +63,19 @@ module.exports.run = async function (interaction) {
         embed.addField(moduleStrings.embed.roleFactor, `${roleString}\n${localize('levels', 'role-factors-total', {f: formatNumber(roleFactor, {maximumFractionDigits: 2})})}`, true);
     }
     embed.addField(moduleStrings.embed.joinedAt, formatDate(member.joinedAt), true);
-    interaction.reply({
+    return interaction.reply({
         ephemeral: true,
         embeds: [embed]
     });
+}
+
+module.exports.run = async function (interaction) {
+    let member = interaction.member;
+    if (interaction.options.getUser('user')) member = await interaction.guild.members.fetch(interaction.options.getUser('user').id);
+    return sendProfile(interaction, member);
 };
+
+module.exports.sendProfile = sendProfile;
 
 module.exports.config = {
     name: 'profile',

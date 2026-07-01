@@ -206,7 +206,8 @@
     "role-confirm-cancelled": "ℹ️ Cancelled. Your roles were not changed.",
     "description-too-long": "The following command description of %c was too long to sync: %s",
     "module-disabled": "This command is part of the \"%m\" which is disabled. This can either be intended by the server-admins (and slash-commands haven't synced yet) or this could be caused by a configuration error. Please check (or ask the admins) to check the bot's configuration and logs for details.",
-    "command-disabled": "This command is currently disabled by the server configuration. If you believe this is an error, please contact a server administrator."
+    "command-disabled": "This command is currently disabled by the server configuration. If you believe this is an error, please contact a server administrator.",
+    "no-send-permission": "You can't use this here - you don't have permission to send messages in this channel."
   },
   "config": {
     "checking-config": "Checking configurations...",
@@ -236,7 +237,8 @@
     "command-description": "Play Connect Four against someone in the chat",
     "field-size-description": "The size of the playfield (default: 7)",
     "challenge-yourself": "You cannot challenge yourself!",
-    "challenge-bot": "You cannot challenge bots!"
+    "challenge-bot": "You cannot challenge bots!",
+    "challenge-to-connect-four-context-description": "Challenge this user to a game of Connect Four"
   },
   "counter": {
     "created-db-entry": "Initialized database entry for %i",
@@ -276,7 +278,8 @@
     "reload-reload": "Both %r1 and %r2 stare each other in the eyes while taking a short break to load one bullet each in their chamber.",
     "reload-guard": "%d1 prepares to doge a bullet - but %r1 uses the time to load their weapon - no shots get fired.",
     "ended-state": "This game ended. You can start a new duel with `/duel`.",
-    "not-your-game": "You are not one of players - you can start a new game with `/duel`."
+    "not-your-game": "You are not one of players - you can start a new game with `/duel`.",
+    "duel-context-description": "Challenge this user to a duel"
   },
   "economy-system": {
     "work-earned-money": "The user %u gained %m %c by working",
@@ -343,7 +346,18 @@
     "migration-done": "Migrated database successfully.",
     "nothing-selected": "Select an item to buy it",
     "select-menu-price": "Price: %p",
-    "price-less-than-zero": "The price can't be less or equal to zero"
+    "price-less-than-zero": "The price can't be less or equal to zero",
+    "context-user-not-found": "That user could not be found.",
+    "context-invalid-amount": "Please enter a positive whole number.",
+    "add-money-context-description": "Add money to this user",
+    "add-money-context-modal-title": "Add Money",
+    "amount-context-label": "Amount",
+    "remove-money-context-description": "Remove money from this user",
+    "remove-money-context-modal-title": "Remove Money",
+    "rob-context-description": "Rob this user",
+    "set-balance-context-description": "Set this user's balance",
+    "set-balance-context-modal-title": "Set Balance",
+    "balance-context-description": "View a member's balance"
   },
   "fun": {
     "slap-command-description": "Slap a user in the face",
@@ -365,7 +379,11 @@
     "random-coinflip-command-description": "Flip a coin",
     "random-8ball-command-description": "Generates an answer to a yes/no question",
     "dice-site-1": "Heads",
-    "dice-site-2": "Tails"
+    "dice-site-2": "Tails",
+    "hug-context-description": "Send a hug to this user",
+    "kiss-context-description": "Send a kiss to this user",
+    "pat-context-description": "Give this user a pat",
+    "slap-context-description": "Slap this user"
   },
   "guess-the-number": {
     "command-description": "Manage your guess-the-number-games",
@@ -473,7 +491,8 @@
     "otherChannel": "Other",
     "total-invites": "Total",
     "active-invites": "Active",
-    "left-invites": "Left"
+    "left-invites": "Left",
+    "user-info-context-description": "Show information about a user"
   },
   "levels": {
     "leaderboard-channel-not-found": "Leaderboard-Channel not found or wrong type",
@@ -529,7 +548,16 @@
     "calculate-level-zero-xp-range": "Cannot calculate messages required: the configured XP-per-message range includes zero. Adjust the `min-xp` and `max-xp` settings.",
     "calculate-level-above-max": "Level %requested is above the configured maximum level (%max).",
     "calculate-level-voice-needed": "Voice minutes required for level %l",
-    "calculate-level-voice-value": "%minutes minute(s)"
+    "calculate-level-voice-value": "%minutes minute(s)",
+    "set-xp-invalid-value": "Please enter a valid number.",
+    "set-level-invalid-value": "Please enter a valid number.",
+    "set-level-context-description": "Set this user's level",
+    "set-level-modal-title": "Set User Level",
+    "set-level-value-label": "Level value",
+    "set-xp-context-description": "Set this user's XP",
+    "set-xp-modal-title": "Set User XP",
+    "set-xp-value-label": "XP value",
+    "profile-context-description": "View this user's level and XP"
   },
   "main": {
     "startup-info": "SCNX-CustomBot v2 - Log-Level: %l",
@@ -599,7 +627,13 @@
     "humans": "Humans",
     "not-admin": "⚠ To use this command, you need to be added to the adminRoles option in the SCNX-Dashboard. If you are the owner of this bot please remember to create an override in the server settings to prevent abuse of this command.",
     "add-reason": "Mass role addition by %u",
-    "remove-reason": "Mass role removal by %u"
+    "remove-reason": "Mass role removal by %u",
+    "add-role-to-user-context-description": "Add a role to this user",
+    "add-role-to-user-context-prompt": "Select the role to add to this user.",
+    "remove-role-from-user-context-description": "Remove a role from this user",
+    "remove-role-from-user-context-prompt": "Select the role to remove from this user.",
+    "context-target-not-found": "That member could not be found.",
+    "context-role-not-found": "That role could not be found."
   },
   "moderation": {
     "moderate-command-description": "Moderate users on your server",
@@ -930,7 +964,9 @@
     "succ-del-tgt": "The selected %type data was deleted successfully. Deletion for this user is now on cooldown until %until.",
     "succ-del-all": "All stored Ping Protection data for this user was deleted successfully. Deletion for this user is now on cooldown until %until.",
     "log-del-type": "[Ping Protection] Deleted %type data for user %target by %admin.",
-    "log-del-all": "[Ping Protection] Deleted all stored data for user %target by %admin."
+    "log-del-all": "[Ping Protection] Deleted all stored data for user %target by %admin.",
+    "view-moderation-history-description": "View this user's moderation history",
+    "view-ping-history-description": "View this user's ping history"
   },
   "polls": {
     "what-have-i-votet": "What have I voted?",
@@ -963,7 +999,9 @@
     "not-public": "This poll does not appear to be public, no results can be displayed.",
     "poll-private": "🔒 This poll is **anonymous**, meaning that no one can see what you voted (not even the admins).",
     "poll-public": "🔓 This poll is **public**, meaning that everyone can see what you voted.",
-    "not-text-channel": "You need to select a text-channel that is not an announcement-channel."
+    "not-text-channel": "You need to select a text-channel that is not an announcement-channel.",
+    "view-poll-votes-description": "Show who voted for each option",
+    "not-a-poll": "This message is not a poll."
   },
   "quiz": {
     "what-have-i-voted": "What have I voted?",
@@ -1024,7 +1062,13 @@
     "snooze-1h": "1 hour",
     "snooze-1d": "1 day",
     "snoozed": "Reminder snoozed. We'll remind you again at %d.",
-    "snooze-not-allowed": "You can only snooze your own reminders."
+    "snooze-not-allowed": "You can only snooze your own reminders.",
+    "context-message-not-found": "That message could not be found anymore.",
+    "context-reminder-text": "Reminder about this message: %url",
+    "context-create-description": "Remind me about this message",
+    "context-modal-title": "Create reminder",
+    "context-modal-when-label": "When? (e.g. 10m, 2h, 1d)",
+    "context-modal-when-placeholder": "30m"
   },
   "rock-paper-scissors": {
     "stone": "Stone",
@@ -1466,7 +1510,25 @@
     "err-self-infract": "That's not in the code... well, it's more of a guideline anyway. Still no.\n-# You cannot infract yourself",
     "err-self-promo": "You can't promote yourself through a black hole of audacity and expect it to work.",
     "status-expired-auto": "Ended automatically because the status expired.",
-    "label-system": "System"
+    "label-system": "System",
+    "issue-infraction-context-description": "Issue a staff infraction to this user",
+    "ctx-infract-no-types": "No infraction types are configured.",
+    "promote-user-context-description": "Promote this staff member to a new rank",
+    "submit-review-context-description": "Submit a review for this staff member",
+    "view-staff-profile-description": "View this user's staff profile",
+    "ctx-infract-title": "Issue Infraction",
+    "ctx-infract-type-label": "Infraction type",
+    "ctx-infract-reason-label": "Reason",
+    "ctx-infract-expiry-label": "Expiry (optional, e.g. 7d, 2w, 1m)",
+    "ctx-infract-expiry-placeholder": "Leave empty for no expiry",
+    "ctx-promote-prompt": "Select the new rank for this member",
+    "ctx-promote-placeholder": "Select a role",
+    "ctx-promote-no-role": "That role could not be found.",
+    "ctx-review-title": "Submit Review",
+    "ctx-review-stars-label": "Stars (1-5)",
+    "ctx-review-stars-placeholder": "Enter a number from 1 to 5",
+    "ctx-review-comment-label": "Comment",
+    "ctx-review-invalid-stars": "Please enter a whole number of stars between 1 and 5."
   },
   "stagePrivacy": {
     "PUBLIC": "Publicly accessible",
@@ -1474,7 +1536,9 @@
   },
   "starboard": {
     "invalid-minstars": "Invalid minimum stars %stars",
-    "star-limit": "You've reached the hourly starboard limit of %limitEmoji on the server which is why you cannot react on the message %msgUrl .\nTry again %time!"
+    "star-limit": "You've reached the hourly starboard limit of %limitEmoji on the server which is why you cannot react on the message %msgUrl .\nTry again %time!",
+    "star-message-description": "Add this message to the starboard",
+    "star-message-success": "Message added to the starboard."
   },
   "status-role": {
     "fulfilled": "Status-role condition is fulfilled",
@@ -1490,7 +1554,13 @@
     "manage-suggestion-accept-description": "Accepts a suggestion",
     "manage-suggestion-deny-description": "Denies a suggestion",
     "manage-suggestion-id-description": "ID of the suggestion",
-    "manage-suggestion-comment-description": "Explain why you made this choice"
+    "manage-suggestion-comment-description": "Explain why you made this choice",
+    "approve-suggestion-description": "Approve this suggestion",
+    "approve-suggestion-modal-title": "Approve suggestion",
+    "suggestion-decision-comment-label": "Comment (optional)",
+    "convert-to-suggestion-description": "Convert this message into a suggestion",
+    "deny-suggestion-description": "Deny this suggestion",
+    "deny-suggestion-modal-title": "Deny suggestion"
   },
   "team-list": {
     "channel-not-found": "Could not find channel with ID %c or the channel has a wrong type (only text-channels supported)",
@@ -1548,7 +1618,9 @@
     "edit-modal-name-prompt": "How should your channel be called?",
     "edit-modal-name-placeholder": "A very creative channel name",
     "edit-modal-username-placeholder": "Username of the user",
-    "user-not-found": "User not found"
+    "user-not-found": "User not found",
+    "add-to-channel-context-description": "Add this user to your temp channel",
+    "remove-from-channel-context-description": "Remove this user from your temp channel"
   },
   "tic-tac-toe": {
     "command-description": "Play tic-tac-toe against someone in the chat",
@@ -1563,7 +1635,8 @@
     "playing-header": "**TIC-TAC-TOE GAME IS RUNNING**\n\n%u (🟢) VS %i (🟡)\nCurrently on turn: %t\n\n%t, click a button with a white circle below to place your marker",
     "win-header": "**TIC-TOE-GAME ENDED**\n\n%u (🟢) VS %i (🟡)\n\n%w won the game - GG!\n\n*You can start a new round by using `/tic-tac-toe`*",
     "draw-header": "**TIC-TOE-GAME ENDED**\n\n%u (🟢) VS %i (🟡)\n\nDraw - no one won this game.",
-    "not-your-turn": "It's not your turn, take a coffee and return later"
+    "not-your-turn": "It's not your turn, take a coffee and return later",
+    "challenge-to-tic-tac-toe-context-description": "Challenge this user to a game of Tic Tac Toe"
   },
   "tickets": {
     "channel-not-found": "Ticket-Create-Channel could not be found",
@@ -1581,7 +1654,12 @@
     "ticket-log": "Ticket-Log",
     "ticket-type": "☕ Ticket-Topic",
     "ticket-log-value": "Transcript with %n messages can be found [here](%u).",
-    "closed-by": "👷 Ticket closed by"
+    "closed-by": "👷 Ticket closed by",
+    "context-close-description": "Close the ticket this message is in",
+    "context-not-a-ticket": "This message is not in an open ticket channel.",
+    "context-create-description": "Open a ticket about this message",
+    "context-no-ticket-type": "No ticket type is configured.",
+    "context-create-reference": "Ticket opened about a message from %author: %url"
   },
   "topgg": {
     "channel-not-found": "The configured channel with the ID \"%c\" was not found",
@@ -1636,7 +1714,9 @@
     "used-card": "You've already used the card %c! Use the Update button and play a valid card.",
     "invalid-card": "You cannot play the card %c right now! Please select a valid card.",
     "inactive-warn": "%u, it's your turn in the uno game!",
-    "inactive-win": "The uno game has ended. %u won as all others have been eliminated!"
+    "inactive-win": "The uno game has ended. %u won as all others have been eliminated!",
+    "challenge-to-uno-context-description": "Start a game of Uno and invite this user",
+    "context-challenge-invite": "%u invites %t to a round of Uno! Click the button above to join."
   },
   "welcomer": {
     "channel-not-found": "[welcomer] Channel not found: %c",
@@ -1647,6 +1727,30 @@
     "base-role-sync-done": "[welcomer] Base-role sync complete (scanned: %s, granted: %g, skipped: %k, failed: %f)",
     "base-role-re-added": "[welcomer] Re-added missing join roles to %u (roles: %r, removed by: %a)",
     "base-role-watchdog-revert": "[welcomer] Reverting base-role grant for %u — quarantine appeared post-grant",
-    "base-role-audit-reason": "Welcomer: ensuring base join roles"
+    "base-role-audit-reason": "Welcomer: ensuring base join roles",
+    "assign-join-roles-context-description": "Assign the configured join roles to this member",
+    "status-no-member": "That user is not a member of this server.",
+    "no-join-roles-configured": "No join roles are configured.",
+    "assign-skipped-holding": "This member is in a holding state, so join roles were not assigned.",
+    "assign-already-has": "%user already has all configured join roles.",
+    "assign-success": "Assigned %r to %user.",
+    "check-welcome-status-context-description": "Check this member's welcome and join-role status",
+    "status-none": "None",
+    "status-title": "Welcome Status",
+    "status-for": "Status for %user",
+    "status-holding": "In holding state",
+    "status-yes": "Yes",
+    "status-no": "No",
+    "status-base-roles": "Base roles enabled",
+    "status-join-roles": "Configured join roles",
+    "status-missing-roles": "Missing roles",
+    "status-skipped": "Skipped (in holding state)",
+    "restore-base-roles-context-description": "Restore the base roles to this member",
+    "base-roles-disabled": "Base roles are not enabled in the welcomer config."
+  },
+  "message-quotes": {
+    "quote-message-description": "Repost this message as a quote",
+    "quote-message-not-allowed": "This message cannot be quoted.",
+    "quote-message-posted": "Quote posted."
   }
 }

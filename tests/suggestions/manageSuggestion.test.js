@@ -16,7 +16,8 @@
 
 jest.mock('../../modules/suggestions/suggestion', () => ({
     generateSuggestionEmbed: jest.fn().mockResolvedValue(),
-    notifyMembers: jest.fn().mockResolvedValue()
+    notifyMembers: jest.fn().mockResolvedValue(),
+    applySuggestionDecision: jest.fn().mockResolvedValue()
 }));
 jest.mock('../../src/functions/helpers', () => ({
     truncate: (s) => s,
@@ -25,7 +26,8 @@ jest.mock('../../src/functions/helpers', () => ({
 
 const {
     generateSuggestionEmbed,
-    notifyMembers
+    notifyMembers,
+    applySuggestionDecision
 } = require('../../modules/suggestions/suggestion');
 const cmd = require('../../modules/suggestions/commands/manage-suggestion');
 
@@ -55,6 +57,7 @@ function makeInteraction(overrides = {}) {
 beforeEach(() => {
     generateSuggestionEmbed.mockClear();
     notifyMembers.mockClear();
+    applySuggestionDecision.mockClear();
 });
 
 describe('beforeSubcommand', () => {
@@ -85,24 +88,17 @@ describe('run', () => {
         const interaction = makeInteraction();
         interaction.returnEarly = true;
         await cmd.run(interaction);
-        expect(generateSuggestionEmbed).not.toHaveBeenCalled();
+        expect(applySuggestionDecision).not.toHaveBeenCalled();
         expect(interaction.editReply).not.toHaveBeenCalled();
     });
 
-    test('writes the adminAnswer, saves, regenerates the embed and notifies', async () => {
+    test('delegates the decision to applySuggestionDecision and confirms', async () => {
         const save = jest.fn().mockResolvedValue();
         const interaction = makeInteraction({opts: {comment: 'looks good'}});
         interaction.editType = 'approve';
         interaction.suggestion = {save};
         await cmd.run(interaction);
-        expect(interaction.suggestion.adminAnswer).toEqual({
-            action: 'approve',
-            reason: 'looks good',
-            userID: 'admin1'
-        });
-        expect(save).toHaveBeenCalled();
-        expect(generateSuggestionEmbed).toHaveBeenCalledWith(interaction.client, interaction.suggestion);
-        expect(notifyMembers).toHaveBeenCalledWith(interaction.client, interaction.suggestion, 'team', 'admin1');
+        expect(applySuggestionDecision).toHaveBeenCalledWith(interaction.client, interaction.suggestion, 'approve', 'looks good', 'admin1');
         expect(interaction.editReply).toHaveBeenCalledWith(expect.objectContaining({
             content: expect.stringContaining('suggestions.updated-suggestion')
         }));

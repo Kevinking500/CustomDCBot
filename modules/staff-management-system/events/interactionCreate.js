@@ -39,6 +39,17 @@ module.exports.run = async (client, interaction) => {
         const parts = interaction.customId.split('_');
         const action = parts[1];
 
+        // ----- USER context-menu submits (Issue Infraction / Promote User / Submit Review) -----
+        if (action === 'ctx-infract' && interaction.isModalSubmit()) {
+            return require('../context-actions').handleInfractionModal(client, interaction, parts[2]);
+        }
+        if (action === 'ctx-promote' && interaction.isRoleSelectMenu()) {
+            return require('../context-actions').handlePromoteSelect(client, interaction, parts[2]);
+        }
+        if (action === 'ctx-review' && interaction.isModalSubmit()) {
+            return require('../context-actions').handleReviewModal(client, interaction, parts[2]);
+        }
+
         // ----- Duty manage handlers -----
         if (interaction.customId.startsWith('duty-mgmt_')) {
             const dutyAction = parts[1];

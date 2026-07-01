@@ -276,6 +276,8 @@ async function handleProfileAdminWipe(client, interaction, targetUser) {
     });
 }
 
+module.exports.handleProfileView = handleProfileView;
+
 module.exports.autoComplete = {
     'infraction': {
         'issue': {

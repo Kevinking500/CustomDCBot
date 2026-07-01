@@ -13,6 +13,7 @@
     "community"
   ],
   "events-dir": "/events",
+  "commands-dir": "/commands",
   "config-example-files": [
     "configs/config.json"
   ],

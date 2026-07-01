@@ -1,17 +1,77 @@
 /*
  * Tests for the channel-publishing side effects in economy-system.js:
- *   createLeaderboard: short-circuits when no leaderboardChannel is set, logs
- *     fatal + bails when the channel can't be fetched, edits the last bot
- *     message when one exists, otherwise sends a fresh embed.
- *   shopMsg: short-circuits without a shopChannel, edits/sends the shop message.
- * The Discord client + message collection are mocked.
+ *   createLeaderboard / shopMsg each keep ONE persistent message, tracked by id in
+ *   the economy-system `LiveMessage` model (keyed by type: 'leaderboard' | 'shop').
+ *   They fetch their own stored message and edit it, or send + store a fresh one.
+ *   Targeting by stored id (instead of "the last bot message in the channel") is
+ *   what stops the leaderboard from editing the shop message - and vice versa -
+ *   when both are configured to the same channel (bug #cmqq4r), which would throw
+ *   MESSAGE_CANNOT_USE_LEGACY_FIELDS_WITH_COMPONENTS_V2 if the shop uses the
+ *   Components V2 editor.
+ * The Discord client, channel and the LiveMessage model are mocked.
  */
 const eco = require('../../modules/economy-system/economy-system');
+const {isMessageProtected} = require('../../src/functions/protectedMessages');
 
-function makeMessages(botMessages) {
-    // Mimic a discord.js Collection.filter(...).last()
+/*
+ * In-memory stand-in for the LiveMessage table: one row per `type`, with a
+ * working save() that persists channelID/messageID onto the row object.
+ */
+function makeLiveMessageModel() {
+    const rows = {};
     return {
-        filter: () => ({last: () => botMessages[botMessages.length - 1] || undefined})
+        rows,
+        findOrCreate: jest.fn(async ({
+                                         where,
+                                         defaults
+                                     }) => {
+            const type = where.type;
+            if (!rows[type]) {
+                rows[type] = {
+                    channelID: null,
+                    messageID: null,
+                    ...defaults,
+                    save: jest.fn(async () => {
+                    })
+                };
+                return [rows[type], true];
+            }
+            return [rows[type], false];
+        })
+    };
+}
+
+/*
+ * A channel that stores sent messages by id so messages.fetch(id) can return the
+ * same object later (mimicking Discord retaining the message we created).
+ */
+function makeChannel(id = 'chan') {
+    const store = {};
+    let counter = 0;
+    return {
+        id,
+        store,
+        guild: {
+            roles: {fetch: jest.fn().mockResolvedValue({members: {size: 0}})}
+        },
+        messages: {
+            fetch: jest.fn(async (mid) => {
+                if (store[mid]) return store[mid];
+                throw new Error('Unknown Message');
+            })
+        },
+        send: jest.fn(async (payload) => {
+            counter++;
+            const msg = {
+                id: `m${counter}`,
+                url: `https://discord/${counter}`,
+                payload,
+                edit: jest.fn(async () => {
+                })
+            };
+            store[msg.id] = msg;
+            return msg;
+        })
     };
 }
 
@@ -20,7 +80,8 @@ function makeClient({
                         shopChannel = '',
                         channel = null,
                         balanceRows = [],
-                        shopItems = []
+                        shopItems = [],
+                        liveMessage = makeLiveMessageModel()
                     } = {}) {
     return {
         user: {
@@ -30,7 +91,6 @@ function makeClient({
         },
         strings: {
             footer: 'f',
-            footerImgUrl: undefined,
             disableFooterTimestamp: false
         },
         logger: {
@@ -59,11 +119,13 @@ function makeClient({
                 }
             }
         },
+        protectedMessages: new Map(),
         channels: {fetch: jest.fn().mockResolvedValue(channel)},
         models: {
             'economy-system': {
                 Balance: {findAll: jest.fn().mockResolvedValue(balanceRows)},
-                Shop: {findAll: jest.fn().mockResolvedValue(shopItems)}
+                Shop: {findAll: jest.fn().mockResolvedValue(shopItems)},
+                LiveMessage: liveMessage
             }
         }
     };
@@ -85,45 +147,43 @@ describe('createLeaderboard', () => {
         expect(client.logger.fatal).toHaveBeenCalled();
     });
 
-    test('sends a fresh embed when there is no previous bot message', async () => {
-        const channel = {
-            messages: {fetch: jest.fn().mockResolvedValue(makeMessages([]))},
-            send: jest.fn().mockResolvedValue()
-        };
+    test('sends a fresh embed and stores its id when none is tracked yet', async () => {
+        const channel = makeChannel('lb');
         const client = makeClient({
             leaderboardChannel: 'lb',
-            channel,
-            balanceRows: [{
-                dataValues: {
-                    id: 'u1',
-                    balance: 10,
-                    bank: 5
-                }
-            }]
+            channel
         });
         await eco.createLeaderboard(client);
         expect(channel.send).toHaveBeenCalledWith(expect.objectContaining({embeds: expect.any(Array)}));
+        const row = client.models['economy-system'].LiveMessage.rows.leaderboard;
+        expect(row.channelID).toBe('lb');
+        expect(row.messageID).toBe('m1');
+        // Persistent message must be shielded from auto-delete.
+        expect(isMessageProtected(client, 'lb', 'm1')).toBe(true);
     });
 
-    test('edits the existing bot leaderboard message when present', async () => {
-        const lastMsg = {edit: jest.fn().mockResolvedValue()};
-        const channel = {
-            messages: {fetch: jest.fn().mockResolvedValue(makeMessages([lastMsg]))},
-            send: jest.fn().mockResolvedValue()
+    test('edits the tracked leaderboard message instead of fetching the last bot message', async () => {
+        const channel = makeChannel('lb');
+        const liveMessage = makeLiveMessageModel();
+        liveMessage.rows.leaderboard = {
+            channelID: 'lb',
+            messageID: 'existing',
+            save: jest.fn(async () => {
+            })
+        };
+        channel.store.existing = {
+            id: 'existing',
+            edit: jest.fn(async () => {
+            })
         };
         const client = makeClient({
             leaderboardChannel: 'lb',
             channel,
-            balanceRows: [{
-                dataValues: {
-                    id: 'u1',
-                    balance: 10,
-                    bank: 5
-                }
-            }]
+            liveMessage
         });
         await eco.createLeaderboard(client);
-        expect(lastMsg.edit).toHaveBeenCalled();
+        expect(channel.messages.fetch).toHaveBeenCalledWith('existing');
+        expect(channel.store.existing.edit).toHaveBeenCalled();
         expect(channel.send).not.toHaveBeenCalled();
     });
 });
@@ -135,12 +195,17 @@ describe('shopMsg', () => {
         expect(client.channels.fetch).not.toHaveBeenCalled();
     });
 
-    test('sends a fresh shop message when none exists', async () => {
-        const channel = {
-            guild: {roles: {fetch: jest.fn().mockResolvedValue({members: {size: 0}})}},
-            messages: {fetch: jest.fn().mockResolvedValue(makeMessages([]))},
-            send: jest.fn().mockResolvedValue()
-        };
+    test('logs an error instead of throwing when the shop channel cannot be fetched', async () => {
+        const client = makeClient({
+            shopChannel: 'sc',
+            channel: null
+        });
+        await expect(eco.shopMsg(client)).resolves.toBeUndefined();
+        expect(client.logger.error).toHaveBeenCalled();
+    });
+
+    test('sends a fresh shop message and stores its id when none is tracked yet', async () => {
+        const channel = makeChannel('sc');
         const client = makeClient({
             shopChannel: 'sc',
             channel,
@@ -148,22 +213,89 @@ describe('shopMsg', () => {
         });
         await eco.shopMsg(client);
         expect(channel.send).toHaveBeenCalled();
+        const row = client.models['economy-system'].LiveMessage.rows.shop;
+        expect(row.channelID).toBe('sc');
+        expect(row.messageID).toBe('m1');
+        expect(isMessageProtected(client, 'sc', 'm1')).toBe(true);
     });
 
-    test('edits the existing shop message when present', async () => {
-        const lastMsg = {edit: jest.fn().mockResolvedValue()};
-        const channel = {
-            guild: {roles: {fetch: jest.fn().mockResolvedValue({members: {size: 1}})}},
-            messages: {fetch: jest.fn().mockResolvedValue(makeMessages([lastMsg]))},
-            send: jest.fn().mockResolvedValue()
+    test('edits the tracked shop message when present', async () => {
+        const channel = makeChannel('sc');
+        const liveMessage = makeLiveMessageModel();
+        liveMessage.rows.shop = {
+            channelID: 'sc',
+            messageID: 'existing',
+            save: jest.fn(async () => {
+            })
+        };
+        channel.store.existing = {
+            id: 'existing',
+            edit: jest.fn(async () => {
+            })
         };
         const client = makeClient({
             shopChannel: 'sc',
             channel,
-            shopItems: []
+            liveMessage
         });
         await eco.shopMsg(client);
-        expect(lastMsg.edit).toHaveBeenCalled();
+        expect(channel.messages.fetch).toHaveBeenCalledWith('existing');
+        expect(channel.store.existing.edit).toHaveBeenCalled();
         expect(channel.send).not.toHaveBeenCalled();
+    });
+});
+
+describe('shared channel (bug #cmqq4r)', () => {
+    test('leaderboard and shop keep separate messages in one shared channel', async () => {
+        const channel = makeChannel('shared');
+        const liveMessage = makeLiveMessageModel();
+
+        /*
+         * Shop and leaderboard both point at the same channel - the exact misconfig
+         * from the report. Each must own its own message id and never edit the other.
+         */
+        const client = makeClient({
+            shopChannel: 'shared',
+            leaderboardChannel: 'shared',
+            channel,
+            liveMessage,
+            shopItems: []
+        });
+
+        // First boot: both create their own message.
+        await eco.shopMsg(client);
+        await eco.createLeaderboard(client);
+
+        const shopId = liveMessage.rows.shop.messageID;
+        const lbId = liveMessage.rows.leaderboard.messageID;
+        expect(shopId).toBeTruthy();
+        expect(lbId).toBeTruthy();
+        expect(shopId).not.toBe(lbId);
+
+        /*
+         * Subsequent update: the leaderboard edits ONLY its own message, never the
+         * shop message (which, with the Components V2 editor, would throw 50035).
+         */
+        await eco.createLeaderboard(client);
+        expect(channel.store[lbId].edit).toHaveBeenCalled();
+        expect(channel.store[shopId].edit).not.toHaveBeenCalled();
+    });
+
+    test('concurrent leaderboard updates create a single message, not a duplicate', async () => {
+        const channel = makeChannel('lb');
+        const client = makeClient({
+            leaderboardChannel: 'lb',
+            channel
+        });
+
+        /*
+         * leaderboard() is fired on every balance change and calls can overlap (e.g.
+         * editBank 'deposit'). Without serialization, two concurrent first-run calls
+         * both find no tracked message and both send(), orphaning one. Updates for a
+         * given type must be serialized so the second call edits what the first sent.
+         */
+        await Promise.all([eco.createLeaderboard(client), eco.createLeaderboard(client)]);
+        expect(channel.send).toHaveBeenCalledTimes(1);
+        expect(channel.store.m1.edit).toHaveBeenCalledTimes(1);
     });
 });

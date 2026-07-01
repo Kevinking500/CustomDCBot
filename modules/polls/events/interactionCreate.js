@@ -1,7 +1,8 @@
-const {updateMessage} = require('../polls');
+const {
+    updateMessage,
+    buildPublicVotesEmbed
+} = require('../polls');
 const {localize} = require('../../../src/functions/localize');
-const {MessageEmbed} = require('discord.js');
-const {truncate} = require('../../../src/functions/helpers');
 module.exports.run = async (client, interaction) => {
     if (!interaction.message && !(interaction.customId || '').startsWith('polls-rem-vot-')) return;
     const poll = await client.models['polls']['Poll'].findOne({
@@ -50,19 +51,9 @@ module.exports.run = async (client, interaction) => {
             ephemeral: true,
             content: '⚠️ ' + localize('polls', 'not-public')
         });
-        const embed = new MessageEmbed()
-            .setTitle(localize('polls', 'view-public-votes'))
-            .setColor(0xE67E22);
-        for (const vId in poll.options) {
-            let voters = [];
-            for (const voterID of poll.votes[parseInt(vId) + 1] || []) {
-                voters.push('<@' + voterID + '>');
-            }
-            embed.addField(interaction.client.configurations['polls']['config']['reactions'][parseInt(vId) + 1] + ' ' + poll.options[vId], truncate(voters.join(',') || '*' + localize('polls', 'no-votes-for-this-option') + '*', 1024));
-        }
         return interaction.reply({
             ephemeral: true,
-            embeds: [embed]
+            embeds: [buildPublicVotesEmbed(interaction, poll)]
         });
     }
 

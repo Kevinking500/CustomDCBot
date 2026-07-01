@@ -5,6 +5,7 @@
  */
 const {embedType, formatDiscordUserName} = require('../../src/functions/helpers');
 const {localize} = require('../../src/functions/localize');
+const {protectMessage} = require('../../src/functions/protectedMessages');
 
 module.exports.generateSuggestionEmbed = generateSuggestionEmbed;
 
@@ -31,7 +32,8 @@ async function generateSuggestionEmbed(client, suggestion) {
         else field = 'deniedSuggestion';
     }
     await message.edit(embedType(moduleConfig[field], params));
-};
+    protectMessage(client, channel.id, suggestion.messageID);
+}
 
 /**
  * Notifies subscribed members of a suggestion about a change
@@ -62,6 +64,27 @@ module.exports.notifyMembers = async function (client, suggestion, change, ignor
     }
 };
 
+/**
+ * Applies an admin approve/deny decision and re-renders + notifies, shared by /manage-suggestion
+ * and the Approve/Deny context commands.
+ * @param {Client} client
+ * @param {Object} suggestion Suggestion DB-Object
+ * @param {String} action 'approve' or 'deny'
+ * @param {String|null} reason Optional admin comment
+ * @param {String} userID ID of the admin making the decision
+ * @returns {Promise<void>}
+ */
+module.exports.applySuggestionDecision = async function (client, suggestion, action, reason, userID) {
+    suggestion.adminAnswer = {
+        action,
+        reason,
+        userID
+    };
+    await suggestion.save();
+    await generateSuggestionEmbed(client, suggestion);
+    await module.exports.notifyMembers(client, suggestion, 'team', userID);
+};
+
 module.exports.createSuggestion = async function (guild, suggestion, user) {
     const moduleConfig = guild.client.configurations['suggestions']['config'];
     const channel = guild.channels.cache.get(moduleConfig.suggestionChannel);
@@ -74,6 +97,7 @@ module.exports.createSuggestion = async function (guild, suggestion, user) {
         suggesterID: user.id,
         comments: []
     });
+    protectMessage(guild.client, channel.id, suggestionMsg.id);
     await generateSuggestionEmbed(guild.client, suggestionElement);
     return suggestionElement;
 };

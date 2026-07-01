@@ -12,6 +12,10 @@ const {
     safeSetFooter
 } = require('../../src/functions/helpers');
 const {displayLevel, isMaxLevel, calculateLevelXP} = require('./events/messageCreate');
+const {
+    protectMessage,
+    unprotectMessage
+} = require('../../src/functions/protectedMessages');
 const {client} = require('../../main');
 let changed = false;
 
@@ -38,6 +42,11 @@ module.exports.updateLeaderBoard = async function (client, force = false) {
     });
     let message = messageData.messageID ? await channel.messages.fetch(messageData.messageID).catch(() => {
     }) : null;
+    if (message) {
+        protectMessage(client, channel.id, message.id);
+    } else if (messageData.messageID) {
+        unprotectMessage(client, channel.id, messageData.messageID);
+    }
 
 
     const users = await client.models['levels']['User'].findAll({
@@ -99,6 +108,7 @@ module.exports.updateLeaderBoard = async function (client, force = false) {
         });
         messageData.messageID = message.id;
         await messageData.save();
+        protectMessage(client, channel.id, message.id);
     }
 };
 

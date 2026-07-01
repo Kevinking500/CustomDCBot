@@ -8,6 +8,7 @@
   },
   "description": "Let users highlight messages into a starboard channel by reacting.",
   "events-dir": "/events",
+  "commands-dir": "/commands",
   "models-dir": "/models",
   "config-example-files": [
     "configs/config.json"

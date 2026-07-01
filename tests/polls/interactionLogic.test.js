@@ -11,7 +11,21 @@
  * polls.updateMessage is mocked; we assert directly on the mutated poll.votes
  * and on the reply/editReply payloads.
  */
-jest.mock('../../modules/polls/polls', () => ({updateMessage: jest.fn().mockResolvedValue()}));
+jest.mock('../../modules/polls/polls', () => {
+    const {MessageEmbed} = require('discord.js');
+    return {
+        updateMessage: jest.fn().mockResolvedValue(),
+        // Mirror the real buildPublicVotesEmbed so the public-votes assertions still hold.
+        buildPublicVotesEmbed: jest.fn((interaction, poll) => {
+            const embed = new MessageEmbed().setTitle('polls.view-public-votes').setColor(0xE67E22);
+            for (const vId in poll.options) {
+                const voters = (poll.votes[parseInt(vId) + 1] || []).map(id => '<@' + id + '>');
+                embed.addField('opt', voters.join(',') || '*polls.no-votes-for-this-option*');
+            }
+            return embed;
+        })
+    };
+});
 
 const handler = require('../../modules/polls/events/interactionCreate');
 const {updateMessage} = require('../../modules/polls/polls');
