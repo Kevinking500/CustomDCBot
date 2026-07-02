@@ -45,7 +45,9 @@ async function createQuiz(data, client, interaction) {
         votes,
         canChangeVote: data.canChangeVote,
         private: data.private || false,
-        type: data.type
+        type: data.type,
+        imageURL: data.imageURL || null,
+        headline: data.headline || null
     });
 
     if (!data.private && data.endAt) {
@@ -73,9 +75,10 @@ async function updateMessage(channel, data, mID = null, interaction = null) {
     if (mID && !interaction) m = await channel.messages.fetch(mID).catch(() => {
     });
     const embed = new MessageEmbed()
-        .setTitle(strings.embed.title)
+        .setTitle(data.headline || strings.embed.title)
         .setColor(parseEmbedColor(strings.embed.color))
         .setDescription(data.description);
+    if (data.imageURL) embed.setImage(data.imageURL);
 
     let allVotes = 0;
     const expired = (data.expiresAt || data.endAt) ? data.expiresAt <= Date.now() || data.endAt <= Date.now() : false;

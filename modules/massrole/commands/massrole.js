@@ -195,6 +195,30 @@ module.exports.subcommands = {
 };
 
 /**
+ * Apply a single role add/remove to a single member, mirroring the per-member operation the
+ * massrole add/remove subcommands perform in their loops (same reason string, same done/notDone
+ * output). Used by the USER context-menu adapters after a role select. Replies ephemerally.
+ *
+ * @param {object} interaction - role-select interaction able to deferReply/editReply
+ * @param {object} member      - the single target GuildMember
+ * @param {object} role        - the role to add/remove
+ * @param {'add'|'remove'} action
+ */
+async function applyRoleToMember(interaction, member, role, action) {
+    const moduleStrings = interaction.client.configurations['massrole']['strings'];
+    await interaction.deferReply({ephemeral: true});
+    const reasonKey = action === 'add' ? 'add-reason' : 'remove-reason';
+    try {
+        await member.roles[action](role, localize('massrole', reasonKey, {u: interaction.user.tag}));
+        return interaction.editReply(embedType(moduleStrings.done, {}));
+    } catch {
+        return interaction.editReply(embedType(moduleStrings.notDone, {}));
+    }
+}
+
+module.exports.applyRoleToMember = applyRoleToMember;
+
+/**
  * Read content of "target"-option
  *
  */
@@ -206,7 +230,10 @@ function checkTarget(interaction) {
     } else if (interaction.options.getString('target') === 'humans') {
         target = 'humans';
     }
+    return target;
 }
+
+module.exports.checkTarget = checkTarget;
 
 
 module.exports.config = {

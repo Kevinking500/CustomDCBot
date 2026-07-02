@@ -14,5 +14,6 @@
   "tags": [
     "fun"
   ],
-  "openSourceURL": "https://github.com/DEVTomatoCake/ScootKit-CustomBot/tree/main/modules/connect-four"
+  "openSourceURL": "https://github.com/DEVTomatoCake/ScootKit-CustomBot/tree/main/modules/connect-four",
+  "intents": []
 }

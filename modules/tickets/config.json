@@ -87,6 +87,7 @@
     {
       "name": "creation-message",
       "humanName": "Ticket-Created Message",
+      "pro": true,
       "type": "string",
       "allowEmbed": true,
       "description": "This message will get sent in new tickets. The close buttons will be added.",
@@ -139,14 +140,16 @@
       "humanName": "Ticket create button",
       "default": "Create ticket 🎫",
       "description": "Button for creating a ticket",
-      "type": "string"
+      "type": "string",
+      "pro": true
     },
     {
       "name": "ticket-close-button",
       "humanName": "Ticket close button",
       "default": "❎ Close ticket",
       "description": "Button for closing a ticket",
-      "type": "string"
+      "type": "string",
+      "pro": true
     }
   ]
 }

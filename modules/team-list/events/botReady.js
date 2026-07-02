@@ -5,7 +5,24 @@ const {
     safeSetFooter
 } = require('../../../src/functions/helpers');
 const {localize} = require('../../../src/functions/localize');
+const {
+    protectMessage,
+    unprotectMessage,
+    registerProtectedMessageProvider
+} = require('../../../src/functions/protectedMessages');
 const {MessageEmbed} = require('discord.js');
+
+// Restore auto-delete protection for the team list from the database on startup.
+registerProtectedMessageProvider(async (client) => {
+    if (!client.modules['team-list']?.enabled) return [];
+    const rows = await client.models['team-list']['TeamListMessage'].findAll({attributes: ['channelID', 'messageID']});
+    return rows
+        .filter(r => r.channelID && r.messageID)
+        .map(r => ({
+            channelId: r.channelID,
+            messageId: r.messageID
+        }));
+});
 const schedule = require('node-schedule');
 
 const statusIcons = {
@@ -13,6 +30,39 @@ const statusIcons = {
     'dnd': '🔴',
     'idle': '🟡',
     'offline': '⚫'
+};
+
+/**
+ * Builds the user-list string shown for a single role field.
+ * Extracted (behavior-preserving) from updateEmbedsIfNeeded so the
+ * status-line vs comma-list formatting, the highest-role dedup, and the
+ * empty-role fallback can be unit-tested. Mutates `listedUserIDs` to track
+ * which users have already been printed (used by onlineShowHighestRole).
+ *
+ * @param {Iterable} membersWithRole members holding this role (Map values / array)
+ * @param {Object} role the role being rendered (needs toString())
+ * @param {Object} channelConfig the per-channel team-list config element
+ * @param {string[]} listedUserIDs accumulator of already-listed user ids (mutated)
+ * @returns {string}
+ */
+function buildUserString(membersWithRole, role, channelConfig, listedUserIDs) {
+    let userString = '';
+    for (const member of membersWithRole) {
+        if (listedUserIDs.includes(member.user.id) && channelConfig.onlineShowHighestRole) continue;
+        listedUserIDs.push(member.user.id);
+        const status = (member.presence || {status: 'offline'}).status;
+        userString = userString + (channelConfig.includeStatus
+            ? `* ${member.user.toString()}: ${statusIcons[status]} ${localize('team-list', status)}\n`
+            : `${member.user.toString()}, `);
+    }
+    if (userString === '') userString = localize('team-list', 'no-users-with-role', {r: role.toString()});
+    else if (!channelConfig.includeStatus) userString = userString.substring(0, userString.length - 2);
+    return userString;
+}
+
+module.exports.__test = {
+    buildUserString,
+    statusIcons
 };
 
 module.exports.run = async function (client) {
@@ -58,14 +108,8 @@ async function updateEmbedsIfNeeded(client) {
         const listedUserIDs = [];
         let fieldCount = 0;
         for (const role of roles.values()) {
-            let userString = '';
-            for (const member of guildMembers.filter(m => m.roles.cache.has(role.id)).values()) {
-                if (listedUserIDs.includes(member.user.id) && channelConfig.onlineShowHighestRole) continue;
-                listedUserIDs.push(member.user.id);
-                userString = userString + (channelConfig.includeStatus ? `* ${member.user.toString()}: ${statusIcons[(member.presence || {status: 'offline'}).status]} ${localize('team-list', (member.presence || {status: 'offline'}).status)}\n` : `${member.user.toString()}, `);
-            }
-            if (userString === '') userString = localize('team-list', 'no-users-with-role', {r: role.toString()});
-            else if (!channelConfig.includeStatus) userString = userString.substring(0, userString.length - 2);
+            const membersWithRole = guildMembers.filter(m => m.roles.cache.has(role.id)).values();
+            const userString = buildUserString(membersWithRole, role, channelConfig, listedUserIDs);
             fieldCount++;
             embed.addField(channelConfig['nameOverwrites'][role.id] || role.name, truncate((channelConfig['descriptions'][role.id] ? `${channelConfig['descriptions'][role.id]}\n` : '') + userString, 1024));
         }
@@ -93,10 +137,13 @@ async function updateEmbedsIfNeeded(client) {
         try {
             if (message) {
                 await message.edit({embeds: [embed]});
+                protectMessage(client, channel.id, message.id);
             } else {
+                if (messageData.messageID) unprotectMessage(client, channel.id, messageData.messageID);
                 message = await channel.send({embeds: [embed]});
                 messageData.messageID = message.id;
                 await messageData.save();
+                protectMessage(client, channel.id, message.id);
             }
         } catch (e) {
             client.logger.error(`[team-list] Failed to send/edit message in channel ${channelConfig['channelID']}: ${e.message}`);

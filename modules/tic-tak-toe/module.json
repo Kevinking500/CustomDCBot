@@ -3,8 +3,8 @@
   "humanReadableName": "Tic Tac Toe",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "fa-icon": "fa-solid fa-border-all",
   "description": "Let your users play Tick-Tac-Toe against each other!",
@@ -20,5 +20,13 @@
   "tags": [
     "fun"
   ],
-  "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/tic-tak-toe"
+  "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/tic-tak-toe",
+  "intents": [
+    "GuildMembers",
+    "GuildPresences"
+  ],
+  "intentReasons": {
+    "GuildMembers": "Resolves member names for opponents and the scoreboard.",
+    "GuildPresences": "Filters out offline members when picking a random opponent."
+  }
 }

@@ -2,8 +2,8 @@
   "name": "suggestions",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/suggestions",
   "commands-dir": "/commands",
@@ -17,5 +17,12 @@
   ],
   "humanReadableName": "Suggestions",
   "events-dir": "/events",
-  "description": "Advanced module to manage suggestions on your guild"
+  "description": "Advanced module to manage suggestions on your guild",
+  "intents": [
+    "GuildMessages",
+    "MessageContent"
+  ],
+  "intentReasons": {
+    "MessageContent": "Reads message text to turn it into a suggestion entry."
+  }
 }

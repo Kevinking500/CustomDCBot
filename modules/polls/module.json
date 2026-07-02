@@ -2,8 +2,8 @@
   "name": "polls",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "description": "Simple module to create fresh polls on your server! Supports anonymous polls and more.",
   "events-dir": "/events",
@@ -18,5 +18,6 @@
     "community"
   ],
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/polls",
-  "humanReadableName": "Polls"
+  "humanReadableName": "Polls",
+  "intents": []
 }

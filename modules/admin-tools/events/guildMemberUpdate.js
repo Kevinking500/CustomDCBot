@@ -1,5 +1,5 @@
 const {createTemporaryRoleChangeAction} = require('../temporaryRoles');
-const durationParser = require('parse-duration');
+const durationParser = require('../../../src/functions/parseDuration');
 const {localize} = require('../../../src/functions/localize');
 
 module.exports.run = async function (client, oldMember, newMember) {

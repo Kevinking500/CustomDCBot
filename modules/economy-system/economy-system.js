@@ -10,7 +10,67 @@ const {
     parseEmbedColor
 } = require('../../src/functions/helpers');
 const {localize} = require('../../src/functions/localize');
+const {
+    protectMessage,
+    unprotectMessage
+} = require('../../src/functions/protectedMessages');
 const {Op} = require('sequelize');
+
+/**
+ * Sends or edits one of the economy module's persistent messages (shop or leaderboard),
+ * tracked by id in the LiveMessage model so it is edited in place instead of clobbering the
+ * last bot message in the channel.
+ * @param {Client} client Client
+ * @param {String} type Tracked message type: 'shop' or 'leaderboard'
+ * @param {Object} channel The channel to publish in
+ * @param {function(): (Promise<Object>|Object)} buildPayload Produces the message payload
+ * @returns {Promise<Object>} The sent/edited message
+ * @private
+ */
+function publishLiveMessage(client, type, channel, buildPayload) {
+    if (!client.economyLiveMessageQueue) client.economyLiveMessageQueue = new Map();
+    const queue = client.economyLiveMessageQueue;
+    // catch() so a previous failure doesn't reject (and so stall) the next caller.
+    const previous = queue.get(type) || Promise.resolve();
+    const current = previous.catch(() => {
+    }).then(() => sendOrEditLiveMessage(client, type, channel, buildPayload));
+    queue.set(type, current);
+    return current;
+}
+
+/**
+ * Body of {@link publishLiveMessage}: resolves the tracked message and edits it or sends a
+ * fresh one. Must run one-at-a-time per type.
+ * @param {Client} client Client
+ * @param {String} type Tracked message type
+ * @param {Object} channel The channel to publish in
+ * @param {function(): (Promise<Object>|Object)} buildPayload Produces the message payload
+ * @returns {Promise<Object>} The sent/edited message
+ * @private
+ */
+async function sendOrEditLiveMessage(client, type, channel, buildPayload) {
+    const [record] = await client.models['economy-system']['LiveMessage'].findOrCreate({
+        where: {type},
+        defaults: {type}
+    });
+    let message = (record.messageID && record.channelID === channel.id)
+        ? await channel.messages.fetch(record.messageID).catch(() => null)
+        : null;
+
+    // The tracked message moved channels (or vanished): stop protecting the old id.
+    if (!message && record.messageID) unprotectMessage(client, record.channelID, record.messageID);
+
+    const payload = await buildPayload();
+    if (message) await message.edit(payload);
+    else {
+        message = await channel.send(payload);
+        record.channelID = channel.id;
+        record.messageID = message.id;
+        await record.save();
+    }
+    protectMessage(client, channel.id, message.id);
+    return message;
+}
 
 /**
  * add a User to DB
@@ -106,7 +166,7 @@ async function editBank(client, id, action, value) {
             newBank = parseInt(user.bank) + parseInt(value);
             user.bank = newBank;
             await user.save();
-            editBalance(client, id, 'remove', value);
+            await editBalance(client, id, 'remove', value);
             await leaderboard(client);
             break;
 
@@ -536,10 +596,8 @@ async function createShopMsg(client, guild, ephemeral) {
 async function shopMsg(client) {
     if (!client.configurations['economy-system']['config']['shopChannel'] || client.configurations['economy-system']['config']['shopChannel'] === '') return;
     const channel = await client.channels.fetch(client.configurations['economy-system']['config']['shopChannel']);
-    if (!channel) return client.logger.error(`[economy-system] ` + localize('economy-system', 'channel-not-found', {c: moduleConfig['leaderboardChannel']}));
-    const messages = (await channel.messages.fetch()).filter(msg => msg.author.id === client.user.id);
-    if (messages.last()) await messages.last().edit(await createShopMsg(client, channel.guild, false));
-    else channel.send(await createShopMsg(client, channel.guild, false));
+    if (!channel) return client.logger.error(`[economy-system] ` + localize('economy-system', 'channel-not-found', {c: client.configurations['economy-system']['config']['shopChannel']}));
+    await publishLiveMessage(client, 'shop', channel, () => createShopMsg(client, channel.guild, false));
 }
 
 /**
@@ -578,8 +636,6 @@ async function leaderboard(client) {
 
     const model = await client.models['economy-system']['Balance'].findAll();
 
-    const messages = (await channel.messages.fetch()).filter(msg => msg.author.id === client.user.id);
-
     const embed = new MessageEmbed()
         .setTitle(moduleStr['leaderboardEmbed']['title'])
         .setDescription(moduleStr['leaderboardEmbed']['description'])
@@ -601,8 +657,7 @@ async function leaderboard(client) {
     if ((moduleStr['leaderboardEmbed']['thumbnail'] || '').replaceAll(' ', '')) embed.setThumbnail(moduleStr['leaderboardEmbed']['thumbnail']);
     if ((moduleStr['leaderboardEmbed']['image'] || '').replaceAll(' ', '')) embed.setImage(moduleStr['leaderboardEmbed']['image']);
 
-    if (messages.last()) await messages.last().edit({embeds: [embed]});
-    else channel.send({embeds: [embed]});
+    await publishLiveMessage(client, 'leaderboard', channel, () => ({embeds: [embed]}));
 }
 
 
@@ -618,3 +673,5 @@ module.exports.updateShopItem = updateShopItem;
 module.exports.createShopMsg = createShopMsg;
 module.exports.shopMsg = shopMsg;
 module.exports.createLeaderboard = leaderboard;
+module.exports.topTen = topTen;
+module.exports.getUser = getUser;

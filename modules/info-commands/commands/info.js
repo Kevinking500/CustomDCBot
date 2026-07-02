@@ -11,7 +11,6 @@ const {
 } = require('../../../src/functions/helpers');
 const {ChannelType, MessageEmbed} = require('discord.js');
 const {AgeFromDate} = require('age-calculator');
-const {stringNames} = require('../../invite-tracking/events/guildMemberJoin');
 const {calculateLevelXP, isMaxLevel, displayLevel} = require('../../levels/events/messageCreate');
 
 const legacyChannelType = (type) => {
@@ -30,6 +29,8 @@ const legacyChannelType = (type) => {
     if (typeof type === 'string') return type;
     return map[type] || (ChannelType[type] ? ChannelType[type].toString().toUpperCase() : type);
 };
+
+module.exports.legacyChannelType = legacyChannelType;
 
 // THIS IS PAIN. Rewrite it as soon as possible
 module.exports.beforeSubcommand = async function (interaction) {
@@ -150,85 +151,82 @@ module.exports.subcommands = {
         interaction.editReply({embeds: [embed]});
     },
     'user': async function (interaction) {
-        const moduleStrings = interaction.client.configurations['info-commands']['strings'];
         const member = interaction.options.getMember('user') || interaction.member;
-        if (!member) return interaction.reply(embedType(moduleStrings['user_not_found'], {}, {ephemeral: true}));
-        let birthday = null;
-        let levelUserData = null;
-        if (moduleEnabled(interaction.client, 'birthday')) {
-            birthday = await interaction.client.models['birthday']['User'].findOne({
-                where: {
-                    id: member.user.id
-                }
-            });
-        }
-        if (moduleEnabled(interaction.client, 'levels')) {
-            levelUserData = await interaction.client.models['levels']['User'].findOne({
-                where: {
-                    userID: member.user.id
-                }
-            });
-        }
-
-        const embed = new MessageEmbed()
-            .setTitle(localize('info-commands', 'information-about-user', {u: formatDiscordUserName(member.user)}))
-            .setColor(member.displayColor || parseEmbedColor('GREEN'))
-            .setThumbnail(member.user.avatarURL({forceStatic: false}))
-            .addField(moduleStrings.userinfo.tag, formatDiscordUserName(member.user), true)
-            .addField(moduleStrings.userinfo.id, member.user.id, true)
-            .addField(moduleStrings.userinfo.createdAt, `<t:${(member.user.createdAt.getTime() / 1000).toFixed(0)}:d> (<t:${(member.user.createdAt.getTime() / 1000).toFixed(0)}:R>)`, true)
-            .addField(moduleStrings.userinfo.joinedAt, `<t:${(member.joinedAt.getTime() / 1000).toFixed(0)}:d> (<t:${(member.joinedAt.getTime() / 1000).toFixed(0)}:R>)`, true);
-        safeSetFooter(embed, interaction.client);
-        if (!interaction.client.strings.disableFooterTimestamp) embed.setTimestamp();
-        if (member.user.presence) embed.addField(moduleStrings.userinfo.currentStatus, member.user.presence.status, true);
-        if (member.nickname) embed.addField(moduleStrings.userinfo.nickname, member.nickname, true);
-        if (member.premiumSince) embed.addField(moduleStrings.userinfo.boosterSince, dateToDiscordTimestamp(member.premiumSince), true);
-        if (member.displayColor) embed.addField(moduleStrings.userinfo.displayColor, member.displayHexColor, true);
-        if (member.voice.channel) embed.addField(moduleStrings.userinfo.currentVoiceChannel, member.voice.channel.toString(), true);
-        if (member.roles.highest) embed.addField(moduleStrings.userinfo.highestRole, `<@&${member.roles.highest.id}>`, true);
-        if (member.roles.hoist) embed.addField(moduleStrings.userinfo.hoistRole, `<@&${member.roles.hoist.id}>`, true);
-        if (birthday) {
-            let dateString = `${birthday.day}.${birthday.month}${birthday.year ? `.${birthday.year}` : ''}`;
-            if (birthday.year) {
-                const age = new AgeFromDate(new Date(birthday.year, birthday.month - 1, birthday.day)).age;
-                dateString = `[${dateString}](https://scnx.xyz/${interaction.client.locale === 'de' ? 'de/' : ''}custom-bot/age-calculator?age=${age} "${localize('birthdays', 'age-hover', {a: age})}")`;
-            }
-            embed.addField(moduleStrings.userinfo.birthday, dateString, true);
-        }
-        if (levelUserData) {
-            embed.addField(moduleStrings.userinfo.xp, `${formatNumber(isMaxLevel(levelUserData.level, interaction.client) ? calculateLevelXP(interaction.client, interaction.client.configurations['levels']['config'].maximumLevel) : levelUserData.xp)}/${isMaxLevel(levelUserData.level, interaction.client) ? '∞' : formatNumber(calculateLevelXP(interaction.client, levelUserData.level))}`, true);
-            embed.addField(moduleStrings.userinfo.level, displayLevel(levelUserData.level, interaction.client), true);
-            embed.addField(moduleStrings.userinfo.messages, levelUserData.messages.toString(), true);
-        }
-        if (moduleEnabled(interaction.client, 'invite-tracking')) {
-            const invitedUsers = await interaction.client.models['invite-tracking']['UserInvite'].findAll({
-                where: {
-                    inviter: member.user.id
-                }
-            });
-            const userInvites = await interaction.client.models['invite-tracking']['UserInvite'].findAll({
-                where: {
-                    userID: member.user.id,
-                    left: false
-                },
-                order: [['createdAt', 'DESC']]
-            });
-            if (userInvites[0]) embed.addField(moduleStrings.userinfo['invited-by'], `${localize('invite-tracking', stringNames[userInvites[0].inviteType])}${userInvites[0].inviter ? ` by <@${userInvites[0].inviter}>` : ''}`, true);
-            embed.addField(moduleStrings.userinfo.invites, `\`\`\`| ${localize('info-commands', 'total-invites')} | ${localize('info-commands', 'active-invites')} | ${localize('info-commands', 'left-invites')} |\n| ${pufferStringToSize(invitedUsers.length.toString(), localize('info-commands', 'total-invites').length)} | ${pufferStringToSize(invitedUsers.filter(i => !i.left).length.toString(), localize('info-commands', 'active-invites').length)} | ${pufferStringToSize(invitedUsers.filter(i => i.left).length.toString(), localize('info-commands', 'left-invites').length)} |\`\`\``);
-        }
-        let permstring = '';
-        member.permissions.toArray().forEach(p => {
-            if (!member.permissions.toArray().includes('ADMINISTRATOR')) permstring = permstring + `${p}, `;
-        });
-        if (member.permissions.toArray().includes('ADMINISTRATOR')) permstring = 'ADMINISTRATOR  ';
-        if (permstring !== '') permstring = permstring.substring(0, permstring.length - 2);
-        else permstring = moduleStrings.userinfo.noPermissions;
-        embed.addField(moduleStrings.userinfo.permissions, `\`\`\`${permstring}\`\`\``);
-        interaction.editReply({
-            embeds: [embed],
-        });
+        return sendUserInfo(interaction, member);
     }
 };
+
+/**
+ * Renders the userinfo embed for a guild member via editReply. Shared core for the /info user
+ * slash subcommand and the "User Info" context command. The caller must defer the reply first.
+ * @param {object} interaction - the slash or context-menu interaction (already deferred)
+ * @param {object} member - the resolved GuildMember to show info about
+ * @returns {Promise<*>} the interaction reply
+ */
+async function sendUserInfo(interaction, member) {
+    const moduleStrings = interaction.client.configurations['info-commands']['strings'];
+    if (!member) return interaction.reply(embedType(moduleStrings['user_not_found'], {}, {ephemeral: true}));
+    let birthday = null;
+    let levelUserData = null;
+    if (moduleEnabled(interaction.client, 'birthday')) {
+        birthday = await interaction.client.models['birthday']['User'].findOne({
+            where: {
+                id: member.user.id
+            }
+        });
+    }
+    if (moduleEnabled(interaction.client, 'levels')) {
+        levelUserData = await interaction.client.models['levels']['User'].findOne({
+            where: {
+                userID: member.user.id
+            }
+        });
+    }
+
+    const embed = new MessageEmbed()
+        .setTitle(localize('info-commands', 'information-about-user', {u: formatDiscordUserName(member.user)}))
+        .setColor(member.displayColor || parseEmbedColor('GREEN'))
+        .setThumbnail(member.user.avatarURL({forceStatic: false}))
+        .addField(moduleStrings.userinfo.tag, formatDiscordUserName(member.user), true)
+        .addField(moduleStrings.userinfo.id, member.user.id, true)
+        .addField(moduleStrings.userinfo.createdAt, `<t:${(member.user.createdAt.getTime() / 1000).toFixed(0)}:d> (<t:${(member.user.createdAt.getTime() / 1000).toFixed(0)}:R>)`, true)
+        .addField(moduleStrings.userinfo.joinedAt, `<t:${(member.joinedAt.getTime() / 1000).toFixed(0)}:d> (<t:${(member.joinedAt.getTime() / 1000).toFixed(0)}:R>)`, true);
+    safeSetFooter(embed, interaction.client);
+    if (!interaction.client.strings.disableFooterTimestamp) embed.setTimestamp();
+    if (member.user.presence) embed.addField(moduleStrings.userinfo.currentStatus, member.user.presence.status, true);
+    if (member.nickname) embed.addField(moduleStrings.userinfo.nickname, member.nickname, true);
+    if (member.premiumSince) embed.addField(moduleStrings.userinfo.boosterSince, dateToDiscordTimestamp(member.premiumSince), true);
+    if (member.displayColor) embed.addField(moduleStrings.userinfo.displayColor, member.displayHexColor, true);
+    if (member.voice.channel) embed.addField(moduleStrings.userinfo.currentVoiceChannel, member.voice.channel.toString(), true);
+    if (member.roles.highest) embed.addField(moduleStrings.userinfo.highestRole, `<@&${member.roles.highest.id}>`, true);
+    if (member.roles.hoist) embed.addField(moduleStrings.userinfo.hoistRole, `<@&${member.roles.hoist.id}>`, true);
+    if (birthday) {
+        let dateString = `${birthday.day}.${birthday.month}${birthday.year ? `.${birthday.year}` : ''}`;
+        if (birthday.year) {
+            const age = new AgeFromDate(new Date(birthday.year, birthday.month - 1, birthday.day)).age;
+            dateString = `[${dateString}](https://scnx.xyz/${interaction.client.locale === 'de' ? 'de/' : ''}custom-bot/age-calculator?age=${age} "${localize('birthdays', 'age-hover', {a: age})}")`;
+        }
+        embed.addField(moduleStrings.userinfo.birthday, dateString, true);
+    }
+    if (levelUserData) {
+        embed.addField(moduleStrings.userinfo.xp, `${formatNumber(isMaxLevel(levelUserData.level, interaction.client) ? calculateLevelXP(interaction.client, interaction.client.configurations['levels']['config'].maximumLevel) : levelUserData.xp)}/${isMaxLevel(levelUserData.level, interaction.client) ? '∞' : formatNumber(calculateLevelXP(interaction.client, levelUserData.level))}`, true);
+        embed.addField(moduleStrings.userinfo.level, displayLevel(levelUserData.level, interaction.client), true);
+        embed.addField(moduleStrings.userinfo.messages, levelUserData.messages.toString(), true);
+    }
+    let permstring = '';
+    member.permissions.toArray().forEach(p => {
+        if (!member.permissions.toArray().includes('ADMINISTRATOR')) permstring = permstring + `${p}, `;
+    });
+    if (member.permissions.toArray().includes('ADMINISTRATOR')) permstring = 'ADMINISTRATOR  ';
+    if (permstring !== '') permstring = permstring.substring(0, permstring.length - 2);
+    else permstring = moduleStrings.userinfo.noPermissions;
+    embed.addField(moduleStrings.userinfo.permissions, `\`\`\`${permstring}\`\`\``);
+    return interaction.editReply({
+        embeds: [embed]
+    });
+}
+
+module.exports.sendUserInfo = sendUserInfo;
 
 module.exports.config = {
     name: 'info',

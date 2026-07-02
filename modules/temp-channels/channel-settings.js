@@ -1,7 +1,31 @@
 const {client} = require('../../main');
 const {Op} = require('sequelize');
 const {embedType, formatDiscordUserName} = require('../../src/functions/helpers');
+const {TextDisplayBuilder} = require('discord.js');
 const {localize} = require('../../src/functions/localize');
+
+/*
+ * Resolves the temp channel the invoker owns for this interaction. Slash/button/modal/select
+ * flows act on the voice channel the caller is currently connected to; the USER context-menu
+ * flow ('context') acts on the channel the menu was invoked in (the temp channel's own text
+ * chat). In every case the creatorID must match the invoker, which is the creator-only guard:
+ * a non-creator (or a non-temp channel) yields null and the caller replies notInChannel.
+ */
+async function resolveOwnedTempChannel(interaction, callerInfo) {
+    let channelId = null;
+    if (callerInfo === 'context') channelId = interaction.channelId;
+    else if (interaction.member.voice) channelId = interaction.member.voice.channelId;
+    return client.models['temp-channels']['TempChannel'].findOne({
+        where: {
+            [Op.and]: [
+                {id: channelId},
+                {creatorID: interaction.member.id}
+            ]
+        }
+    });
+}
+
+module.exports.resolveOwnedTempChannel = resolveOwnedTempChannel;
 
 /**
  * @param interaction
@@ -80,18 +104,13 @@ module.exports.channelMode = async function (interaction, callerInfo) {
  */
 module.exports.userAdd = async function (interaction, callerInfo) {
     const moduleConfig = interaction.client.configurations['temp-channels']['config'];
-    const vc = await client.models['temp-channels']['TempChannel'].findOne({
-        where: {
-            [Op.and]: [
-                {id: interaction.member.voice.channelId},
-                {creatorID: interaction.member.id}
-            ]
-        }
-    });
+    const vc = await resolveOwnedTempChannel(interaction, callerInfo);
     let allowedUsers = vc.allowedUsers;
     let addedUser = null;
     if (callerInfo === 'command') {
         addedUser = interaction.options.getUser('user');
+    } else if (callerInfo === 'context') {
+        addedUser = interaction.targetUser;
     } else if (callerInfo === 'select') {
         addedUser = await client.users.fetch(interaction.values[0]).catch(() => null);
         if (!addedUser) return interaction.editReply(localize('temp-channels', 'user-not-found'));
@@ -133,18 +152,13 @@ module.exports.userAdd = async function (interaction, callerInfo) {
  */
 module.exports.userRemove = async function (interaction, callerInfo) {
     const moduleConfig = interaction.client.configurations['temp-channels']['config'];
-    const vc = await client.models['temp-channels']['TempChannel'].findOne({
-        where: {
-            [Op.and]: [
-                {id: interaction.member.voice.channelId},
-                {creatorID: interaction.member.id}
-            ]
-        }
-    });
+    const vc = await resolveOwnedTempChannel(interaction, callerInfo);
     let allowedUsers = (vc.allowedUsers || '').split(',').filter(u => u.trim() !== '');
     let removedUser = null;
     if (callerInfo === 'command') {
         removedUser = interaction.options.getUser('user');
+    } else if (callerInfo === 'context') {
+        removedUser = interaction.targetUser;
     } else if (callerInfo === 'select') {
         removedUser = await client.users.fetch(interaction.values[0]).catch(() => null);
         if (!removedUser) return interaction.editReply(localize('temp-channels', 'user-not-found'));
@@ -224,7 +238,11 @@ module.exports.usersList = async function (interaction) {
         interaction.editReply(embedType(listMsg, {'%users%': allowedUsers}, {ephemeral: true}));
     } else {
         const result = embedType(listMsg, {}, {ephemeral: true});
-        if (result.content) result.content += ' ' + allowedUsers;
+        const schema = listMsg && typeof listMsg === 'object' ? (listMsg._schema || 'v2') : 'v2';
+        if (schema === 'v4') {
+            if (!result.components) result.components = [];
+            result.components.push(new TextDisplayBuilder().setContent(allowedUsers.trim()));
+        } else if (result.content) result.content += ' ' + allowedUsers;
         else if (result.embeds && result.embeds[0]) result.embeds[0].description = (result.embeds[0].description || '') + '\n' + allowedUsers;
         interaction.editReply(result);
     }

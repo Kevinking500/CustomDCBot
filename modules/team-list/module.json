@@ -3,8 +3,8 @@
   "fa-icon": "fa-user-tie",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "events-dir": "/events",
   "models-dir": "/models",
@@ -16,5 +16,13 @@
   ],
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/team-list",
   "humanReadableName": "Staff-List",
-  "description": "List all your staff members and explain team roles in always up-to-date embed"
+  "description": "List all your staff members and explain team roles in always up-to-date embed",
+  "intents": [
+    "GuildMembers",
+    "GuildPresences"
+  ],
+  "intentReasons": {
+    "GuildMembers": "Lists every member holding each staff role in the always up-to-date embed.",
+    "GuildPresences": "Shows each listed staff member's current online status."
+  }
 }

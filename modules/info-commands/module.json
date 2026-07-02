@@ -3,8 +3,8 @@
   "fa-icon": "fa-solid fa-circle-info",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "commands-dir": "/commands",
   "config-example-files": [
@@ -15,5 +15,14 @@
   ],
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/info-commands",
   "humanReadableName": "Info-Commands",
-  "description": "Adds info-commands with information about specific parts of your server"
+  "description": "Adds info-commands with information about specific parts of your server",
+  "intents": [
+    "GuildPresences",
+    "GuildMembers",
+    "GuildVoiceStates"
+  ],
+  "intentReasons": {
+    "GuildPresences": "Reads members' online status to show online counts and a member's status in info commands.",
+    "GuildMembers": "Reads the member list to show accurate member and online counts in server and user info commands."
+  }
 }

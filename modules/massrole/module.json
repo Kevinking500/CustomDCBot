@@ -8,6 +8,7 @@
   },
   "openSourceURL": "https://github.com/hfgd123/CustomDCBot/tree/main/modules/massrole",
   "commands-dir": "/commands",
+  "events-dir": "/events",
   "fa-icon": "fa-solid fa-users-viewfinder",
   "config-example-files": [
     "configs/config.json",
@@ -16,5 +17,11 @@
   "tags": [
     "tools"
   ],
-  "description": "Simple module to manage the roles of many members at once!"
+  "description": "Simple module to manage the roles of many members at once!",
+  "intents": [
+    "GuildMembers"
+  ],
+  "intentReasons": {
+    "GuildMembers": "Enumerates the full member list to add or remove a role from everyone at once."
+  }
 }

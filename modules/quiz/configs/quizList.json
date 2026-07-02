@@ -33,6 +33,22 @@
       "description": "Wrong answers",
       "type": "array",
       "content": "string"
+    },
+    {
+      "name": "headline",
+      "humanName": "Headline (optional)",
+      "default": "",
+      "description": "Optional embed title shown above the question. Leave empty to use the default quiz title.",
+      "type": "string",
+      "allowNull": true
+    },
+    {
+      "name": "imageURL",
+      "humanName": "Image (optional)",
+      "default": "",
+      "description": "Optional image displayed above the answer choices (e.g. movie scene, visual hint). Upload via the dashboard or paste an http(s) URL.",
+      "type": "imgURL",
+      "allowNull": true
     }
   ]
 }

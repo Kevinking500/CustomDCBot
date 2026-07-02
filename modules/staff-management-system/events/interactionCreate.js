@@ -39,6 +39,17 @@ module.exports.run = async (client, interaction) => {
         const parts = interaction.customId.split('_');
         const action = parts[1];
 
+        // ----- USER context-menu submits (Issue Infraction / Promote User / Submit Review) -----
+        if (action === 'ctx-infract' && interaction.isModalSubmit()) {
+            return require('../context-actions').handleInfractionModal(client, interaction, parts[2]);
+        }
+        if (action === 'ctx-promote' && interaction.isRoleSelectMenu()) {
+            return require('../context-actions').handlePromoteSelect(client, interaction, parts[2]);
+        }
+        if (action === 'ctx-review' && interaction.isModalSubmit()) {
+            return require('../context-actions').handleReviewModal(client, interaction, parts[2]);
+        }
+
         // ----- Duty manage handlers -----
         if (interaction.customId.startsWith('duty-mgmt_')) {
             const dutyAction = parts[1];
@@ -163,15 +174,24 @@ module.exports.run = async (client, interaction) => {
                 return interaction.update(payload);
             }
 
-            const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+            let confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+            if (confirmPhrase.length > 100) {
+                confirmPhrase = localize('staff-management-system', 'fallback-conf-phrase');
+            }
+            let delModalLabel = localize('staff-management-system', 'mod-del-lbl');
+            if (delModalLabel.length > 45) {
+                delModalLabel = localize('staff-management-system', 'fallback-del-lbl');
+            }
+            const delModalTitle = localize('staff-management-system', 'mod-del-title');
+
             const modal = new ModalBuilder()
                 .setCustomId(`staff-mgmt_del-confirm_${targetId}_${selection}`)
-                .setTitle(localize('staff-management-system', 'mod-del-title'));
+                .setTitle(delModalTitle);
             modal.addComponents(
                 new ActionRowBuilder().addComponents(
                     new TextInputBuilder()
                         .setCustomId('confirm')
-                        .setLabel(localize('staff-management-system', 'mod-del-lbl'))
+                        .setLabel(delModalLabel)
                         .setStyle(TextInputStyle.Paragraph)
                         .setPlaceholder(confirmPhrase)
                         .setRequired(true)
@@ -195,7 +215,10 @@ module.exports.run = async (client, interaction) => {
             const targetId = parts[2];
             const selection = parts.slice(3).join('_');
 
-            const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+            let confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+            if (confirmPhrase.length > 100) {
+                confirmPhrase = localize('staff-management-system', 'fallback-conf-phrase');
+            }
 
             if (interaction.fields.getTextInputValue('confirm').trim() !== confirmPhrase) {
                 return interaction.editReply({

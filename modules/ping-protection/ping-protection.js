@@ -3,10 +3,22 @@
  * @module ping-protection
  * @author itskevinnn
  */
-const { Op } = require('sequelize');
-const { ActionRowBuilder, ButtonBuilder, EmbedBuilder, ButtonStyle, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
-const { embedType, embedTypeV2, formatDate, safeSetFooter } = require('../../src/functions/helpers');
-const { localize } = require('../../src/functions/localize');
+const {Op} = require('sequelize');
+const {
+    ActionRowBuilder,
+    ButtonBuilder,
+    EmbedBuilder,
+    ButtonStyle,
+    StringSelectMenuBuilder,
+    StringSelectMenuOptionBuilder
+} = require('discord.js');
+const {
+    embedType,
+    embedTypeV2,
+    formatDate,
+    safeSetFooter
+} = require('../../src/functions/helpers');
+const {localize} = require('../../src/functions/localize');
 const recentPings = new Set();
 
 // Data handling
@@ -52,7 +64,7 @@ async function getPingCountInWindow(client, userId, days) {
 }
 
 // Fetches ping history
-async function fetchPingHistory(client, userId, page = 1, limit = 5) { 
+async function fetchPingHistory(client, userId, page = 1, limit = 5) {
     const offset = (page - 1) * limit;
     const {
         count,
@@ -72,7 +84,10 @@ async function fetchPingHistory(client, userId, page = 1, limit = 5) {
 // Fetches moderation history
 async function fetchModHistory(client, userId, page = 1, limit = 5) {
     if (!client.models['ping-protection'] || !client.models['ping-protection']['ModerationLog']) {
-        return { total: 0, history: [] };
+        return {
+            total: 0,
+            history: []
+        };
     }
 
     try {
@@ -95,7 +110,10 @@ async function fetchModHistory(client, userId, page = 1, limit = 5) {
             u: userId,
             e: e.message
         }));
-        return { total: 0, history: [] };
+        return {
+            total: 0,
+            history: []
+        };
     }
 }
 
@@ -205,7 +223,8 @@ async function getDeletionCooldown(client, userId) {
     const cooldown = await model.findByPk(userId);
     if (!cooldown) return null;
     if (new Date(cooldown.blockedUntil) <= new Date()) {
-        await cooldown.destroy().catch(() => {});
+        await cooldown.destroy().catch(() => {
+        });
         return null;
     }
 
@@ -233,19 +252,19 @@ async function executeDataDeletion(client, userId, dataType) {
 
     if (['del_ping_history', 'del_all'].includes(dataType)) {
         await models.PingHistory.destroy({
-            where: { userId }
+            where: {userId}
         });
     }
 
     if (['del_moderation_history', 'del_all'].includes(dataType)) {
         await models.ModerationLog.destroy({
-            where: { victimID: userId }
+            where: {victimID: userId}
         });
     }
 
     if (dataType === 'del_all') {
         await models.LeaverData.destroy({
-            where: { userId }
+            where: {userId}
         });
     }
 }
@@ -323,15 +342,15 @@ async function generateUserPanel(client, targetUser) {
             i: targetUser.id
         }))
         .setColor('Blue')
-        .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
+        .setThumbnail(targetUser.displayAvatarURL({dynamic: true}))
         .addFields([{
-            name: localize('ping-protection', 'field-quick-history', { w: retentionWeeks }),
+            name: localize('ping-protection', 'field-quick-history', {w: retentionWeeks}),
             value: localize('ping-protection', 'field-quick-desc', {
                 p: pingCount,
                 m: modData.total
             }),
             inline: false
-        }])
+        }]);
 
     safeSetFooter(embed, client);
     if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
@@ -364,7 +383,7 @@ async function generatePanelHistory(client, targetUser, page = 1) {
     if (leaverData) {
         const dateStr = formatDate(leaverData.leftAt);
         const warningKey = history.length > 0 ? 'leaver-warning-long' : 'leaver-warning-short';
-        description += `⚠️ ${localize('ping-protection', warningKey, { d: dateStr })}\n\n`;
+        description += `⚠️ ${localize('ping-protection', warningKey, {d: dateStr})}\n\n`;
     }
 
     if (!isEnabled) {
@@ -418,9 +437,9 @@ async function generatePanelHistory(client, targetUser, page = 1) {
         .setTitle(localize('ping-protection', 'embed-history-title', {
             u: targetUser.username
         }))
-        .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
+        .setThumbnail(targetUser.displayAvatarURL({dynamic: true}))
         .setDescription(description)
-        .setColor('Orange')
+        .setColor('Orange');
 
     safeSetFooter(embed, client);
     if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
@@ -481,9 +500,9 @@ async function generatePanelActions(client, targetUser, page = 1) {
         .setTitle(localize('ping-protection', 'embed-actions-title', {
             u: targetUser.username
         }))
-        .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
+        .setThumbnail(targetUser.displayAvatarURL({dynamic: true}))
         .setDescription(description)
-        .setColor(isEnabled ? 'Red' : 'Grey')
+        .setColor(isEnabled ? 'Red' : 'Grey');
 
     safeSetFooter(embed, client);
     if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
@@ -518,7 +537,7 @@ async function generatePanelDeletion(client, targetUser) {
         }))
         .setDescription(description)
         .setColor('DarkRed')
-        .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
+        .setThumbnail(targetUser.displayAvatarURL({dynamic: true}));
 
     safeSetFooter(embed, client);
     if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
@@ -581,7 +600,7 @@ async function syncNativeAutoMod(client) {
                 e: error.message
             }));
         });
-        
+
         const rules = await guild.autoModerationRules.fetch();
         const existingRule = rules.find(r => r.name === 'Ping Protection System');
 
@@ -957,30 +976,30 @@ async function executeAction(client, member, rule, reason, storageConfig, origin
 
     // Sends error message if action fails
     const sendErrorLog = async (error) => {
-    if (!originChannel) return;
-        
-    const errorEmbed = new EmbedBuilder()
-        .setTitle(localize('ping-protection', 'punish-log-failed-title', { 
-            u: member.user.tag 
-        }))
-        .setDescription(
-            localize('ping-protection', 'punish-log-failed-desc', { 
-                m: member.toString() 
-            }) + 
-            `\n${localize('ping-protection', 'punish-log-error', { 
-                e: error.message 
-            })}`
-        )
-        .addFields({
-            name: localize('ping-protection', 'punish-log-docs-title'),
-            value: localize('ping-protection', 'punish-log-docs-desc'),
-            inline: false
-        })
-        .setColor('#ed4245')
-    
+        if (!originChannel) return;
+
+        const errorEmbed = new EmbedBuilder()
+            .setTitle(localize('ping-protection', 'punish-log-failed-title', {
+                u: member.user.tag
+            }))
+            .setDescription(
+                localize('ping-protection', 'punish-log-failed-desc', {
+                    m: member.toString()
+                }) +
+                `\n${localize('ping-protection', 'punish-log-error', {
+                    e: error.message
+                })}`
+            )
+            .addFields({
+                name: localize('ping-protection', 'punish-log-docs-title'),
+                value: localize('ping-protection', 'punish-log-docs-desc'),
+                inline: false
+            })
+            .setColor('#ed4245');
+
         safeSetFooter(errorEmbed, client);
         if (!client.strings.disableFooterTimestamp) errorEmbed.setTimestamp();
-        await originChannel.send({ embeds: [errorEmbed.toJSON()] }).catch((sendError) => {
+        await originChannel.send({embeds: [errorEmbed.toJSON()]}).catch((sendError) => {
             client.logger.warn(localize('ping-protection', 'log-punish-log-send-failed', {
                 e: sendError.message
             }));

@@ -21,6 +21,14 @@ function planReminder(client, notificationObject) {
             '%userTag%': formatDiscordUserName(member.user),
             '%userAvatarURL%': member.user.avatarURL()
         }, {
+
+            /*
+             * A reminder must only ever ping its owner. The reminder text is user-supplied
+             * (free text via /remind-me, a message link via the context command), so restrict
+             * mentions to the owner only - this blocks @everyone/@here, role pings and pinging
+             * other users through the reminder body, regardless of the global everyone-protection.
+             */
+            allowedMentions: {users: [notificationObject.userID]},
             components: [{
                 type: 'ACTION_ROW',
                 components: [

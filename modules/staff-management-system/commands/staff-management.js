@@ -138,10 +138,6 @@ async function handleProfileView(client, interaction, targetUser) {
     };
 
     let embedTemplate = config.profileEmbedMessage;
-    if (typeof embedTemplate === 'string') {
-        try { embedTemplate = JSON.parse(embedTemplate); } catch (e) {}
-    }
-
     let msgOpts = await embedTypeV2(embedTemplate, placeholders);
 
     if (!msgOpts) {
@@ -279,6 +275,8 @@ async function handleProfileAdminWipe(client, interaction, targetUser) {
         content: localize('staff-management-system', 'succ-prof-wipe', {u: targetUser.username})
     });
 }
+
+module.exports.handleProfileView = handleProfileView;
 
 module.exports.autoComplete = {
     'infraction': {

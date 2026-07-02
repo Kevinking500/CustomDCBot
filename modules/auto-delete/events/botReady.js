@@ -1,5 +1,12 @@
 const {localize} = require('../../../src/functions/localize');
+const {
+    isMessageProtected,
+    loadProtectedMessages
+} = require('../../../src/functions/protectedMessages');
 module.exports.run = async function (client) {
+    // Rebuild the protected-message registry from persisted ids before sweeping.
+    await loadProtectedMessages(client);
+
     const channels = client.configurations['auto-delete']['channels'];
     const voiceChannels = client.configurations['auto-delete']['voice-channels'];
 
@@ -29,7 +36,7 @@ module.exports.run = async function (client) {
                 if (idsToKeep.length !== parseInt(channel.keepMessageCount)) idsToKeep.push(message.id);
             }
         }
-        dcChannel.bulkDelete(channelMessages.filter(m => !idsToKeep.includes(m.id) && !m.pinned && m.deletable), true);
+        dcChannel.bulkDelete(channelMessages.filter(m => !idsToKeep.includes(m.id) && !m.pinned && m.deletable && !isMessageProtected(client, channel.channelID, m.id)), true);
     }
 
     for (const voiceChannel of uniqueConfigVoiceChannels) {
@@ -64,3 +71,5 @@ function findUniqueChannels(arrayToFilter) {
 
     return arrayToFilter.filter((channel, index) => uniqueConfigChannelIds[channel.channelID] === index);
 }
+
+module.exports.findUniqueChannels = findUniqueChannels;

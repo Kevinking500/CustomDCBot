@@ -5,14 +5,20 @@ const {
     archiveDiscordAttachment
 } = require('../../src/functions/helpers');
 const {localize} = require('../../src/functions/localize');
+const {
+    protectMessage,
+    unprotectMessage
+} = require('../../src/functions/protectedMessages');
 const {Op} = require('sequelize');
 
-module.exports = async (client, msgReaction, user, isReactionRemove = false) => {
+module.exports = async (client, msgReaction, user, isReactionRemove = false, options = {}) => {
+    const force = options.force === true;
     if (!client.botReadyAt) return;
     const msg = msgReaction.message;
     if (!msg.guild) return;
     if (msg.guild.id !== client.guildID) return;
     if (msgReaction.partial) msgReaction = await msgReaction.fetch();
+    if (msg.partial) await msg.fetch();
 
     const starConfig = client.configurations['starboard']['config'];
     if (!starConfig || starConfig.emoji !== msgReaction.emoji.toString()) return;
@@ -20,8 +26,8 @@ module.exports = async (client, msgReaction, user, isReactionRemove = false) => 
 
     const channel = client.channels.cache.get(starConfig.channelId);
     if (!channel) return disableModule('starboard', localize('partner-list', 'channel-not-found', {c: starConfig.channelId}));
-    if ((msg.channel.nsfw && !channel.nsfw) || starConfig.excludedChannels.includes(msg.channel.id) || starConfig.excludedRoles.some(r => msg.member.roles.cache.has(r))) return;
-    if (!starConfig.selfStar && user.id === msg.author.id) return msgReaction.users.remove(user.id).catch(() => {
+    if ((msg.channel.nsfw && !channel.nsfw) || starConfig.excludedChannels.includes(msg.channel.id) || starConfig.excludedRoles.some(r => msg.member?.roles.cache.has(r))) return;
+    if (!force && !starConfig.selfStar && user.id === msg.author.id) return msgReaction.users.remove(user.id).catch(() => {
     });
 
     const starUser = await client.models['starboard']['StarUser'].findAll({
@@ -33,7 +39,7 @@ module.exports = async (client, msgReaction, user, isReactionRemove = false) => 
         }
     });
 
-    if (!isReactionRemove) {
+    if (!isReactionRemove && !force) {
         if (starUser.length >= starConfig.starsPerHour) {
             user.send(localize('starboard', 'star-limit', {
                 limitEmoji: '**' + starConfig.starsPerHour + '** ' + starConfig.emoji,
@@ -63,9 +69,12 @@ module.exports = async (client, msgReaction, user, isReactionRemove = false) => 
 
     const starboardMsg = starMsg ? await channel.messages.fetch(starMsg.starMsg).catch(() => {
     }) : null;
-    if (reactioncount < starConfig.minStars) {
+    if (!force && reactioncount < starConfig.minStars) {
         if (isReactionRemove) {
-            if (starboardMsg) starboardMsg.delete();
+            if (starboardMsg) {
+                unprotectMessage(client, starConfig.channelId, starboardMsg.id);
+                starboardMsg.delete();
+            }
             client.models['starboard']['StarMsg'].destroy({
                 where: {
                     msgId: msg.id
@@ -104,10 +113,13 @@ module.exports = async (client, msgReaction, user, isReactionRemove = false) => 
         '%image%': image
     });
 
-    if (starboardMsg) starboardMsg.edit(generatedMsg);
-    else {
+    if (starboardMsg) {
+        protectMessage(client, starConfig.channelId, starboardMsg.id);
+        starboardMsg.edit(generatedMsg);
+    } else {
         const sentMessage = await channel.send(generatedMsg);
 
+        protectMessage(client, starConfig.channelId, sentMessage.id);
         client.models['starboard']['StarMsg'].create({
             msgId: msg.id,
             starMsg: sentMessage.id

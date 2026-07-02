@@ -12,6 +12,11 @@ const {
 } = require('../../main');
 const {localize} = require('./localize');
 const isEqual = require('is-equal');
+const path = require('path');
+const {
+    computeRequiredIntents,
+    diffIntents
+} = require('./intents');
 
 // Config localization: load external translation files (cached)
 const configLocalizationCache = {};
@@ -282,6 +287,7 @@ async function checkModuleConfig(moduleName, afterCheckEventFile = null) {
 module.exports.loadAllConfigs = loadAllConfigs;
 module.exports.loadConfigLocalization = loadConfigLocalization;
 module.exports.isLocalizedObject = isLocalizedObject;
+module.exports.checkType = checkType;
 
 /**
  * Check type of one field
@@ -372,7 +378,7 @@ async function checkType(field, value) {
         default:
             logger.error(`Unknown type: ${field.type}`);
             process.exit(0);
-            ;
+
     }
 }
 
@@ -385,6 +391,35 @@ async function checkType(field, value) {
  * @author Simon Csaba <mail@scderox.de>
  * @return {Promise}
  */
+/**
+ * Recompute the required gateway intents for the currently-enabled modules and diff against the live
+ * client's active intents. Warns when a restart is needed to pick up newly-required intents. Pure read
+ * of the on-disk config + client._activeIntents, so it can answer "does this need a restart?" up front.
+ * @param {Client} client
+ * @param {string} [modulesDir]
+ * @param {boolean} [logWarnings=true]
+ * @returns {{requiresRestart: boolean, missingIntents: string[]}}
+ */
+function computeReloadIntentChange(client, modulesDir, logWarnings = true) {
+    const dir = modulesDir || path.join(__dirname, '..', '..', 'modules');
+    const {
+        names: required,
+        unknown
+    } = computeRequiredIntents(client.configDir, dir);
+    if (logWarnings && unknown.length) client.logger.warn(localize('config', 'intents-unknown', {intents: unknown.join(', ')}));
+    const missingIntents = diffIntents(client._activeIntents || [], required);
+    const requiresRestart = missingIntents.length > 0;
+    if (logWarnings && requiresRestart) {
+        client.logger.warn(localize('config', 'intents-restart-required', {intents: missingIntents.join(', ')}));
+    }
+    return {
+        requiresRestart,
+        missingIntents
+    };
+}
+
+module.exports.computeReloadIntentChange = computeReloadIntentChange;
+
 module.exports.reloadConfig = async function (client) {
     client.logger.info(localize('config', 'config-reload'));
     if (client.scnxSetup) await require('./scnx-integration').beforeInit(client);
@@ -427,6 +462,10 @@ module.exports.reloadConfig = async function (client) {
         client.config.customCommands = jsonfile.readFileSync(`${client.configDir}/custom-commands.json`);
         await require('./scnx-integration').verifyCustomCommands(client);
     }
+
+    const intentChange = computeReloadIntentChange(client);
+    res.requiresRestart = intentChange.requiresRestart;
+    res.missingIntents = intentChange.missingIntents;
 
     return res;
 };

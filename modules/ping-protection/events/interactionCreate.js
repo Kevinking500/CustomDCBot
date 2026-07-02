@@ -10,8 +10,11 @@ const {
     setDeletionCooldown,
     getDeletionTypeLocaleKey
 } = require('../ping-protection');
-const { localize } = require('../../../src/functions/localize');
-const { safeSetFooter, dateToDiscordTimestamp } = require('../../../src/functions/helpers.js');
+const {localize} = require('../../../src/functions/localize');
+const {
+    safeSetFooter,
+    dateToDiscordTimestamp
+} = require('../../../src/functions/helpers.js');
 const {
     MessageFlags,
     ModalBuilder,
@@ -27,7 +30,7 @@ const {
 // Interaction handler
 module.exports.run = async function (client, interaction) {
     if (!client.botReadyAt) return;
-    const isAdmin = interaction.member?.permissions?.has('Administrator')
+    const isAdmin = interaction.member?.permissions?.has('Administrator');
 
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ping-protection_panel-menu_')) {
         if (!isAdmin) {
@@ -100,17 +103,33 @@ module.exports.run = async function (client, interaction) {
             });
         }
 
+        // Checks to ensure modal content fits Discord limits
+        let modalTitle = localize('ping-protection', 'modal-title');
+        if (modalTitle.length > 45) {
+            modalTitle = localize('ping-protection', 'fallback-modal-title');
+        }
+
+        let modalLabel = localize('ping-protection', 'modal-label');
+        if (modalLabel.length > 45) {
+            modalLabel = localize('ping-protection', 'fallback-modal-label');
+        }
+
+        let confirmationPhrase = localize('ping-protection', 'modal-phrase');
+        if (confirmationPhrase.length > 100) {
+            confirmationPhrase = localize('ping-protection', 'fallback-modal-phrase');
+        }
+
         const modal = new ModalBuilder()
             .setCustomId(`ping-protection_del-confirm_${targetId}_${selection}`)
-            .setTitle(localize('ping-protection', 'modal-title'));
+            .setTitle(modalTitle);
 
         modal.addComponents(
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
                     .setCustomId('confirm')
-                    .setLabel(localize('ping-protection', 'modal-label'))
+                    .setLabel(modalLabel)
                     .setStyle(TextInputStyle.Paragraph)
-                    .setPlaceholder(localize('ping-protection', 'modal-phrase'))
+                    .setPlaceholder(confirmationPhrase)
                     .setRequired(true)
             )
         );
@@ -130,7 +149,11 @@ module.exports.run = async function (client, interaction) {
         const targetId = parts[2];
         const selection = parts.slice(3).join('_');
 
-        const confirmPhrase = localize('ping-protection', 'modal-phrase');
+        let confirmPhrase = localize('ping-protection', 'modal-phrase');
+        if (confirmPhrase.length > 100) {
+            confirmPhrase = localize('ping-protection', 'fallback-modal-phrase');
+        }
+
         if (interaction.fields.getTextInputValue('confirm').trim() !== confirmPhrase) {
             return interaction.reply({
                 content: localize('ping-protection', 'modal-failed'),
@@ -160,7 +183,7 @@ module.exports.run = async function (client, interaction) {
             const embed = new EmbedBuilder()
                 .setTitle(localize('ping-protection', 'del-all-title'))
                 .setDescription(localize('ping-protection', 'del-all-desc'))
-                .setColor('DarkRed')
+                .setColor('DarkRed');
 
             safeSetFooter(embed, client);
             if (!client.strings.disableFooterTimestamp) embed.setTimestamp();
@@ -230,7 +253,8 @@ module.exports.run = async function (client, interaction) {
                     const targetUser = await client.users.fetch(targetId).catch(() => null);
                     if (targetUser && interaction.message) {
                         const payload = await generateUserPanel(client, targetUser);
-                        await interaction.message.edit(payload).catch(() => {});
+                        await interaction.message.edit(payload).catch(() => {
+                        });
                     }
 
                     await btnInt.update({
@@ -249,7 +273,8 @@ module.exports.run = async function (client, interaction) {
                         content: localize('ping-protection', 'err-del-time'),
                         embeds: [],
                         components: []
-                    }).catch(() => {});
+                    }).catch(() => {
+                    });
                 }
             });
 
@@ -268,7 +293,8 @@ module.exports.run = async function (client, interaction) {
         const targetUser = await client.users.fetch(targetId).catch(() => null);
         if (targetUser && interaction.message) {
             const payload = await generateUserPanel(client, targetUser);
-            await interaction.message.edit(payload).catch(() => {});
+            await interaction.message.edit(payload).catch(() => {
+            });
         }
 
         return interaction.reply({
@@ -282,7 +308,7 @@ module.exports.run = async function (client, interaction) {
 
     // User panel dropdown and pages handler
     if (interaction.isButton() && interaction.customId.startsWith('ping-protection_')) {
-        
+
         if (interaction.customId.startsWith('ping-protection_hist-page_')) {
             const parts = interaction.customId.split('_');
             const userId = parts[2];

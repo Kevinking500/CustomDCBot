@@ -1,4 +1,4 @@
-const {generateSuggestionEmbed, notifyMembers} = require('../suggestion');
+const {applySuggestionDecision} = require('../suggestion');
 const {localize} = require('../../../src/functions/localize');
 const {truncate, formatDiscordUserName} = require('../../../src/functions/helpers');
 
@@ -28,14 +28,7 @@ module.exports.subcommands = {
 
 module.exports.run = async function (interaction) {
     if (interaction.returnEarly) return;
-    interaction.suggestion.adminAnswer = {
-        action: interaction.editType,
-        reason: interaction.options.getString('comment'),
-        userID: interaction.user.id
-    };
-    await interaction.suggestion.save();
-    await generateSuggestionEmbed(interaction.client, interaction.suggestion);
-    await notifyMembers(interaction.client, interaction.suggestion, 'team', interaction.user.id);
+    await applySuggestionDecision(interaction.client, interaction.suggestion, interaction.editType, interaction.options.getString('comment'), interaction.user.id);
     await interaction.editReply({content: '✅ ' + localize('suggestions', 'updated-suggestion')});
 };
 

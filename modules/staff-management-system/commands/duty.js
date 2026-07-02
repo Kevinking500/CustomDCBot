@@ -1025,8 +1025,16 @@ async function handleDutyAdminVoidAll(client, interaction) {
     const permCheck = checkDutyAdminPermission(client, interaction);
     if (permCheck) return permCheck;
 
+    let confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+    if (confirmPhrase.length > 100) {
+        confirmPhrase = localize('staff-management-system', 'fallback-conf-phrase');
+    }
+    let delModalLabel = localize('staff-management-system', 'mod-del-lbl');
+    if (delModalLabel.length > 45) {
+        delModalLabel = localize('staff-management-system', 'fallback-del-lbl');
+    }
+
     const targetUserId = interaction.customId.split('_')[2];
-    const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
     const modal = new ModalBuilder()
         .setCustomId(`duty-mgmt_admin-voidall-submit_${targetUserId}`)
         .setTitle(localize('staff-management-system', 'mod-v-all-title'));
@@ -1035,8 +1043,8 @@ async function handleDutyAdminVoidAll(client, interaction) {
         new ActionRowBuilder().addComponents(
             new TextInputBuilder()
                 .setCustomId('confirm')
-                .setLabel(localize('staff-management-system', 'mod-del-lbl'))
-                .setStyle(TextInputStyle.Short)
+                .setLabel(delModalLabel)
+                .setStyle(TextInputStyle.Paragraph)
                 .setPlaceholder(confirmPhrase)
                 .setRequired(true)
         )
@@ -1049,7 +1057,10 @@ async function handleDutyAdminVoidAllSubmit(client, interaction) {
     if (permCheck) return permCheck;
 
     const targetUserId = interaction.customId.split('_')[2];
-    const confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+    let confirmPhrase = localize('staff-management-system', 'del-conf-phrase');
+    if (confirmPhrase.length > 100) {
+        confirmPhrase = localize('staff-management-system', 'fallback-conf-phrase');
+    }
 
     if (interaction.fields.getTextInputValue('confirm').trim() !== confirmPhrase) {
         return interaction.reply({
@@ -1544,4 +1555,12 @@ module.exports.buttonHandlers = {
     handleDutyAdminVoidAll,
     handleDutyAdminVoidAllSubmit,
     handleDutyAdminAddTimeSubmit
+};
+
+// Exported for unit testing of the pure duty helpers.
+module.exports._test = {
+    getLookbackDate,
+    canUseDutyAdmin,
+    applyBreakElapsedToShift,
+    getQuotaForMember
 };

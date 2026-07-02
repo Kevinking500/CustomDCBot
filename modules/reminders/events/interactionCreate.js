@@ -1,5 +1,9 @@
 const {localize} = require('../../../src/functions/localize');
-const {formatDate} = require('../../../src/functions/helpers');
+const {
+    formatDate,
+    memberCanSendInChannel
+} = require('../../../src/functions/helpers');
+const durationParser = require('../../../src/functions/parseDuration');
 const {planReminder} = require('../reminders');
 
 const snoozeDurations = {
@@ -15,6 +19,50 @@ const snoozeDurations = {
  * @param {Interaction} interaction Button interaction
  */
 module.exports.run = async function (client, interaction) {
+
+    /*
+     * Modal submit from the "Create Reminder" context command. The customId encodes the
+     * targeted message as create-reminder:<channelId>:<messageId>; we reconstruct it, parse
+     * the WHEN duration the same way /remind-me does and run the existing planReminder() flow
+     * with the message jump link as the reminder content.
+     */
+    if (typeof interaction.isModalSubmit === 'function' && interaction.isModalSubmit() && interaction.customId.startsWith('create-reminder:')) {
+        const parts = interaction.customId.split(':');
+        const channelId = parts[1];
+        const messageId = parts[2];
+
+        const channel = client.channels.cache.get(channelId) || await client.channels.fetch(channelId).catch(() => null);
+        const message = channel ? await channel.messages.fetch(messageId).catch(() => null) : null;
+        if (!message) return interaction.reply({
+            ephemeral: true,
+            content: '⚠️ ' + localize('reminders', 'context-message-not-found')
+        });
+
+        if (!memberCanSendInChannel(interaction.member, interaction.channel)) return interaction.reply({
+            ephemeral: true,
+            content: '⚠️ ' + localize('command', 'no-send-permission')
+        });
+
+        const duration = durationParser(interaction.fields.getTextInputValue('in'));
+        const time = new Date(duration + new Date().getTime());
+        if (!time || isNaN(time) || time.getTime() < new Date().getTime() + 55000) return interaction.reply({
+            ephemeral: true,
+            content: '⚠️ ' + localize('reminders', 'one-minute-in-future')
+        });
+
+        const reminderObject = await client.models['reminders']['Reminder'].create({
+            userID: interaction.user.id,
+            reminderText: localize('reminders', 'context-reminder-text', {url: message.url}),
+            date: time,
+            channelID: interaction.channelId
+        });
+        planReminder(client, reminderObject);
+        return interaction.reply({
+            ephemeral: true,
+            content: '✅ ' + localize('reminders', 'reminder-set', {d: formatDate(time)})
+        });
+    }
+
     if (!interaction.isButton()) return;
     if (!interaction.customId.startsWith('reminder-snooze-')) return;
 

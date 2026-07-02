@@ -3,8 +3,8 @@
   "humanReadableName": "Reminders",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "description": "Let users set reminders for themselves - either via DMs or Channels",
   "commands-dir": "/commands",
@@ -17,5 +17,6 @@
   ],
   "models-dir": "/models",
   "fa-icon": "far fa-bell",
-  "holidayGift": true
+  "holidayGift": true,
+  "intents": []
 }

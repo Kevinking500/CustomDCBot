@@ -7,9 +7,14 @@ const {MessageEmbed} = require('discord.js');
 const {
     renderProgressbar,
     formatDate,
-    parseEmbedColor
+    parseEmbedColor,
+    truncate
 } = require('../../src/functions/helpers');
 const {localize} = require('../../src/functions/localize');
+const {
+    protectMessage,
+    unprotectMessage
+} = require('../../src/functions/protectedMessages');
 
 /**
  * Creates a new poll
@@ -31,7 +36,8 @@ async function createPoll(data, client) {
         options: data.options,
         channelID: data.channel.id,
         expiresAt: data.endAt,
-        votes: votes
+        votes: votes,
+        maxSelections: typeof data.maxSelections === 'number' ? data.maxSelections : 1
     });
 
     if (data.endAt) {
@@ -76,6 +82,12 @@ async function updateMessage(channel, data, mID = null) {
     embed.addField(strings.embed.options, s);
     embed.addField(strings.embed.liveView, p);
     embed.addField(strings.embed.visibility, localize('polls', `poll-${data.description.startsWith('[PUBLIC]') ? 'public' : 'private'}`));
+    const optionCount = Object.keys(data.options).length;
+    const rawMaxSelections = typeof data.maxSelections === 'number' ? data.maxSelections : 1;
+    const effectiveMax = (rawMaxSelections === 0 || rawMaxSelections > optionCount) ? optionCount : rawMaxSelections;
+    if (effectiveMax > 1) {
+        embed.addField(localize('polls', 'max-selections-field'), rawMaxSelections === 0 ? localize('polls', 'max-selections-unlimited') : localize('polls', 'max-selections-limit', {n: effectiveMax}));
+    }
 
     const options = [];
     for (const vId in data.options) {
@@ -108,7 +120,7 @@ async function updateMessage(channel, data, mID = null) {
                 disabled: expired,
                 customId: 'polls-vote',
                 min_values: 1,
-                max_values: 1,
+                max_values: effectiveMax,
                 placeholder: localize('polls', 'vote'),
                 options
             }]
@@ -134,8 +146,35 @@ async function updateMessage(channel, data, mID = null) {
     if (m) r = await m.edit({embeds: [embed], components});
     else {
         r = await channel.send({embeds: [embed], components});
+        // client is not in scope inside updateMessage, so use channel.client
+        protectMessage(channel.client, channel.id, r.id);
     }
+    // The ended poll message is kept, so unprotect it once voting is closed
+    if (expired) unprotectMessage(channel.client, channel.id, r.id);
     return r.id;
 }
 
 module.exports.updateMessage = updateMessage;
+
+/**
+ * Builds the "public votes" embed (voters per option), shared by the polls-public-votes
+ * button and the "View Poll Votes" context command.
+ * @param {Interaction} interaction Interaction (used for client config + localize)
+ * @param {Object} poll Poll DB-Object
+ * @return {MessageEmbed}
+ */
+function buildPublicVotesEmbed(interaction, poll) {
+    const embed = new MessageEmbed()
+        .setTitle(localize('polls', 'view-public-votes'))
+        .setColor(0xE67E22);
+    for (const vId in poll.options) {
+        const voters = [];
+        for (const voterID of poll.votes[parseInt(vId, 10) + 1] || []) {
+            voters.push('<@' + voterID + '>');
+        }
+        embed.addField(interaction.client.configurations['polls']['config']['reactions'][parseInt(vId, 10) + 1] + ' ' + poll.options[vId], truncate(voters.join(',') || '*' + localize('polls', 'no-votes-for-this-option') + '*', 1024));
+    }
+    return embed;
+}
+
+module.exports.buildPublicVotesEmbed = buildPublicVotesEmbed;

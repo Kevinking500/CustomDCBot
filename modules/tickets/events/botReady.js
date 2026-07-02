@@ -1,11 +1,30 @@
 const {ChannelType} = require('discord.js');
-const {embedType, disableModule, migrate} = require('../../../src/functions/helpers');
+const {
+    embedType,
+    disableModule
+} = require('../../../src/functions/helpers');
 const {localize} = require('../../../src/functions/localize');
+const {
+    protectMessage,
+    unprotectMessage,
+    registerProtectedMessageProvider
+} = require('../../../src/functions/protectedMessages');
+
+// Restore auto-delete protection for ticket panels from the database on startup.
+registerProtectedMessageProvider(async (client) => {
+    if (!client.modules['tickets']?.enabled) return [];
+    const rows = await client.models['tickets']['TicketMessage'].findAll({attributes: ['channelID', 'messageID']});
+    return rows
+        .filter(r => r.channelID && r.messageID)
+        .map(r => ({
+            channelId: r.channelID,
+            messageId: r.messageID
+        }));
+});
 
 module.exports.run = async function (client) {
     const moduleConfig = client.configurations['tickets']['config'];
     const messageModel = client.models['tickets']['TicketMessage'];
-    await migrate('tickets', 'TicketV1', 'Ticket');
     for (const element of moduleConfig) {
         for (const element2 of moduleConfig) {
             if (moduleConfig.indexOf(element) === moduleConfig.indexOf(element2) && moduleConfig.indexOf(element) !== moduleConfig.indexOf(element2)) return disableModule('tickets', localize('tickets', 'button-not-uniqe'));
@@ -32,8 +51,17 @@ module.exports.run = async function (client) {
         if (sent) {
             const channelMessages = await channel.messages.fetch(sent.messageID).catch(() => {
             });
-            if (channelMessages && channelMessages.author.id === client.user.id) await channelMessages.edit(message);
-            else await sendMessage(message, channel, messageModel, moduleConfig, element);
+            if (channelMessages && channelMessages.author.id === client.user.id) {
+                await channelMessages.edit(message);
+
+                /* Protect the existing panel surviving a restart so auto-delete keeps it. */
+                protectMessage(client, channel.id, channelMessages.id);
+            } else {
+
+                /* Old stored panel is gone or not ours, drop its protection before recreating. */
+                unprotectMessage(client, sent.channelID || channel.id, sent.messageID);
+                await sendMessage(message, channel, messageModel, moduleConfig, element);
+            }
         } else {
             await sendMessage(message, channel, messageModel, moduleConfig, element);
         }
@@ -52,6 +80,9 @@ module.exports.run = async function (client) {
  */
 async function sendMessage(message, channel, messageModel, moduleConfig, element) {
     const msg = await channel.send(message);
+
+    /* client is not in scope here, use channel.client. Protect the freshly posted panel. */
+    protectMessage(channel.client, channel.id, msg.id);
     const exists = await messageModel.findOne({
         where: {
             type: moduleConfig.indexOf(element)

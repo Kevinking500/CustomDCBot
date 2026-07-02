@@ -2,8 +2,8 @@
   "name": "anti-ghostping",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "events-dir": "/events",
   "fa-icon": "fa fa-bell-exclamation",
@@ -15,5 +15,12 @@
   ],
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/anti-ghostping",
   "humanReadableName": "Anti-Ghostping",
-  "description": "This module detects ghost-pings and sends a message if one occurs"
+  "description": "This module detects ghost-pings and sends a message if one occurs",
+  "intents": [
+    "GuildMessages",
+    "MessageContent"
+  ],
+  "intentReasons": {
+    "MessageContent": "Reads message content so a deleted ghost-ping can be surfaced with its original mention text."
+  }
 }

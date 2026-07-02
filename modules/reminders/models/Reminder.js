@@ -11,7 +11,7 @@ module.exports = class RemindersReminder extends Model {
             userID: {
                 type: DataTypes.STRING
             },
-            reminderText: DataTypes.STRING,
+            reminderText: DataTypes.TEXT,
             channelID: DataTypes.STRING, // set to DM to send a DM
             date: DataTypes.DATE
         }, {

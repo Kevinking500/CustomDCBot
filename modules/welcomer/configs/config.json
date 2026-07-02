@@ -21,6 +21,14 @@
       "category": "roles"
     },
     {
+      "name": "treat-welcome-roles-as-base-roles",
+      "humanName": "Treat join roles as base roles (auto-restore)",
+      "default": false,
+      "description": "Guarantees every regular member has all roles configured under 'Give roles on join'. When enabled, the bot re-adds a join role if it gets removed, grants missing join roles after a member is released from quarantine or Join Gate hold, and runs a daily sweep to catch anything missed. Quarantined, held, and pending members are excluded — see the docs for the full list of exclusions and edge cases.",
+      "type": "boolean",
+      "category": "roles"
+    },
+    {
       "name": "not-send-messages-if-member-is-bot",
       "humanName": "Ignore bots?",
       "default": true,

@@ -15,5 +15,8 @@
   "tags": [
     "community"
   ],
-  "openSourceURL": "https://github.com/DEVTomatoCake/ScootKit-CustomBot/tree/main/modules/sticky-messages"
+  "openSourceURL": "https://github.com/DEVTomatoCake/ScootKit-CustomBot/tree/main/modules/sticky-messages",
+  "intents": [
+    "GuildMessages"
+  ]
 }

@@ -1,5 +1,5 @@
 const {localize} = require('../../../src/functions/localize');
-const durationParser = require('parse-duration');
+const durationParser = require('../../../src/functions/parseDuration');
 const {planReminder} = require('../reminders');
 const {formatDate} = require('../../../src/functions/helpers');
 

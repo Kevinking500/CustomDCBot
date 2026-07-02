@@ -3,12 +3,11 @@ const {localize} = require('../../../src/functions/localize');
 const {formatDiscordUserName} = require('../../../src/functions/helpers');
 const {calculateLevelXP, displayLevel} = require('../events/messageCreate');
 
-async function runXPAction(interaction, newXP) {
+async function runXPAction(interaction, newXP, member = interaction.options.getMember('user')) {
     await interaction.deferReply({
         ephemeral: true
     });
 
-    const member = interaction.options.getMember('user');
     let user = await interaction.client.models['levels']['User'].findOne({
         where: {
             userID: member.user.id
@@ -72,10 +71,9 @@ async function fixLevelRoles(interaction, member, level) {
     }
 }
 
-async function runLevelAction(interaction, newLevel) {
+async function runLevelAction(interaction, newLevel, member = interaction.options.getMember('user')) {
     await interaction.deferReply({ephemeral: true});
 
-    const member = interaction.options.getMember('user');
     const user = await interaction.client.models['levels']['User'].findOne({
         where: {
             userID: member.user.id
@@ -121,6 +119,9 @@ async function runLevelAction(interaction, newLevel) {
         })
     });
 }
+
+module.exports.runXPAction = runXPAction;
+module.exports.runLevelAction = runLevelAction;
 
 module.exports.subcommands = {
     'reset-xp': async function (interaction) {

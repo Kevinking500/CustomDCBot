@@ -65,18 +65,13 @@ All standard Sequelize methods are available: `findOne`, `findAll`, `findOrCreat
 
 ## Migrations
 
-The bot calls `sequelize.sync()` at startup, which creates missing tables and adds missing columns automatically. **It
-does not modify or remove existing columns.** If you change a column's type, rename it, or drop it, you have two
-options:
+The bot calls `sequelize.sync()` at startup, which creates missing **tables**. **It does not add columns to existing
+tables, nor modify or remove existing columns.** So whenever you add, rename, change, or drop a field on an existing
+model, ship a migration alongside it so existing installs pick up the schema change.
 
-1. **Manual migration.** Use Sequelize's [umzug](https://github.com/sequelize/umzug) or write SQL by hand. Drop the
-   bot's table or run `ALTER TABLE` against your database.
-2. **Bump the table name.** For breaking schema changes, rename `tableName` (e.g. `welcomer_User_v2`). The old table
-   stays in place for safety; you migrate data on the side.
-
-For non-trivial migrations across versions, the bot exposes `module.exports.migrationStart()` / `migrationEnd()` from
-`main.js` - call these around long-running migration code so SIGTERM/SIGINT defers shutdown until the migration
-finishes.
+Migrations are file-based and run automatically on boot by an [Umzug](https://github.com/sequelize/umzug)-based runner -
+you drop a file into your module's `migrations/` directory and the runner discovers it, applies it once, tracks it, and
+backs up the affected tables first. See [migration.md](./migration.md) for the full guide.
 
 ## Associations
 

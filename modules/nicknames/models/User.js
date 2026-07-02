@@ -7,7 +7,7 @@ module.exports = class User extends Model {
                 type: DataTypes.STRING,
                 primaryKey: true
             },
-            nickname: DataTypes.JSON
+            nickname: DataTypes.TEXT
         }, {
             tableName: 'nicknames_User',
             timestamps: true,

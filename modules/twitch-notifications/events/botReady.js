@@ -4,8 +4,29 @@
 const {embedType} = require('../../../src/functions/helpers');
 
 const {ApiClient} = require('@twurple/api');
-const {ClientCredentialsAuthProvider} = require('@twurple/auth');
+const {AppTokenAuthProvider} = require('@twurple/auth');
 const {localize} = require('../../../src/functions/localize');
+
+const INTERVAL_SECONDS = 180;
+
+/**
+ * Classifies a streamer poll result into the action the poller should take.
+ * Extracted (behavior-preserving) from the `start` branch ladder so the
+ * decision logic can be unit-tested without the Twitch API / Discord client.
+ *
+ * @param {('userNotFound'|null|Object)} stream sentinel string, null (offline) or a HelixStream-like object with `startDate`
+ * @param {?{startedAt: string}} streamer persisted streamer row (null if unknown)
+ * @returns {'userNotFound'|'newLive'|'reLive'|'offline'|'noChange'}
+ */
+function classifyStreamUpdate(stream, streamer) {
+    if (stream === 'userNotFound') return 'userNotFound';
+    if (stream !== null && !streamer) return 'newLive';
+    if (stream !== null && stream.startDate.toString() !== streamer.startedAt) return 'reLive';
+    if (stream === null) return 'offline';
+    return 'noChange';
+}
+
+module.exports.__test = {classifyStreamUpdate};
 
 /**
  * General program
@@ -84,21 +105,22 @@ function twitchNotifications(client, apiClient) {
             }
         });
         const stream = await isStreamLive(value.streamer);
-        if (stream === 'userNotFound') {
+        const action = classifyStreamUpdate(stream, streamer);
+        if (action === 'userNotFound') {
             return client.logger.error(`[twitch-notifications] ` + localize('twitch-notifications', 'user-not-on-twitch', {u: value}));
-        } else if (stream !== null && !streamer) {
+        } else if (action === 'newLive') {
             client.models['twitch-notifications']['streamer'].create({
                 name: value.streamer.toLowerCase(),
                 startedAt: stream.startDate.toString()
             });
             sendMsg(stream.userDisplayName, stream.gameName, stream.thumbnailUrl, streamers[index]['liveMessageChannel'], stream.title, index);
             addLiveRole(streamers[index]['id'], streamers[index]['role'], streamers[index]['liveRole']);
-        } else if (stream !== null && stream.startDate.toString() !== streamer.startedAt) {
+        } else if (action === 'reLive') {
             streamer.startedAt = stream.startDate.toString();
             streamer.save();
             sendMsg(stream.userDisplayName, stream.gameName, stream.thumbnailUrl, streamers[index]['liveMessageChannel'], stream.title, index);
             addLiveRole(streamers[index]['id'], streamers[index]['role'], streamers[index]['liveRole']);
-        } else if (stream === null) {
+        } else if (action === 'offline') {
             if (!streamers[index]['liveRole']) return;
             if (!streamers[index]['id'] || streamers[index]['id'] === '' || !streamers[index]['role'] || streamers[index]['role'] === '') return;
             const member = client.guild.members.cache.get(streamers[index]['id']);
@@ -115,20 +137,18 @@ function twitchNotifications(client, apiClient) {
 
 module.exports.run = async (client) => {
     const config = client.configurations['twitch-notifications']['config'];
-
-    if (!config['twitchClientID'] || !config['clientSecret']) {
+    if (!config || !config['twitchClientID'] || !config['clientSecret']) {
         client.logger.error('[twitch-notifications] Missing twitchClientID or clientSecret in configs/config.json — module disabled. Create a Twitch app at https://dev.twitch.tv/console/apps to obtain credentials.');
         return;
     }
 
-    const authProvider = new ClientCredentialsAuthProvider(config['twitchClientID'], config['clientSecret']);
+    const authProvider = new AppTokenAuthProvider(config['twitchClientID'], config['clientSecret']);
     const apiClient = new ApiClient({authProvider});
 
     await twitchNotifications(client, apiClient);
-    const interval = (config['interval'] || 180) * 1000;
+    const intervalSeconds = config['interval'] || INTERVAL_SECONDS;
     const twitchCheckInterval = setInterval(() => {
         twitchNotifications(client, apiClient);
-    }, interval);
-
+    }, intervalSeconds * 1000);
     client.intervals.push(twitchCheckInterval);
 };

@@ -1,5 +1,4 @@
-const {embedType, formatDiscordUserName} = require('../../../src/functions/helpers');
-const {localize} = require('../../../src/functions/localize');
+const {embedType} = require('../../../src/functions/helpers');
 
 module.exports.run = async function(client, message) {
     if (!message.guild) return;
@@ -14,19 +13,9 @@ module.exports.run = async function(client, message) {
         }
     });
     if (userAFK) {
-        if (userAFK.nickname) await message.member.setNickname(userAFK.nickname, '[afk-system] ' + localize('afk-system', 'afk-nickname-change-audit-log')).catch(e => {
-            message.client.logger.warn(localize('afk-system', 'can-not-edit-nickname', {
-                e,
-                u: formatDiscordUserName(message.author)
-            }));
-        });
-        else await message.member.setNickname(null, '[afk-system] ' + localize('afk-system', 'afk-nickname-change-audit-log')).catch(e => {
-            message.client.logger.warn(localize('afk-system', 'can-not-edit-nickname', {
-                e,
-                u: formatDiscordUserName(message.author)
-            }));
-        });
         await userAFK.destroy();
+        client.nicknameManager.attachMember(message.member);
+        client.nicknameManager.requestUpdate(message.member.id);
         await message.reply(embedType(client.configurations['afk-system']['config']['autoEndMessage'], {'%user%': message.author.toString()}, {allowedMentions: {parse: []}}));
     }
     for (const member of message.mentions.members.values()) {

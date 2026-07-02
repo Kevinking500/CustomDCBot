@@ -1,3 +1,5 @@
+const {isMessageProtected} = require('../../../src/functions/protectedMessages');
+
 module.exports.run = async function (client, msg) {
     if (!client.botReadyAt) return;
     if (!msg.guild) return;
@@ -9,7 +11,7 @@ module.exports.run = async function (client, msg) {
     if (!channel) return;
     setTimeout(async () => {
         if (parseInt(channel.keepMessageCount) === 0) {
-            if (msg.deletable && !msg.pinned) msg.delete().catch(() => {
+            if (msg.deletable && !msg.pinned && !isMessageProtected(client, msg.channel.id, msg.id)) msg.delete().catch(() => {
             });
             return;
         }
@@ -18,6 +20,7 @@ module.exports.run = async function (client, msg) {
             limit: parseInt(channel.keepMessageCount)
         })).sort((a, b) => a.createdAt < b.createdAt ? 1 : -1);
         if (oldMessages.length < parseInt(channel.keepMessageCount)) return;
-        if (oldMessages.last().deletable && !oldMessages.last().pinned) await oldMessages.last().delete();
+        const oldest = oldMessages.last();
+        if (oldest.deletable && !oldest.pinned && !isMessageProtected(client, msg.channel.id, oldest.id)) await oldest.delete();
     }, parseInt(channel.timeout) * 60000);
 };

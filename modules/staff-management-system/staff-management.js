@@ -6,7 +6,7 @@
 const { ModalBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const { Op } = require('sequelize');
 const schedule = require('node-schedule');
-const { embedTypeV2, safeSetFooter, dateToDiscordTimestamp } = require('../../src/functions/helpers');
+const {embedTypeV2, safeSetFooter, dateToDiscordTimestamp} = require('../../src/functions/helpers');
 const { localize } = require('../../src/functions/localize');
 
 // --- Local helpers ---
@@ -119,16 +119,17 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         content: localize('staff-management-system', 'err-feat-disabled', {feature: 'Infractions'})
     });
 
+    const generalConfig = getConfig(client, 'configuration');
+    const canInfract = checkStaffPermissions(interaction.member, generalConfig, 'supervisor');
+    if (!canInfract) return interaction.editReply({
+        content: localize('staff-management-system', 'err-gen-no-perm')
+    });
+
     if (targetMember.id === interaction.user.id) {
         return interaction.editReply({
             content: localize('staff-management-system', 'err-self-infract')
         });
     }
-
-    const canInfract = checkStaffPermissions(interaction.member, config, 'staff');
-    if (!canInfract) return interaction.editReply({
-        content: localize('staff-management-system', 'err-gen-no-perm')
-    });
 
     if (type.toLowerCase() === 'suspension') {
         return interaction.editReply({
@@ -179,14 +180,6 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
         const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
         if (channel) {
             let template = config.infractionMessage;
-            if (typeof template === 'string') {
-                try {
-                    template = JSON.parse(template);
-                } catch (e) {
-                }
-            } else if (typeof template === 'object') {
-                template = JSON.parse(JSON.stringify(template));
-            }
 
             if (template && template.embeds && !template._schema) template._schema = 'v3';
             let msgOpts = await embedTypeV2(template, placeholders);
@@ -205,15 +198,6 @@ async function issueInfraction(client, interaction, targetMember, type, reason, 
 
     if (config.dmInfractedUser && config.infractionDmMessage) {
         let dmTemplate = config.infractionDmMessage;
-        if (typeof dmTemplate === 'string') {
-            try {
-                dmTemplate = JSON.parse(dmTemplate);
-            } catch (e) {
-            }
-        } else if (typeof dmTemplate === 'object') {
-            dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
-        }
-
         if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
         const dmOpts = await embedTypeV2(dmTemplate, placeholders);
         if (dmOpts?.content?.trim() === '') delete dmOpts.content;
@@ -257,16 +241,17 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
             })
     });
 
+    const generalConfig = getConfig(client, 'configuration');
+    const canSuspend = checkStaffPermissions(interaction.member, generalConfig, 'supervisor');
+    if (!canSuspend) return interaction.editReply({
+        content: localize('staff-management-system', 'err-gen-no-perm')
+    });
+
     if (targetMember.id === interaction.user.id) {
         return interaction.editReply({
             content: localize('staff-management-system', 'err-self-infract')
         });
     }
-
-    const canSuspend = checkStaffPermissions(interaction.member, config, 'staff');
-    if (!canSuspend) return interaction.editReply({
-        content: localize('staff-management-system', 'err-gen-no-perm')
-    });
 
     const durationDays = parseDurationToDays(durationInput);
     if (!durationDays)
@@ -329,14 +314,6 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
         const channel = await interaction.guild.channels.fetch(channelId).catch(() => null);
         if (channel) {
             let template = config.suspensionMessage;
-            if (typeof template === 'string') {
-                try {
-                    template = JSON.parse(template);
-                } catch (e) {
-                }
-            } else if (typeof template === 'object') {
-                template = JSON.parse(JSON.stringify(template));
-            }
 
             if (template && template.embeds && !template._schema) template._schema = 'v3';
             let msgOpts = await embedTypeV2(template, placeholders);
@@ -355,14 +332,6 @@ async function issueSuspension(client, interaction, targetMember, durationInput,
 
     if (config.dmInfractedUser && config.suspensionDmMessage) {
         let dmTemplate = config.suspensionDmMessage;
-        if (typeof dmTemplate === 'string') {
-            try {
-                dmTemplate = JSON.parse(dmTemplate);
-            } catch (e) {
-            }
-        } else if (typeof dmTemplate === 'object') {
-            dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
-        }
 
         if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
         const dmOpts = await embedTypeV2(dmTemplate, placeholders);
@@ -455,7 +424,7 @@ async function voidInfraction(client, interaction, reference) {
                 const rolesToRestore = JSON.parse(profile.suspendedRoles || '[]');
                 if (rolesToRestore.length > 0) await member.roles.add(rolesToRestore);
                 if (config.suspensionRole) await member.roles.remove(config.suspensionRole);
-                await profile.update({ isSuspended: false, suspendedRoles: '[]' });
+                await profile.update({ isSuspended: false, suspendedRoles: JSON.stringify([]) });
             } catch (e) {
                 return interaction.editReply({
                     content: localize('staff-management-system', 'succ-void-fail', {caseId: record.caseId})
@@ -543,6 +512,12 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
         content: localize('staff-management-system', 'err-feat-disabled', {feature: 'Promotions'})
     });
 
+    const generalConfig = getConfig(client, 'configuration');
+    const canPromote = checkStaffPermissions(interaction.member, generalConfig, 'supervisor');
+    if (!canPromote) return interaction.editReply({
+        content: localize('staff-management-system', 'err-gen-no-perm') 
+    });
+
     if (targetMember.id === interaction.user.id) {
         return interaction.editReply({
             content: localize('staff-management-system', 'err-self-promo')
@@ -605,8 +580,9 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
             if (typeof embedTemplate === 'string') {
                 try {
                     embedTemplate = JSON.parse(embedTemplate);
+                } catch (e) {
                 }
-            catch (e) {} } else if (typeof embedTemplate === 'object') {
+            } else if (typeof embedTemplate === 'object') {
                 embedTemplate = JSON.parse(JSON.stringify(embedTemplate));
             }
 
@@ -635,14 +611,6 @@ async function promoteUser(client, interaction, targetMember, newRole, reason) {
 
     if (config.dmPromotedUser && config.promotionDmMessage) {
         let dmTemplate = config.promotionDmMessage;
-        if (typeof dmTemplate === 'string') {
-            try {
-                dmTemplate = JSON.parse(dmTemplate);
-            } catch (e) {
-            }
-        } else if (typeof dmTemplate === 'object') {
-            dmTemplate = JSON.parse(JSON.stringify(dmTemplate));
-        }
 
         if (dmTemplate && dmTemplate.embeds && !dmTemplate._schema) dmTemplate._schema = 'v3';
         const dmOpts = await embedTypeV2(dmTemplate, placeholders);
@@ -1411,31 +1379,29 @@ async function startActivityCheck(client, interactionOrChannel, isAutomated = fa
     const endTime = new Date(Date.now() + durationHours * 60 * 60 * 1000);
     const generalConfig = getConfig(client, 'configuration') || {};
     const initiator = isAutomated
-    ? localize('staff-management-system', 'label-system')
-    : interactionOrChannel.user.toString();
+        ? localize('staff-management-system', 'label-system')
+        : interactionOrChannel.user.toString();
 
     const responseButtonRow = new ActionRowBuilder()
-    .addComponents(
-        new ButtonBuilder()
-            .setCustomId('staff-mgmt_ac-respond')
-            .setLabel(localize('staff-management-system', 'ac-confirm-btn'))
-            .setStyle(ButtonStyle.Success)
-            .setEmoji('✅')
-    )
-    .toJSON();
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('staff-mgmt_ac-respond')
+                .setLabel(localize('staff-management-system', 'ac-confirm-btn'))
+                .setStyle(ButtonStyle.Success)
+                .setEmoji('✅')
+        )
+        .toJSON();
 
-    let msgOpts = await embedTypeV2(config.checkMessage,  {
-            '%end-time%': dateToDiscordTimestamp(endTime, 'F'),
-            '%duration%': durationHours.toString(),
-            '%staff-mention%': formatRoleMentions(generalConfig.staffRoles),
-            '%supervisor-mention%': formatRoleMentions(generalConfig.supervisorRoles),
-            '%management-mention%': formatRoleMentions(generalConfig.managementRoles),
-            '%initiator%': initiator
-        },
-        {
-            components: [responseButtonRow]
-        }
-    );
+    let msgOpts = await embedTypeV2(config.checkMessage, {
+        '%end-time%': dateToDiscordTimestamp(endTime, 'F'),
+        '%duration%': durationHours.toString(),
+        '%staff-mention%': formatRoleMentions(generalConfig.staffRoles),
+        '%supervisor-mention%': formatRoleMentions(generalConfig.supervisorRoles),
+        '%management-mention%': formatRoleMentions(generalConfig.managementRoles),
+        '%initiator%': initiator
+    }, {
+        components: [responseButtonRow]
+    });
 
     if (msgOpts?.content?.trim() === '') delete msgOpts.content;
 
@@ -1495,8 +1461,8 @@ async function endActivityCheckProcess(client, activeCheck) {
         }
     });
     const initiator = (activeCheck.isAutomated || !activeCheck.initiatorId)
-    ? localize('staff-management-system', 'label-system')
-    : `<@${activeCheck.initiatorId}>`;
+        ? localize('staff-management-system', 'label-system')
+        : `<@${activeCheck.initiatorId}>`;
 
     expectedMembers.forEach(member => {
         if (respondedUserIds.has(member.id)) return responded.push(member);
@@ -1542,7 +1508,8 @@ async function endActivityCheckProcess(client, activeCheck) {
 
             await msg.edit(endedMessage);
         }
-    } catch (e) {}
+    } catch (e) {
+    }
 
     const embed = applyFooter(client, new EmbedBuilder()
         .setTitle(localize('staff-management-system', 'ac-res-title'))
@@ -1743,8 +1710,8 @@ async function generateReviewHistoryResponse(client, targetUser, page = 1) {
     embed.addFields({
         name: localize('staff-management-system', 'label-hist'),
         value: rows.length > 0
-        ? rows.map(r => `**${"⭐".repeat(r.stars)}** ${localize('staff-management-system', 'label-by')} <@${r.authorId}>${r.messageUrl 
-            ? ` • [Jump](${r.messageUrl})`
+        ? rows.map(r => `**${"⭐".repeat(r.stars)}** ${localize('staff-management-system', 'label-by')} <@${r.authorId}>${r.messageUrl
+                ? ` • [Jump](${r.messageUrl})`
                 : ''}\n"${r.comment}"`).join('\n\n')
         : localize('staff-management-system', 'p-no-hist') });
 
@@ -1802,5 +1769,6 @@ module.exports = {
     endActivityCheckProcess,
     submitReview,
     getReviewHistory,
-    generateReviewHistoryResponse
+    generateReviewHistoryResponse,
+    getIsoWeekNumber
 };

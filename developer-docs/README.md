@@ -12,7 +12,11 @@ Start here if you want to add a new feature as a module:
 - [**Slash commands**](./commands.md) - `config` / `run` / `subcommands` / `autocomplete`, registration, options.
 - [**Database models**](./database-models.md) - Sequelize `Model.init` pattern, `models-dir`, accessing models from
   events.
+- [**Field-level encryption**](./field-encryption.md) - the secure-storage serialization layer: which columns are
+  protected and how to register a new sensitive field.
 - [**Localization**](./localization.md) - adding strings to `locales/en.json` and using `localize()`.
+- [**Nickname manager**](./nickname-manager.md) - the shared service for changing member nicknames without modules
+  fighting each other.
 
 ## Configuration schema
 
@@ -34,7 +38,7 @@ The string + embed format used in `allowEmbed` config fields. Canonical referenc
 
 ## Migration
 
-- [**Migration**](./migration.md) - upgrading between major bot versions.
+- [**Migration**](./migration.md) - writing database migrations so schema changes reach existing installs.
 
 ## Validation
 

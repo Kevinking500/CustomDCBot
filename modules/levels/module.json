@@ -3,8 +3,8 @@
   "humanReadableName": "Level-System",
   "author": {
     "scnxOrgID": "1",
-    "name": "SCDerox (SC Network Team)",
-    "link": "https://github.com/SCDerox"
+    "name": "ScootKit Team (scootkit.com)",
+    "link": "https://github.com/ScootKit"
   },
   "openSourceURL": "https://github.com/SCNetwork/CustomDCBot/tree/main/modules/levels",
   "commands-dir": "/commands",
@@ -20,5 +20,15 @@
   "tags": [
     "community"
   ],
-  "description": "Easy to use levelsystem with a lot of customization!"
+  "description": "Easy to use levelsystem with a lot of customization!",
+  "intents": [
+    "GuildMessages",
+    "GuildVoiceStates",
+    "MessageContent",
+    "GuildMembers"
+  ],
+  "intentReasons": {
+    "MessageContent": "Reads message text to award activity XP while excluding prefix commands.",
+    "GuildMembers": "Resets levels when a member leaves and resolves names for the leaderboard."
+  }
 }
