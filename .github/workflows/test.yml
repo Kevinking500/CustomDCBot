@@ -1,0 +1,25 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [ '18', '20', '22', '24', 'latest' ]
+    name: Node ${{ matrix.node-version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      # Native accelerators (zlib-sync, erlpack, ...) are optionalDependencies and may
+      # fail to build on newer Node; that does not fail the install. sqlite3 is required
+      # for the migration tests and builds here.
+      - run: npm install
+      - run: npm run test:unit

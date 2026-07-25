@@ -1,0 +1,57 @@
+{
+  "name": "customdcbot",
+  "version": "3.1.1",
+  "description": "Create your own discord bot - Fully customizable and with a lot of features",
+  "main": "main.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ScootKit/CustomDCBot.git"
+  },
+  "scripts": {
+    "start": "node main.js",
+    "test": "npx eslint ./",
+    "test:unit": "jest tests/",
+    "lint": "npx eslint ./",
+    "verify-configs": "node scripts/verify-config-defaults.js",
+    "generate-config": "node generate-config.js",
+    "generate-template": "node generate-template.js"
+  },
+  "author": "ScootKit Team",
+  "contributors": [
+    "SCDerox <simon@scootkit.com>"
+  ],
+  "license": "LicenseRef-LICENSE",
+  "dependencies": {
+    "@scderox/ikea-name-generator": "1.0.0",
+    "@twurple/api": "8.1.4",
+    "@twurple/auth": "8.1.4",
+    "age-calculator": "1.0.0",
+    "centra": "2.7.0",
+    "discord-api-types": "^0.38.47",
+    "discord.js": "14.26.4",
+    "fparser": "^4.2.0",
+    "is-equal": "^1.6.4",
+    "jsonfile": "6.2.1",
+    "log4js": "6.9.1",
+    "node-schedule": "2.1.1",
+    "parse-duration": "2.1.6",
+    "sequelize": "6.37.8",
+    "sqlite3": "6.0.1",
+    "umzug": "^3.8.3"
+  },
+  "optionalDependencies": {
+    "bufferutil": "4.1.0",
+    "erlpack": "github:discord/erlpack",
+    "utf-8-validate": "6.0.6",
+    "zlib-sync": "0.1.10"
+  },
+  "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.6.1",
+    "eslint": "10.4.0",
+    "globals": "^17.6.0",
+    "jest": "^30.4.2"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}

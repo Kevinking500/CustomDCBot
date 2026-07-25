@@ -1,0 +1,805 @@
+const Discord = require('./src/discordjs-fix');
+const {
+    ApplicationCommandOptionType,
+    ApplicationCommandType,
+    ChannelType,
+    Partials,
+    PermissionFlagsBits,
+    PermissionsBitField
+} = Discord;
+// Parsing parameters (confDir must be resolved before the client so module-driven intents can be computed)
+let confDir = `${__dirname}/config`;
+let dataDir = `${__dirname}/data`;
+const args = process.argv.slice(2);
+if (args[0] === '--help' || args[0] === '-h') {
+    process.exit();
+}
+if (args[0] && args[1]) {
+    confDir = args[0];
+    dataDir = args[1];
+}
+
+// Compute the gateway intents required by the currently-enabled modules before constructing the client
+const {computeRequiredIntents} = require('./src/functions/intents');
+const {
+    flags,
+    names,
+    unknown,
+    pairingInjected
+} = computeRequiredIntents(confDir, `${__dirname}/modules`);
+if (unknown.length) throw new Error(`Unknown gateway intent(s) declared in a module.json: ${unknown.join(', ')}`);
+
+const client = new Discord.Client({
+    partials: [Partials.Message, Partials.GuildMember, Partials.GuildScheduledEvent, Partials.Reaction, Partials.User, Partials.Channel], // Most of these are not needed, but enabling them does not increase CPU / RAM usage and does not introduce problems, as we handle them in the event emitter system
+    allowedMentions: {parse: ['users', 'roles']}, // Disables @everyone mentions because everyone hates them
+    intents: flags
+});
+client._activeIntents = names;
+client.on('error', (err) => {
+    const {localize: loc} = require('./src/functions/localize');
+    const sentryId = client.captureException ? client.captureException(err, {source: 'discord-client-error'}) : null;
+    client.logger ? client.logger.error(client.sanitizePath(loc('main', 'discord-error', {e: err.stack || err})) + (sentryId ? ` [Sentry: ${sentryId}]` : '')) : console.error(err);
+});
+client.on('shardError', (err) => {
+    const {localize: loc} = require('./src/functions/localize');
+    const sentryId = client.captureException ? client.captureException(err, {source: 'shard-error'}) : null;
+    client.logger ? client.logger.error(client.sanitizePath(loc('main', 'shard-error', {e: err.stack || err})) + (sentryId ? ` [Sentry: ${sentryId}]` : '')) : console.error(err);
+});
+client.on('shardDisconnect', (event) => {
+    const {localize: loc} = require('./src/functions/localize');
+    client.logger ? client.logger.warn(loc('main', 'shard-disconnect', {c: event ? event.code : 'unknown'})) : console.warn('Disconnected from Discord');
+});
+client.on('shardReconnecting', () => {
+    const {localize: loc} = require('./src/functions/localize');
+    client.logger ? client.logger.info(loc('main', 'shard-reconnecting')) : console.info('Reconnecting to Discord');
+});
+client.intervals = [];
+client.jobs = [];
+client._migrationCount = 0;
+client._shutdownRequested = false;
+const fs = require('fs');
+const {Sequelize} = require('sequelize');
+const log4js = require('log4js');
+const jsonfile = require('jsonfile');
+const centra = require('centra');
+const readline = require('readline');
+
+let config;
+let scnxSetup = false; // If enabled some other (closed-sourced) files get imported and executed
+if (process.argv.includes('--scnx-enabled')) scnxSetup = true;
+client.scnxSetup = scnxSetup;
+if (scnxSetup) {
+    const instrument = require('./instrument');
+    client.sentry = instrument;
+    client.sanitizePath = instrument.sanitizePath;
+    client.captureException = function (err, data) {
+        return instrument.captureException(err, {contexts: {'extra-data': data}});
+    };
+} else {
+    client.sanitizePath = (s) => s;
+}
+
+client.locale = process.argv.find(a => a.startsWith('--lang')) ? (process.argv.find(a => a.startsWith('--lang')).split('--lang=')[1] || 'de') : 'en';
+// Locale file names use underscores (e.g. "zh_Hans"), but Intl/toLocale* APIs require BCP 47 tags ("zh-Hans"). Keep both shapes.
+client.bcp47Locale = client.locale.replace('_', '-');
+module.exports.client = client;
+log4js.configure({
+    pm2: process.argv.includes('--pm2-setup'),
+    appenders: {
+        out: {
+            type: 'logLevelFilter',
+            appender: 'output',
+            maxLevel: 'error',
+            level: 'debug'
+        },
+        output: {
+            type: 'stdout',
+            layout: {
+                type: 'pattern',
+                pattern: '[%p] %m'
+            }
+        },
+        err: {
+            type: 'logLevelFilter',
+            appender: 'erroutput',
+            level: 'error'
+        },
+        erroutput: {
+            type: 'stderr',
+            layout: {
+                type: 'pattern',
+                pattern: '[%p] %m'
+            }
+        }
+    },
+    categories: {
+        default: {
+            appenders: ['out', 'err'],
+            level: 'debug'
+        }
+    }
+});
+const logger = log4js.getLogger();
+logger.level = scnxSetup ? 'debug' : (process.env.LOGLEVEL || 'debug');
+
+// Loading config
+try {
+    config = jsonfile.readFileSync(`${confDir}/config.json`);
+} catch (e) {
+    logger.fatal('Missing config.json! Run "npm run generate-config <ConfDir>" (Parameter ConfDir is optional) to generate it');
+    process.exit(0);
+}
+
+const models = {}; // Object with all models
+
+client.modules = {};
+client.guildID = config['guildID'];
+client.config = config;
+client.configDir = confDir;
+client.dataDir = dataDir;
+client.configurations = {};
+logger.level = config.logLevel || process.env.LOGLEVEL || 'debug';
+client.logger = logger;
+module.exports.logger = logger;
+const configChecker = require('./src/functions/configuration');
+const {
+    compareArrays,
+    checkForUpdates,
+    formatDiscordUserName,
+    truncate
+} = require('./src/functions/helpers');
+const {localize} = require('./src/functions/localize');
+const {registerEncryptionHooks} = require('./src/functions/secure-storage/hooks');
+logger.info(localize('main', 'startup-info', {l: logger.level}));
+logger.info(localize('main', 'intents-loaded', {
+    count: names.length,
+    intents: names.join(', ')
+}));
+if (pairingInjected) logger.warn(localize('main', 'intents-pairing-injected'));
+
+let moduleConf = {};
+try {
+    moduleConf = jsonfile.readFileSync(`${confDir}/modules.json`);
+} catch (e) {
+    logger.info(localize('main', 'missing-moduleconf'));
+}
+
+// Connecting to Database
+const db = new Sequelize({
+    dialect: 'sqlite',
+    storage: `${dataDir}/database.sqlite`,
+    transactionType: 'IMMEDIATE',
+    logging: false
+});
+
+const commands = [];
+let modulesLoaded = false;
+
+async function startUp() {
+    if (config.timezone !== process.env.TZ) {
+        process.env.TZ = config.timezone;
+        logger.info(`Successfully set timezone to ${config.timezone}. The time is ${new Date().toLocaleString(client.bcp47Locale)}.`);
+    }
+    if (scnxSetup) client.scnxHost = client.config.scnxHostOverwirde || 'https://scnx.app';
+    // parse-duration v2 is ESM-only. Resolve the dynamic import once now so the
+    // sync wrapper used across modules has its underlying function available.
+    await require('./src/functions/parseDuration').init();
+    if (!modulesLoaded) {
+        modulesLoaded = true;
+        await loadModelsInDir('/src/models');
+        const NicknameManager = require('./src/functions/nicknameManager');
+        client.nicknameManager = new NicknameManager(client);
+        client.nicknameManager.install();
+        await loadModules();
+        await loadEventsInDir('./src/events');
+        client.models = models;
+        registerEncryptionHooks(models, {warn: (m) => logger.warn(m)});
+        await db.sync();
+        try {
+            await require('./src/functions/migrations/runMigrations').runAllMigrations(client, {
+                onMigrationStart: module.exports.migrationStart,
+                onMigrationEnd: module.exports.migrationEnd
+            });
+        } catch (e) {
+            logger.fatal(`[migrations] failed: ${e.stack || e}`);
+            logger.fatal('[migrations] aborting boot to avoid running with a partially migrated schema.');
+            process.exit(1);
+        }
+    }
+    logger.info(localize('main', 'sync-db'));
+    if (scnxSetup) await require('./src/functions/scnx-integration').beforeInit(client);
+    if (!client.isReady()) {
+        await client.login(config.token).catch(async (e) => {
+            if (e.code === 'TokenInvalid' || e.message === 'Authentication failed') {
+                if (scnxSetup) await require('./src/functions/scnx-integration').reportIssue(client, {
+                    type: 'CORE_FAILURE',
+                    errorDescription: 'invalid_token'
+                });
+                logger.fatal(localize('main', 'login-error-token'));
+            } else if (e.code === 'DisallowedIntents' || e.message === 'Used disallowed intents') {
+                if (scnxSetup) await require('./src/functions/scnx-integration').reportIssue(client, {
+                    type: 'CORE_FAILURE',
+                    errorDescription: 'disallowed_intents'
+                });
+                logger.fatal(localize('main', 'login-error-intents', {url: `https://discord.com/developers/applications/`}));
+            } else logger.fatal(localize('main', 'login-error', {e}));
+            process.exit();
+        });
+    }
+    let app = {};
+    try {
+        app = JSON.parse((await centra(`https://discord.com/api/applications/@me`, 'GET').header('Authorization', `Bot ${client.token}`).send()).body.toString());
+    } catch (e) {
+        logger.warn(localize('main', 'discord-api-error', {e: e.message || e}));
+    }
+    if (app.bot_require_code_grant) {
+        if (scnxSetup) await require('./src/functions/scnx-integration').reportIssue(client, {
+            type: 'CORE_ISSUE',
+            errorDescription: 'require_code_grant_active',
+            errorData: {settingsURL: `https://discord.com/developers/applications/${client.user.id}/bot`}
+        });
+        logger.error(localize('main', 'require-code-grant-active', {d: `https://discord.com/developers/applications/${client.user.id}/bot`}));
+    }
+    if (app.interactions_endpoint_url) {
+        if (scnxSetup) await require('./src/functions/scnx-integration').reportIssue(client, {
+            type: 'CORE_FAILURE',
+            errorDescription: 'interactions_endpoint_set',
+            errorData: {settingsURL: `https://discord.com/developers/applications/${client.user.id}`}
+        });
+        logger.error(localize('main', 'interactions-endpoint-active', {d: `https://discord.com/developers/applications/${client.user.id}/bot`}));
+        process.exit();
+    }
+    client.guild = await client.guilds.fetch(config.guildID).catch(() => {
+    });
+    if (!client.guild) {
+        if (scnxSetup) await require('./src/functions/scnx-integration').reportIssue(client, {
+            type: 'CORE_FAILURE',
+            errorDescription: 'bot_not_on_guild',
+            errorData: {inviteURL: `https://discord.com/oauth2/authorize?client_id=${client.user.id}&guild_id=${config.guildID}&disable_guild_select=true&permissions=8&scope=bot%20applications.commands`}
+        });
+        logger.error(localize('main', 'not-invited', {inv: `https://discord.com/oauth2/authorize?client_id=${client.user.id}&guild_id=${config.guildID}&disable_guild_select=true&permissions=8&scope=bot%20applications.commands`}));
+        if (scnxSetup) {
+            console.log('Waiting for being added to server…');
+            client.once('guildCreate', () => startUp());
+            return;
+        } else process.exit(0);
+    }
+    logger.info(localize('main', 'logged-in', {tag: formatDiscordUserName(client.user)}));
+    loadCLIFile('/src/cli.js');
+    client.models = models;
+    client.moduleConf = moduleConf;
+    client.logChannel = await client.channels.fetch(config.logChannelID).catch(() => {
+    });
+    if (!client.logChannel || client.logChannel.type !== ChannelType.GuildText) {
+        logger.warn(localize('main', 'logchannel-wrong-type'));
+        client.logChannel = null;
+        config.logChannelID = null;
+        jsonfile.writeFileSync(`${confDir}/config.json`, {
+            ...jsonfile.readFileSync(`${confDir}/config.json`),
+            logChannelID: null
+        });
+        if (scnxSetup) {
+            const {reportIssue} = require('./src/functions/scnx-integration');
+            await reportIssue(client, {
+                type: 'CORE_FAILURE',
+                errorDescription: 'log_channel_not_set_or_wrong_type'
+            });
+        }
+    }
+    await configChecker.loadAllConfigs(client).catch(async (e) => {
+        if (client.logChannel) await client.logChannel.send('⚠️ ' + localize('main', 'config-check-failed'));
+        console.log(e);
+        logger.fatal(localize('main', 'config-check-failed'));
+        process.exit(0);
+    });
+    await loadCommandsInDir('./src/commands');
+    if (client.scnxSetup) {
+        try {
+            client.config.customCommands = jsonfile.readFileSync(`${client.configDir}/custom-commands.json`);
+        } catch (e) {
+            client.config.customCommands = [];
+        }
+        require('./src/functions/scnx-integration').verifyCustomCommands(client);
+    }
+    await syncCommandsIfNeeded();
+    client.commands = commands;
+    client.strings = jsonfile.readFileSync(`${confDir}/strings.json`);
+    client.botReadyAt = new Date();
+    // Only fetch members when the enabled modules requested GuildMembers; else Discord rejects it and the caches stay empty.
+    if (client._activeIntents.includes('GuildMembers')) {
+        await client.guild.members.fetch({withPresences: client._activeIntents.includes('GuildPresences')}).catch(() => {
+        });
+    }
+    client.emit('botReady');
+    if (scnxSetup) await require('./src/functions/scnx-integration').init(client);
+    logger.info(localize('main', 'bot-ready'));
+    if (client.logChannel) client.logChannel.send('🚀 ' + localize('main', 'bot-ready'));
+    await checkForUpdates(client);
+}
+
+// Prevent shutdown during database migrations
+function handleShutdownSignal(signal) {
+    if (client._migrationCount > 0) {
+        client._shutdownRequested = true;
+        logger.warn(localize('main', 'shutdown-deferred'));
+        return;
+    }
+    process.exit(0);
+}
+
+process.on('SIGINT', handleShutdownSignal);
+process.on('SIGTERM', handleShutdownSignal);
+
+process.on('uncaughtException', (err) => {
+    const sentryId = client.captureException ? client.captureException(err, {source: 'uncaught-exception'}) : null;
+    logger.error(client.sanitizePath(localize('main', 'uncaught-exception', {e: err.stack || err})) + (sentryId ? ` [Sentry: ${sentryId}]` : ''));
+});
+
+process.on('unhandledRejection', (reason) => {
+    const sentryId = client.captureException ? client.captureException(reason instanceof Error ? reason : new Error(String(reason)), {source: 'unhandled-rejection'}) : null;
+    logger.error(client.sanitizePath(localize('main', 'unhandled-rejection', {e: reason instanceof Error ? reason.stack : reason})) + (sentryId ? ` [Sentry: ${sentryId}]` : ''));
+});
+
+/**
+ * Call before starting a migration to prevent shutdown
+ */
+module.exports.migrationStart = function () {
+    client._migrationCount++;
+};
+
+/**
+ * Call after a migration completes to allow shutdown again
+ */
+module.exports.migrationEnd = function () {
+    client._migrationCount--;
+    if (client._migrationCount <= 0 && client._shutdownRequested) {
+        logger.info(localize('main', 'shutdown-after-migration'));
+        process.exit(0);
+    }
+};
+
+// Starting bot
+db.authenticate().then(startUp).catch((e) => {
+    logger.fatal(localize('main', 'db-connect-error', {e: e.message || e}));
+    if (!scnxSetup) console.error(e);
+    process.exit(1);
+});
+
+// CLI-COMMANDS
+const cliCommands = [];
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+rl.on('error', (err) => {
+    const sentryId = client.captureException ? client.captureException(err, {source: 'readline-error'}) : null;
+    logger.error(client.sanitizePath(localize('main', 'cli-command-error', {e: err.message || err})) + (sentryId ? ` [Sentry: ${sentryId}]` : ''));
+});
+rl.on('line', (input) => {
+    if (!client.botReadyAt) {
+        return console.error('The bot is not ready yet. Please wait until the bot gets ready to use the cli.');
+    }
+    const command = cliCommands.find(c => c.command === input.split(' ')[0].toLowerCase());
+    if (!command) return console.error(`Command "${command}" not found. See all commands with "help".`);
+    if (command.module && !(client.modules[command.module] || {}).enabled) return console.error(`${command.command} belongs to the module ${command.module}, which is disabled. Enable the module in modules.json and reload the configuration to use this command.`);
+    if (!command) return console.error('Command not found. Use "help" to see all available commands.');
+
+    console.log('\n');
+    try {
+        command.run({
+            input,
+            args: input.split(' '),
+            client,
+            cliCommands
+        });
+    } catch (e) {
+        const sentryId = client.captureException ? client.captureException(e, {source: 'cli-command'}) : null;
+        logger.error(client.sanitizePath(localize('main', 'cli-command-error', {e: e.stack || e})) + (sentryId ? ` [Sentry: ${sentryId}]` : ''));
+    }
+});
+
+/**
+ * Syncs commands if needed
+ * @returns {Promise<void>}
+ */
+async function syncCommandsIfNeeded() {
+    const enabledCommands = commands.filter(c => {
+        if (!c.module) return true;
+        if (!client.modules[c.module].enabled) return false;
+        if (typeof c.disabled === 'function' && c.disabled(client)) return false;
+        return true;
+    });
+
+    /**
+     * Handels a sync failure
+     * @param e Exception
+     * @returns {Promise<void>}
+     */
+    async function handleSyncFailure(e) {
+        logger.debug(e);
+        if (scnxSetup) await require('./src/functions/scnx-integration').reportIssue(client, {
+            type: 'CORE_FAILURE',
+            errorDescription: 'commands_sync_failed',
+            errorData: {inviteURL: `https://discord.com/oauth2/authorize?client_id=${client.user.id}&guild_id=${config.guildID}&disable_guild_select=true&permissions=8&scope=bot%20applications.commands`}
+        });
+        logger.fatal(localize('main', 'no-command-permissions', {inv: `https://discord.com/oauth2/authorize?client_id=${client.user.id}&guild_id=${config.guildID}&disable_guild_select=true&permissions=8&scope=bot%20applications.commands`}));
+        process.exit(0);
+    }
+
+
+    const oldGuildCommands = await (await client.guilds.fetch(config.guildID)).commands.fetch().catch(handleSyncFailure);
+    const oldGlobalCommands = await client.application.commands.fetch().catch(handleSyncFailure);
+    const optionTypeMap = {
+        SUB_COMMAND: ApplicationCommandOptionType.Subcommand,
+        SUB_COMMAND_GROUP: ApplicationCommandOptionType.SubcommandGroup,
+        STRING: ApplicationCommandOptionType.String,
+        INTEGER: ApplicationCommandOptionType.Integer,
+        BOOLEAN: ApplicationCommandOptionType.Boolean,
+        USER: ApplicationCommandOptionType.User,
+        CHANNEL: ApplicationCommandOptionType.Channel,
+        ROLE: ApplicationCommandOptionType.Role,
+        MENTIONABLE: ApplicationCommandOptionType.Mentionable,
+        NUMBER: ApplicationCommandOptionType.Number,
+        ATTACHMENT: ApplicationCommandOptionType.Attachment
+    };
+    const channelTypeMap = {
+        GUILD_TEXT: ChannelType.GuildText,
+        GUILD_VOICE: ChannelType.GuildVoice,
+        GUILD_NEWS: ChannelType.GuildAnnouncement,
+        GUILD_STAGE_VOICE: ChannelType.GuildStageVoice,
+        GUILD_CATEGORY: ChannelType.GuildCategory
+    };
+    const permissionMap = {
+        ADMINISTRATOR: PermissionFlagsBits.Administrator,
+        MANAGE_EMOJIS_AND_STICKERS: PermissionFlagsBits.ManageGuildExpressions,
+        MODERATE_MEMBERS: PermissionFlagsBits.ModerateMembers,
+        MANAGE_MESSAGES: PermissionFlagsBits.ManageMessages
+    };
+
+    function normalizePermission(permission) {
+        if (typeof permission === 'string') {
+            if (permissionMap[permission]) return permissionMap[permission];
+            const pascal = permission.toLowerCase().split('_').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join('');
+            return PermissionFlagsBits[pascal] || permission;
+        }
+        return permission;
+    }
+
+    function normalizeOption(option) {
+        const newOption = {...option};
+        if (typeof newOption.type === 'string') {
+            const upper = newOption.type.toUpperCase();
+            const pascal = newOption.type.charAt(0).toUpperCase() + newOption.type.slice(1);
+            newOption.type = optionTypeMap[upper] || ApplicationCommandOptionType[upper] || ApplicationCommandOptionType[pascal] || newOption.type;
+        }
+        if (newOption.channelTypes) newOption.channelTypes = newOption.channelTypes.map(t => {
+            if (typeof t !== 'string') return t;
+            const upper = t.toUpperCase();
+            return channelTypeMap[upper] || ChannelType[upper] || ChannelType[t] || t;
+        });
+        if (newOption.options) newOption.options = newOption.options.map(normalizeOption);
+        return newOption;
+    }
+
+    function normalizeCommand(command) {
+        const newCommand = {...command};
+        if (!newCommand.type) newCommand.type = ApplicationCommandType.ChatInput;
+        else if (typeof newCommand.type === 'string') {
+            const upper = newCommand.type.toUpperCase();
+            const pascal = newCommand.type.charAt(0).toUpperCase() + newCommand.type.slice(1);
+            newCommand.type = ApplicationCommandType[upper] || ApplicationCommandType[pascal] || newCommand.type;
+        }
+        if (newCommand.options) newCommand.options = newCommand.options.map(normalizeOption);
+        if (newCommand.defaultMemberPermissions) newCommand.defaultMemberPermissions = new PermissionsBitField(newCommand.defaultMemberPermissions.map(normalizePermission)).bitfield.toString();
+        return newCommand;
+    }
+
+    const ranCommands = []; // Commands with all functions run
+    for (const orgCmd of enabledCommands) {
+        let command = {...orgCmd};
+
+        if (typeof command.options === 'function') command.options = await command.options(client);
+        if (command.options) {
+            const options = [];
+            for (const option of command.options) {
+                if (option.options && typeof option.options === 'function') option.options = await option.options(client);
+                options.push(option);
+            }
+            command.options = options;
+        }
+
+        function fixObjectDescriptionLength(ob) {
+            if (typeof ob !== 'object') return ob;
+            const newObject = {};
+            for (const key in ob) {
+                if (Array.isArray(ob[key])) {
+                    const b = [];
+                    for (const o of ob[key]) {
+                        b.push(fixObjectDescriptionLength(o));
+                    }
+                    newObject[key] = b;
+                    continue;
+                }
+                if (key === 'description' && ob[key].length >= 100) {
+                    logger.error(localize('command', 'description-too-long', {
+                        c: command.name,
+                        s: ob[key]
+                    }));
+                    newObject[key] = truncate(ob[key], 100);
+                } else newObject[key] = ob[key];
+            }
+            return newObject;
+        }
+
+        command = fixObjectDescriptionLength(command);
+        command = normalizeCommand(command);
+
+        ranCommands.push(command);
+    }
+
+    /**
+     * Checks if two application commands need to be synced
+     * @param {ApplicationCommands} oldCommands Currently synced commands
+     * @param {ApplicationCommands} commandsToCheck New synced commands
+     * @returns {boolean} Returns true if syncronisation is needed
+     */
+    function commandsNeedSync(oldCommands, commandsToCheck) {
+        let needSync = false;
+        if (oldCommands.size !== commandsToCheck.length) needSync = true;
+        if (!needSync) for (const command of commandsToCheck) {
+            const oldCommand = oldCommands.find(c => c.name === command.name);
+            if (!oldCommand) {
+                needSync = true;
+                break;
+            }
+
+            if (oldCommand.description !== command.description || oldCommand.type !== command.type || (oldCommand.options || []).length !== (command.options || []).length) {
+                needSync = true;
+                break;
+            }
+
+            const newPerms = new PermissionsBitField(command.defaultMemberPermissions || []).bitfield;
+            const oldPerms = new PermissionsBitField(oldCommand.defaultMemberPermissions || []).bitfield;
+            if (newPerms !== oldPerms) {
+                needSync = true;
+                break;
+            }
+
+            for (const option of (command.options || [])) {
+                const oldOptionOption = (oldCommand.options || []).find(o => o.name === option.name);
+                if (!oldOptionOption) {
+                    needSync = true;
+                    break;
+                }
+                if (checkOption(oldOptionOption, option)) {
+                    needSync = true;
+                    break;
+                }
+            }
+
+            /**
+             * Checks if two command options are identical
+             * @private
+             * @param {Object<ApplicationCommandOptions>} oldOption Old options
+             * @param {Object<ApplicationCommandOptions>} newOption New options
+             * @returns {Boolean} If synchronisation is needed
+             */
+            function checkOption(oldOption, newOption) {
+                if (oldOption.name !== newOption.name || oldOption.autocomplete !== newOption.autocomplete || oldOption.description !== newOption.description || oldOption.type !== newOption.type || (typeof oldOption.required === 'undefined' ? false : oldOption.required) !== (typeof newOption.required === 'undefined' ? false : newOption.required)) return true;
+                if (!compareArrays(oldOption.choices || [], newOption.choices || [])) return true;
+                if (!compareArrays(oldOption.channelTypes || [], newOption.channelTypes || [])) return true;
+                if (oldOption.minValue !== newOption.minValue || oldOption.maxValue !== newOption.maxValue) return true;
+                if (oldOption.minLength !== newOption.minLength || oldOption.maxLength !== newOption.maxLength) return true;
+                if ((oldOption.options || []).length !== (newOption.options || []).length) return true;
+                for (const option of (newOption.options || [])) {
+                    const oldOptionOption = (oldOption.options || []).find(o => o.name === option.name);
+                    if (!oldOptionOption) return true;
+                    if (checkOption(oldOptionOption, option)) return true;
+                }
+                return false;
+            }
+        }
+        return needSync;
+    }
+
+    let guildCommands = config.syncCommandGlobally ? [] : ranCommands;
+    const globalCommands = config.syncCommandGlobally ? ranCommands : [];
+    if (scnxSetup) guildCommands = [...guildCommands, ...((await require('./src/functions/scnx-integration').generateCustomSlashCommands(client, guildCommands)).map(f => normalizeCommand(f)))];
+    if (commandsNeedSync(oldGuildCommands, guildCommands)) {
+        await client.application.commands.set(guildCommands, config.guildID).catch(handleSyncFailure);
+        logger.info(localize('main', 'guild-command-sync'));
+    } else logger.info(localize('main', 'guild-command-no-sync-required'));
+    if (commandsNeedSync(oldGlobalCommands, globalCommands)) {
+        await client.application.commands.set(globalCommands, null).catch(handleSyncFailure);
+        logger.info(localize('main', 'global-command-sync'));
+    } else logger.info(localize('main', 'global-command-no-sync-required'));
+}
+
+module.exports.syncCommandsIfNeeded = syncCommandsIfNeeded;
+
+/**
+ * Load every database model in a directory
+ * @param {String} dir Directory to load models from
+ * @param {String} moduleName Name of module currently loading from
+ * @returns {Promise<void>}
+ * @private
+ */
+async function loadModelsInDir(dir, moduleName = null) {
+    return new Promise(async resolve => {
+        await fs.readdir(`${__dirname}/${dir}`, (async (err, files) => {
+            if (err) {
+                logger.fatal(err);
+                process.exit(0);
+            }
+            for await (const file of files) {
+                const model = require(`${__dirname}/${dir}/${file}`);
+                await model.init(db);
+                if (moduleName) {
+                    if (!models[moduleName]) models[moduleName] = {};
+                    models[moduleName][model.config.name] = model;
+                } else models[model.config.name] = model;
+                logger.debug(localize('main', 'model-loaded', {
+                    d: dir,
+                    f: file
+                }));
+            }
+            resolve();
+        }));
+    });
+}
+
+
+const events = {};
+
+/**
+ * Load all events from a directory
+ * @param {String} dir Directory to load events from
+ * @param {String} moduleName Name of module currently loading from
+ * @returns {Promise<void>}
+ * @private
+ */
+async function loadEventsInDir(dir, moduleName = null) {
+    fs.readdir(`${__dirname}/${dir}`, (err, files) => {
+        if (err) return logger.error(err);
+        files.forEach(f => {
+            fs.lstat(`${__dirname}/${dir}/${f}`, async (err, stats) => {
+                if (!stats) return;
+                if (stats.isFile()) {
+                    const eventFunction = require(`${__dirname}/${dir}/${f}`);
+                    const eventName = f.split('.')[0];
+                    if (moduleName) {
+                        if (client.modules[moduleName]) {
+                            if (!client.modules[moduleName]['events']) client.modules[moduleName]['events'] = [];
+                            client.modules[moduleName]['events'].push(f.split('.js').join(''));
+                        }
+                    }
+                    if (!events[eventName]) {
+                        events[eventName] = [];
+                        client.on(eventName, (...cArgs) => {
+                            for (const eData of events[eventName]) {
+                                try {
+                                    if (!client.botReadyAt && !eData.eventFunction.ignoreBotReadyCheck) continue;
+                                    if (!eData.eventFunction.allowPartial && cArgs.filter(f => f && f.partial).length !== 0) continue;
+                                    if (!eData.moduleName) eData.eventFunction.run(client, ...cArgs);
+                                    else if (client.modules[eData.moduleName].enabled) eData.eventFunction.run(client, ...cArgs);
+                                } catch (e) {
+                                    const sentryId = client.captureException ? client.captureException(e, {
+                                        module: eData.moduleName,
+                                        event: eventName
+                                    }) : null;
+                                    client.logger.error(client.sanitizePath(`Error on event ${(eData.moduleName ? eData.moduleName + '/' : '') + eventName}: ${e}${sentryId ? ` [Sentry: ${sentryId}]` : ''}`));
+                                }
+                            }
+                        });
+                    }
+                    events[eventName].push({
+                        eventFunction,
+                        moduleName
+                    });
+                    logger.debug(localize('main', 'event-loaded', {
+                        d: dir,
+                        f: f
+                    }));
+                } else {
+                    logger.debug(localize('main', 'event-dir', {
+                        d: dir,
+                        f: f
+                    }));
+                    await loadEventsInDir(`${dir}/${f}/`);
+                }
+            });
+        });
+    });
+}
+
+/**
+ * Load a CLI-File
+ * @private
+ * @param {String} path Path to the CLI-File
+ * @param {String} moduleName Name of the module
+ * @returns {void}
+ */
+function loadCLIFile(path, moduleName = null) {
+    const file = require(`${__dirname}/${path}`);
+    for (const command of file.commands) {
+        command.originalName = command.command;
+        command.module = moduleName;
+        cliCommands.push(command);
+        command.command = command.command.toLowerCase();
+        logger.debug(localize('main', 'loaded-cli', {
+            c: command.command,
+            p: path
+        }));
+    }
+}
+
+/**
+ * Load every command in a directory
+ * @param {String} dir Directory to load commands from
+ * @param {String} moduleName Name of module currently loading from
+ * @returns {Promise<void>}
+ * @private
+ */
+async function loadCommandsInDir(dir, moduleName = null) {
+    const files = fs.readdirSync(`${__dirname}/${dir}`);
+    for (const f of files) {
+        const stats = fs.lstatSync(`${__dirname}/${dir}/${f}`);
+        if (!stats) return logger.error('No stats returned');
+        if (stats.isFile()) {
+            const props = require(`${__dirname}/${dir}/${f}`);
+            commands.push({
+                name: props.config.name,
+                forceAnonymous: props.config.forceAnonymous,
+                description: props.config.description,
+                restricted: props.config.restricted,
+                defaultMemberPermissions: props.config.defaultMemberPermissions || null,
+                options: props.config.options || [],
+                disabled: props.config.disabled || null,
+                subcommands: props.subcommands,
+                beforeSubcommand: props.beforeSubcommand,
+                run: props.run,
+                autoComplete: props.autoComplete,
+                module: moduleName
+            });
+        }
+    }
+}
+
+/**
+ * Load all modules
+ * @returns {Promise<void>}
+ */
+async function loadModules() {
+    if (!fs.existsSync(`${__dirname}/modules/`)) fs.mkdirSync(`${__dirname}/modules/`);
+    const files = fs.readdirSync(`${__dirname}/modules/`);
+    const missingModules = [];
+    for (const f of files) {
+        logger.debug(localize('main', 'loading-module', {m: f}));
+        const moduleConfig = jsonfile.readFileSync(`${__dirname}/modules/${f}/module.json`);
+        if (moduleConfig.hidden) {
+            logger.debug(localize('main', 'hidden-module', {m: f}));
+            continue;
+        }
+        client.modules[f] = {};
+        if (typeof moduleConf[f] === 'undefined') {
+            missingModules.push(f);
+        }
+        client.modules[f].enabled = !!moduleConf[f];
+        client.modules[f].userEnabled = !!moduleConf[f];
+        client.modules[f].config = moduleConfig;
+        client.configurations[f] = {};
+        if (moduleConfig['models-dir']) await loadModelsInDir(`./modules/${f}${moduleConfig['models-dir']}`, f);
+        if (moduleConfig['commands-dir']) await loadCommandsInDir(`./modules/${f}${moduleConfig['commands-dir']}`, f);
+        if (moduleConfig['events-dir']) await loadEventsInDir(`./modules/${f}${moduleConfig['events-dir']}`, f);
+        if (moduleConfig['on-load-event']) require(`./modules/${f}/${moduleConfig['on-load-event']}`).onLoad(client);
+        if (moduleConfig['cli']) loadCLIFile(`./modules/${f}/${moduleConfig['cli']}`, f);
+    }
+    if (missingModules.length !== 0) {
+        logger.info(localize('config', 'moduleconf-regeneration'));
+        for (const moduleName of missingModules) {
+            moduleConf[moduleName] = false;
+        }
+        jsonfile.writeFileSync(`${confDir}/modules.json`, moduleConf, {spaces: 2});
+        logger.info(localize('config', 'moduleconf-regeneration-success'));
+    }
+}
