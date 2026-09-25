@@ -1,6 +1,7 @@
 const {
     processPing,
-    isWhitelistedChannel
+    isWhitelistedChannel,
+    isProtectionToggledOff
 } = require('../ping-protection');
 
 // Handles auto mod actions
@@ -12,6 +13,11 @@ module.exports.run = async function (client, execution) {
 
     const matchedKeyword = execution.matchedKeyword || '';
     const rawId = matchedKeyword.replace(/[^0-9]/g, '');
+
+    if (config.allowProtectionToggle && rawId) {
+        const isToggledOff = await isProtectionToggledOff(client, rawId);
+        if (isToggledOff) return;
+    }
 
     let isProtected = config.protectedRoles.includes(rawId) || config.protectedUsers.includes(rawId);
 

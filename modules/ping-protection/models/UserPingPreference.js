@@ -8,13 +8,12 @@ module.exports = class PingProtectionUserPingPreference extends Model {
         return super.init({
             userId: {
                 type: DataTypes.STRING,
+                primaryKey: true,
                 allowNull: false,
-                unique: true
             },
             disabledUntil: {
                 type: DataTypes.DATE,
-                allowNull: true,
-                defaultValue: null
+                allowNull: false,
             }
         }, {
             tableName: 'ping_protection_user_preferences',

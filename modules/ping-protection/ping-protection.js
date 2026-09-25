@@ -84,6 +84,117 @@ function determinePingType(message, targetId, isRole = false) {
     : 'REPLY';
 }
 
+// Checks if a user toggled their protection status
+async function isProtectionToggledOff(client, userId) {
+    if (!userId) return false;
+    const model = client.models['ping-protection']?.['UserPingPreference'];
+    if (!model) return false;
+
+    try {
+        const rawUserId = String(userId);
+        const preference = await model.findOne({
+            where: {
+                userId: rawUserId
+            }
+        });
+
+        if (!preference || !preference.disabledUntil) {
+            return false;
+        }
+
+        const expiryTime = new Date(preference.disabledUntil).getTime();
+        const now = Date.now();
+
+        if (Number.isFinite(expiryTime) && expiryTime > now) {
+            return true;
+        }
+
+        // Lazy cleanup for expired records
+        await model.destroy({
+            where: {userId: rawUserId}
+        }).catch(() => {});
+
+        return false;
+    } catch (error) {
+        client.logger.warn(localize('ping-protection', 'log-check-preference-failed', {
+            u: userId,
+            e: error.message
+        }));
+        return false;
+    }
+}
+
+// Toggles user protection status
+async function toggleUserProtection(client, member) {
+    const userId = member?.user?.id || member?.id;
+    if (!member || !userId) {
+        return {success: false, reason: 'not-member'};
+    }
+
+    const config = client.configurations['ping-protection']?.['configuration'] || {};
+    const rawUserId = String(userId);
+
+    const isExplicitlyProtected = Array.isArray(config.protectedUsers) &&
+        config.protectedUsers.map(String).includes(rawUserId);
+
+    // Normalize roles across Discord.js GuildMember (Collection) and API interactions (Array of IDs)
+    const memberRoleIds = Array.isArray(member.roles)
+        ? member.roles.map(String)
+        : (member.roles?.cache ? [...member.roles.cache.keys()].map(String) : []);
+
+    const hasProtectedRole = Boolean(
+        config.protectAllUsersWithProtectedRole &&
+        Array.isArray(config.protectedRoles) &&
+        memberRoleIds.some(rId => config.protectedRoles.map(String).includes(rId))
+    );
+
+    if (!isExplicitlyProtected && !hasProtectedRole) {
+        return {success: false, reason: 'not-protected'};
+    }
+
+    const model = client.models['ping-protection']?.['UserPingPreference'];
+    if (!model) {
+        return {success: false, reason: 'no-model'};
+    }
+
+    try {
+        const pref = await model.findOne({where: {userId: rawUserId}});
+        const now = Date.now();
+
+        // If active unprotection exists, remove it to re-enable protection
+        if (pref && pref.disabledUntil) {
+            const expiryTime = new Date(pref.disabledUntil).getTime();
+            if (Number.isFinite(expiryTime) && expiryTime > now) {
+                await model.destroy({where: {userId: rawUserId}});
+                if (config.enableAutomod) {
+                    await syncNativeAutoMod(client).catch(() => {});
+                }
+                return {success: true, state: 'enabled'};
+            }
+        }
+
+        // Otherwise, set unprotection for 24 hours
+        const disabledUntil = new Date(now + 24 * 60 * 60 * 1000);
+
+        await model.upsert({
+            userId: rawUserId,
+            disabledUntil
+        });
+
+        if (config.enableAutomod) {
+            await syncNativeAutoMod(client).catch(() => {});
+        }
+
+        return {success: true, state: 'disabled', disabledUntil};
+    } catch (error) {
+        client.logger.error(localize('ping-protection', 'log-toggle-preference-failed', {
+            u: rawUserId,
+            e: error.message
+        }));
+        return {success: false, reason: 'db-error', error: error.message};
+    }
+}
+
 // Data handling
 async function addPing(client, userId, messageUrl, targetId, isRole, pingType = 'MENTION') {
     const config = client.configurations['ping-protection']['configuration'];
@@ -317,24 +428,35 @@ async function setDeletionCooldown(client, userId, dataType, deletedBy = null) {
     return blockedUntil;
 }
 
-async function executeDataDeletion(client, userId, dataType) {
+async function executeDataDeletion(client, userId, dataType, olderThanMs = null) {
     const models = client.models['ping-protection'];
+
+    const pingHistoryWhere = {userId};
+    const modLogWhere = {victimID: userId};
+    const leaverWhere = {userId};
+
+    if (olderThanMs && Number.isFinite(olderThanMs) && olderThanMs > 0) {
+        const cutoff = new Date(Date.now() - olderThanMs);
+        pingHistoryWhere.createdAt = {[Op.lt]: cutoff};
+        modLogWhere.createdAt = {[Op.lt]: cutoff};
+        leaverWhere.leftAt = {[Op.lt]: cutoff};
+    }
 
     if (['del_ping_history', 'del_all'].includes(dataType)) {
         await models.PingHistory.destroy({
-            where: {userId}
+            where: pingHistoryWhere
         });
     }
 
     if (['del_moderation_history', 'del_all'].includes(dataType)) {
         await models.ModerationLog.destroy({
-            where: {victimID: userId}
+            where: modLogWhere
         });
     }
 
     if (dataType === 'del_all') {
         await models.LeaverData.destroy({
-            where: {userId}
+            where: leaverWhere
         });
     }
 }
@@ -634,6 +756,11 @@ async function sendPingWarning(client, message, target, moduleConfig) {
     const warningMsg = moduleConfig.pingWarningMessage;
     if (!warningMsg) return;
 
+    if (target.id && moduleConfig.allowProtectionToggle) {
+        const isOff = await isProtectionToggledOff(client, target.id);
+        if (isOff) return;
+    }
+
     let warnMsg = {...warningMsg};
     const placeholders = {
         '%target-name%': target.name || target.tag || target.username || 'Unknown',
@@ -735,10 +862,15 @@ async function syncNativeAutoMod(client) {
             }
         }
 
-        protectedIdsSet.forEach(id => {
+        // Filters out users who temporarily toggled protection off
+        for (const id of protectedIdsSet) {
+            if (config.allowProtectionToggle) {
+                const isToggledOff = await isProtectionToggledOff(client, id);
+                if (isToggledOff) continue;
+            }
             keywords.push(`<@${id}>`);
             keywords.push(`<@!${id}>`);
-        });
+        }
 
         if (keywords.length === 0) {
             if (existingRule) {
@@ -1216,6 +1348,11 @@ async function processPing(client, userId, targetId, isRole, messageUrl, originC
     const storageConfig = client.configurations['ping-protection']['storage'];
     const moderationRules = client.configurations['ping-protection']['moderation'];
 
+    if (!isRole && targetId && config.allowProtectionToggle) {
+        const isOff = await isProtectionToggledOff(client, targetId);
+        if (isOff) return;
+    }
+
     if (storageConfig?.enablePingHistory) {
         try {
             await addPing(client, userId, messageUrl, targetId, isRole, pingType);
@@ -1312,6 +1449,8 @@ async function processPing(client, userId, targetId, isRole, messageUrl, originC
 module.exports = {
     parseTimeframeToMs,
     determinePingType,
+    isProtectionToggledOff,
+    toggleUserProtection,
     addPing,
     getPingCountInWindow,
     getSafeChannelId,

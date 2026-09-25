@@ -2,7 +2,8 @@ const {
     processPing,
     sendPingWarning,
     isWhitelistedChannel,
-    determinePingType
+    determinePingType,
+    isProtectionToggledOff
 } = require('../ping-protection');
 const {localize} = require('../../../src/functions/localize');
 const {randomElementFromArray} = require('../../../src/functions/helpers');
@@ -57,9 +58,18 @@ module.exports.run = async function (client, message) {
         }
     }
 
+    // Filter out users who have temporarily toggled protection off
+    if (config.allowProtectionToggle && protectedMentions.size > 0) {
+        for (const userId of [...protectedMentions]) {
+            const isToggledOff = await isProtectionToggledOff(client, userId);
+            if (isToggledOff) {
+                protectedMentions.delete(userId);
+            }
+        }
+    }
+
     // Determines if any protected entities were pinged
     const pingedProtectedUser = protectedMentions.size > 0;
-
     if (!pingedProtectedRole && !pingedProtectedUser) return;
 
     let target = null;

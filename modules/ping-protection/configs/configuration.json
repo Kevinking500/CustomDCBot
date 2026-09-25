@@ -3,10 +3,7 @@
   "humanName": "General Configuration",
   "commandsWarnings": {
     "normal": [
-      "/ping-protection user history",
-      "/ping-protection user actions-history",
-      "/ping-protection list protected",
-      "/ping-protection list whitelisted"
+      "/ping-protection"
     ]
   },
   "description": "Configure protected users/roles, whitelisted roles/members, ignored channels and the notification message.",
@@ -77,15 +74,10 @@
       "name": "ignoredChannels",
       "category": "whitelisted",
       "humanName": "Whitelisted Channels",
-      "description": "Pings in these channels are ignored.",
+      "description": "Pings in these channels are ignored. Supported channels: Text- and news channels, categories, threads and voice channels. Note: If a category is selected, all channels in that category will be whitelisted, even newly made channels.",
       "type": "array",
       "content": "channelID",
-      "default": [],
-      "channelTypes": [
-        "GUILD_TEXT",
-        "GUILD_NEWS",
-        "GUILD_CATEGORY"
-      ]
+      "default": []
     },
     {
       "name": "ignoredUsers",
@@ -95,6 +87,14 @@
       "type": "array",
       "content": "userID",
       "default": []
+    },
+    {
+      "name": "allowProtectionToggle",
+      "category": "rules",
+      "humanName": "Allow protected members to toggle their protection status temporarily",
+      "desription": "Enabling this allows protected members to temporarily toggle their protection status via tje `/ping-protection toggle` command. Useful for protected members if they don't mind being pinged for a short period of time.",
+      "type": "boolean",
+      "default": true
     },
     {
       "name": "allowReplyPings",

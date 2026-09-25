@@ -8,7 +8,8 @@ const {
     executeDataDeletion,
     getDeletionCooldown,
     setDeletionCooldown,
-    getDeletionTypeLocaleKey
+    getDeletionTypeLocaleKey,
+    parseTimeframeToMs
 } = require('../ping-protection');
 const {localize} = require('../../../src/functions/localize');
 const {
@@ -119,6 +120,14 @@ module.exports.run = async function (client, interaction) {
                     .setStyle(TextInputStyle.Paragraph)
                     .setPlaceholder(confirmationPhrase)
                     .setRequired(true)
+            ),
+            new ActionRowBuilder().addComponents(
+                new TextInputBuilder()
+                    .setCustomId('timeframe')
+                    .setLabel(localize('ping-protection', 'del-modal-timeframe-label'))
+                    .setStyle(TextInputStyle.Paragraph)
+                    .setPlaceholder(localize('ping-protection', 'del-modal-timeframe-ph'))
+                    .setRequired(false)
             )
         );
 
@@ -144,6 +153,20 @@ module.exports.run = async function (client, interaction) {
                 content: localize('ping-protection', 'modal-failed'),
                 flags: MessageFlags.Ephemeral
             });
+        }
+
+        const rawTimeframe = interaction.fields.getTextInputValue('timeframe')?.trim();
+        let olderThanMs = null;
+
+        if (rawTimeframe) {
+            const parsedMs = parseTimeframeToMs(rawTimeframe, null);
+            if (!parsedMs || parsedMs <= 0) {
+                return interaction.reply({
+                    content: localize('ping-protection', 'del-err-invalid-timeframe'),
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+            olderThanMs = parsedMs;
         }
 
         const cooldown = await getDeletionCooldown(client, targetId);
@@ -227,7 +250,7 @@ module.exports.run = async function (client, interaction) {
                 }
 
                 if (btnInt.customId.includes('confirm')) {
-                    await executeDataDeletion(client, targetId, selection);
+                    await executeDataDeletion(client, targetId, selection, olderThanMs);
                     const blockedUntil = await setDeletionCooldown(client, targetId, selection, btnInt.user.id);
 
                     client.logger.info(localize('ping-protection', 'log-del-all', {
@@ -266,7 +289,7 @@ module.exports.run = async function (client, interaction) {
             return;
         }
 
-        await executeDataDeletion(client, targetId, selection);
+        await executeDataDeletion(client, targetId, selection, olderThanMs);
         const blockedUntil = await setDeletionCooldown(client, targetId, selection, interaction.user.id);
 
         client.logger.info(localize('ping-protection', 'log-del-type', {
