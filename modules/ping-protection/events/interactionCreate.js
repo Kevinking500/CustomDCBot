@@ -32,9 +32,10 @@ const {
 module.exports.run = async function (client, interaction) {
     if (!client.botReadyAt) return;
     const isAdmin = interaction.member?.permissions?.has('Administrator');
+    const isManager = isAdmin || interaction.member?.permissions?.has('ManageGuild');
 
     if (interaction.isStringSelectMenu() && interaction.customId.startsWith('ping-protection_panel-menu_')) {
-        if (!isAdmin) {
+        if (!isManager) {
             return interaction.reply({
                 content: localize('ping-protection', 'no-permission'),
                 flags: MessageFlags.Ephemeral
@@ -51,6 +52,12 @@ module.exports.run = async function (client, interaction) {
         }
 
         const selection = interaction.values[0];
+        if (selection === 'deletion' && !isAdmin) { // Deletion panel is only for administrators, the rest of the panel
+            return interaction.reply({              // is broader and for managers
+                content: localize('ping-protection', 'no-permission'),
+                flags: MessageFlags.Ephemeral
+            });
+        }
 
         let payload;
         if (selection === 'overview') payload = await generateUserPanel(client, targetUser);

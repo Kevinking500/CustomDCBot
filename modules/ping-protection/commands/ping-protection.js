@@ -36,6 +36,13 @@ module.exports.subcommands = {
             });
         },
         'panel': async function (interaction) {
+            const isManager = interaction.member?.permissions.has('Administrator') || interaction.member?.permissions.has('ManageGuild');
+            if (!isManager) {
+                return interaction.reply({
+                    content: localize('ping-protection', 'no-permission'),
+                    flags: MessageFlags.Ephemeral
+                })
+            }
             const user = interaction.options.getUser('user');
             const payload = await generateUserPanel(interaction.client, user);
             await interaction.reply({
