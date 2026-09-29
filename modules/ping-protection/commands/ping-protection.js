@@ -1,10 +1,12 @@
 const {
     generateHistoryResponse,
     generateActionsResponse,
-    generateUserPanel,
+    generateUserPanel
+} = require('../core/panels');
+const {
     toggleUserProtection,
     isProtectionToggledOff
-} = require('../ping-protection');
+} = require('../core/toggle');
 const {localize} = require('../../../src/functions/localize');
 const {
     truncate,

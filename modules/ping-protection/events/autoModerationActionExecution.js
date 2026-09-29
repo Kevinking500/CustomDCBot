@@ -1,8 +1,12 @@
 const {
-    processPing,
-    isWhitelistedChannel,
+    isWhitelistedChannel
+} = require('../core/localHelpers');
+const {
+    processPing
+} = require('../core/moderation');
+const {
     isProtectionToggledOff
-} = require('../ping-protection');
+} = require('../core/toggle');
 
 // Handles auto mod actions
 module.exports.run = async function (client, execution) {

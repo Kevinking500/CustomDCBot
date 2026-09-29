@@ -1,10 +1,14 @@
 const {
-    processPing,
-    sendPingWarning,
     isWhitelistedChannel,
-    determinePingType,
+    determinePingType
+} = require('../core/localHelpers');
+const {
+    sendPingWarning,
+    processPing
+} = require('../core/moderation');
+const {
     isProtectionToggledOff
-} = require('../ping-protection');
+} = require('../core/toggle');
 const {localize} = require('../../../src/functions/localize');
 const {randomElementFromArray} = require('../../../src/functions/helpers');
 

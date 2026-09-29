@@ -1,16 +1,18 @@
 const {
-    generateHistoryResponse,
-    generateActionsResponse,
-    generateUserPanel,
-    generatePanelHistory,
-    generatePanelActions,
-    generatePanelDeletion,
+    parseTimeframeToMs,
+    getDeletionTypeLocaleKey
+} = require('../core/localHelpers');
+const {
     executeDataDeletion,
     getDeletionCooldown,
-    setDeletionCooldown,
-    getDeletionTypeLocaleKey,
-    parseTimeframeToMs
-} = require('../ping-protection');
+    setDeletionCooldown
+} = require('../core/records');
+const {
+    generateUserPanel,
+    generatePanelDeletion,
+    generateHistoryResponse,
+    generateActionsResponse
+} = require('../core/panels');
 const {localize} = require('../../../src/functions/localize');
 const {
     safeSetFooter,
@@ -61,8 +63,8 @@ module.exports.run = async function (client, interaction) {
 
         let payload;
         if (selection === 'overview') payload = await generateUserPanel(client, targetUser);
-        else if (selection === 'history') payload = await generatePanelHistory(client, targetUser, 1);
-        else if (selection === 'actions') payload = await generatePanelActions(client, targetUser, 1);
+        else if (selection === 'history') payload = await generateHistoryResponse(client, targetUser, 1, true);
+        else if (selection === 'actions') payload = await generateActionsResponse(client, targetUser, 1, true);
         else if (selection === 'deletion') payload = await generatePanelDeletion(client, targetUser);
 
         if (payload) return interaction.update(payload);
@@ -356,7 +358,7 @@ module.exports.run = async function (client, interaction) {
                 });
             }
 
-            const payload = await generatePanelHistory(client, targetUser, targetPage);
+            const payload = await generateHistoryResponse(client, targetUser, targetPage, true);
             return interaction.update(payload);
         }
 
@@ -373,7 +375,7 @@ module.exports.run = async function (client, interaction) {
                 });
             }
 
-            const payload = await generatePanelActions(client, targetUser, targetPage);
+            const payload = await generateActionsResponse(client, targetUser, targetPage, true);
             return interaction.update(payload);
         }
     }

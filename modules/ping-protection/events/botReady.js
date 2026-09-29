@@ -1,5 +1,7 @@
 const {
-    enforceRetention,
+    enforceRetention
+} = require('../core/records');
+const {
     syncNativeAutoMod
 } = require('../ping-protection');
 const schedule = require('node-schedule');
