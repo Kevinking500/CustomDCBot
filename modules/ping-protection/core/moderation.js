@@ -18,7 +18,7 @@ const {isProtectionToggledOff} = require('./toggle');
 
 async function sendPingWarning(client, message, target, moduleConfig) {
     const warningMsg = moduleConfig.pingWarningMessage;
-    if (!warningMsg) return null;
+    if (!warningMsg) return undefined;
 
     if (target.id && moduleConfig.allowProtectionToggle) {
         const isOff = await isProtectionToggledOff(client, target.id);

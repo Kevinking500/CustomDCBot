@@ -1,17 +1,5 @@
 /*
  * Tests for ping-protection's interactionCreate panel handler.
- *
- * Covers:
- *  - botReady guard
- *  - panel-menu select: admin gate, unknown user, and routing each selection
- *    (overview/history/actions/deletion) to its generator + interaction.update
- *  - delete-menu select: 'back' returns the panel; an active cooldown blocks; a
- *    real selection opens the confirm modal
- *  - del-confirm modal submit: wrong phrase rejected; correct phrase runs a
- *    partial deletion, sets the cooldown, and confirms
- *  - hist-page / mod-page button pagination routes to the right generator
- *
- * Generators and cooldown helpers are mocked.
  */
 const mockG = {
     generateHistoryResponse: jest.fn().mockResolvedValue({embeds: ['h']}),
@@ -22,7 +10,7 @@ const mockG = {
     getDeletionCooldown: jest.fn().mockResolvedValue(null),
     setDeletionCooldown: jest.fn().mockResolvedValue(new Date(Date.now() + 1000)),
     getDeletionTypeLocaleKey: jest.fn(() => 'del-type-pings'),
-    parseTimeframeToMs: jest.fn(() => 86400000)
+    parseTimeframeToMs: jest.fn((str) => (str ? 86400000 : null))
 };
 
 jest.mock('../../modules/ping-protection/core/localHelpers', () => ({
@@ -45,12 +33,12 @@ const handler = require('../../modules/ping-protection/events/interactionCreate'
 const {localize} = require('../../src/functions/localize');
 
 function makeClient({
-                        user = {
-                            id: 'target',
-                            username: 'T',
-                            tag: 'T#1'
-                        }
-                    } = {}) {
+    user = {
+        id: 'target',
+        username: 'T',
+        tag: 'T#1'
+    }
+} = {}) {
     return {
         botReadyAt: Date.now(),
         strings: {
@@ -94,20 +82,35 @@ test('returns immediately before botReady', async () => {
 });
 
 describe('panel-menu select', () => {
-    function menuInteraction(selection, isAdmin = true) {
+    function menuInteraction(selection, isManager = true, isAdmin = true) {
         return baseInteraction({
-            member: {permissions: {has: () => isAdmin}},
+            member: {
+                permissions: {
+                    has: jest.fn((perm) => {
+                        if (perm === 'Administrator') return isAdmin;
+                        if (perm === 'ManageGuild') return isManager;
+                        return false;
+                    })
+                }
+            },
             isStringSelectMenu: () => true,
             customId: 'ping-protection_panel-menu_target',
             values: [selection]
         });
     }
 
-    test('blocks non-admins', async () => {
-        const interaction = menuInteraction('overview', false);
+    test('blocks non-managers', async () => {
+        const interaction = menuInteraction('overview', false, false);
         await handler.run(makeClient(), interaction);
         expect(interaction.reply.mock.calls[0][0].content).toContain('no-permission');
         expect(mockG.generateUserPanel).not.toHaveBeenCalled();
+    });
+
+    test('blocks managers without Admin from opening deletion menu', async () => {
+        const interaction = menuInteraction('deletion', true, false);
+        await handler.run(makeClient(), interaction);
+        expect(interaction.reply.mock.calls[0][0].content).toContain('no-permission');
+        expect(mockG.generatePanelDeletion).not.toHaveBeenCalled();
     });
 
     test('replies no-data when the user cannot be fetched', async () => {
@@ -118,13 +121,10 @@ describe('panel-menu select', () => {
         expect(interaction.reply.mock.calls[0][0].content).toContain('no-data-found');
     });
 
-    test.each([
-        ['overview', 'generateUserPanel'],
-        ['deletion', 'generatePanelDeletion']
-    ])('routes %s to %s and updates', async (selection, fnName) => {
-        const interaction = menuInteraction(selection);
+    test('routes overview to generateUserPanel', async () => {
+        const interaction = menuInteraction('overview');
         await handler.run(makeClient(), interaction);
-        expect(mockG[fnName]).toHaveBeenCalled();
+        expect(mockG.generateUserPanel).toHaveBeenCalled();
         expect(interaction.update).toHaveBeenCalled();
     });
 
@@ -139,6 +139,13 @@ describe('panel-menu select', () => {
         const interaction = menuInteraction('actions');
         await handler.run(makeClient(), interaction);
         expect(mockG.generateActionsResponse).toHaveBeenCalledWith(expect.anything(), expect.anything(), 1, true);
+        expect(interaction.update).toHaveBeenCalled();
+    });
+
+    test('routes deletion to generatePanelDeletion for admins', async () => {
+        const interaction = menuInteraction('deletion', true, true);
+        await handler.run(makeClient(), interaction);
+        expect(mockG.generatePanelDeletion).toHaveBeenCalled();
         expect(interaction.update).toHaveBeenCalled();
     });
 });
@@ -179,14 +186,20 @@ describe('delete-menu select', () => {
 });
 
 describe('del-confirm modal submit', () => {
-    function modalInteraction(value, selection = 'del_ping_history') {
+    function modalInteraction(value, selection = 'del_ping_history', timeframe = '') {
         return baseInteraction({
             member: {permissions: {has: () => true}},
             isModalSubmit: () => true,
             customId: `ping-protection_del-confirm_target_${selection}`,
             user: {id: 'admin1'},
             message: {edit: jest.fn().mockResolvedValue()},
-            fields: {getTextInputValue: jest.fn(() => value)}
+            fields: {
+                getTextInputValue: jest.fn((id) => {
+                    if (id === 'confirm') return value;
+                    if (id === 'timeframe') return timeframe;
+                    return '';
+                })
+            }
         });
     }
 
@@ -198,10 +211,9 @@ describe('del-confirm modal submit', () => {
     });
 
     test('runs a partial deletion and sets the cooldown on the correct phrase', async () => {
-        // the stub localize returns "ping-protection.modal-phrase"; confirm must equal it
         const interaction = modalInteraction(localize('ping-protection', 'del-conf-phrase'));
         await handler.run(makeClient(), interaction);
-        expect(mockG.executeDataDeletion).toHaveBeenCalledWith(expect.anything(), 'target', 'del_ping_history');
+        expect(mockG.executeDataDeletion).toHaveBeenCalledWith(expect.anything(), 'target', 'del_ping_history', null);
         expect(mockG.setDeletionCooldown).toHaveBeenCalledWith(expect.anything(), 'target', 'del_ping_history', 'admin1');
         expect(interaction.reply.mock.calls[0][0].content).toContain('succ-del-tgt');
     });
