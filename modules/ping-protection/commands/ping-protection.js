@@ -18,6 +18,9 @@ const {
     MessageFlags
 } = require('discord.js');
 
+const toggleCooldowns = new Map();
+const TOGGLE_COOLDOWN_MS = 60 * 1000;
+
 // Handles subcommands
 module.exports.subcommands = {
     'user': {
@@ -63,9 +66,36 @@ module.exports.subcommands = {
         }
 
         const targetMember = interaction.member || interaction.user;
+        const userId = targetMember.id;
+        const now = Date.now();
+
+        const cdEntry = toggleCooldowns.get(userId);
+        if (cdEntry && now < cdEntry.expiresAt) {
+            cdEntry.attempts += 1;
+
+            // 3rd attempt or higher triggers the easter egg
+            if (cdEntry.attempts >= 3) {
+                return interaction.reply({
+                    content: localize('ping-protection', 'toggle-easter-egg'),
+                    flags: MessageFlags.Ephemeral
+                });
+            }
+
+            // 1st or 2nd attempt shows the normal remaining cooldown
+            return interaction.reply({
+                content: localize('ping-protection', 'toggle-err-cooldown', {
+                    time: dateToDiscordTimestamp(new Date(cdEntry.expiresAt), 'R')
+                }),
+                flags: MessageFlags.Ephemeral
+            });
+        }
+
         const result = await toggleUserProtection(interaction.client, targetMember);
 
         if (!result.success) {
+            if (result.reason === 'locked') {
+                return;
+            }
             if (result.reason === 'not-protected') {
                 return interaction.reply({
                     content: localize('ping-protection', 'toggle-err-not-protected'),
@@ -77,6 +107,20 @@ module.exports.subcommands = {
                 flags: MessageFlags.Ephemeral
             });
         }
+
+        const expiresAt = now + TOGGLE_COOLDOWN_MS;
+        toggleCooldowns.set(userId, {
+            expiresAt,
+            attempts: 0
+        });
+
+        // Clean up memory after cooldown expiration
+        setTimeout(() => {
+            const current = toggleCooldowns.get(userId);
+            if (current && current.expiresAt <= Date.now()) {
+                toggleCooldowns.delete(userId);
+            }
+        }, TOGGLE_COOLDOWN_MS + 5000);
 
         if (result.state === 'disabled') {
             return interaction.reply({
