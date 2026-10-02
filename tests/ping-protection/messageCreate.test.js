@@ -11,11 +11,17 @@ const mockProcessPing = jest.fn().mockResolvedValue();
 const mockSendWarning = jest.fn().mockResolvedValue();
 const mockDeterminePingType = jest.fn(() => 'MENTION');
 const mockIsWhitelisted = jest.fn(() => false);
-jest.mock('../../modules/ping-protection/ping-protection', () => ({
+const mockIsToggledOff = jest.fn(() => false);
+jest.mock('../../modules/ping-protection/core/moderation', () => ({
     processPing: (...a) => mockProcessPing(...a),
-    sendPingWarning: (...a) => mockSendWarning(...a),
+    sendPingWarning: (...a) => mockSendWarning(...a)
+}));
+jest.mock('../../modules/ping-protection/core/localHelpers', () => ({
     isWhitelistedChannel: (...a) => mockIsWhitelisted(...a),
     determinePingType: (...a) => mockDeterminePingType(...a)
+}));
+jest.mock('../../modules/ping-protection/core/toggle', () => ({
+    isProtectionToggledOff: (...a) => mockIsToggledOff(...a)
 }));
 
 const handler = require('../../modules/ping-protection/events/messageCreate');
@@ -153,6 +159,19 @@ describe('guards', () => {
     test('does nothing when no protected entity was pinged', async () => {
         const client = makeClient(makeConfig({protectedUsers: ['victim']}));
         await handler.run(client, makeMessage({users: [{id: 'random'}]}));
+        expect(mockProcessPing).not.toHaveBeenCalled();
+    });
+
+    test('ignores mentions when targeted user has toggled protection off', async () => {
+        mockIsToggledOff.mockResolvedValue(true);
+        const client = makeClient(makeConfig({
+            protectedUsers: ['victim'],
+            allowProtectionToggle: true
+        }));
+        const victimUser = {id: 'victim', username: 'Victim'};
+        const msg = makeMessage({users: [victimUser]});
+        await handler.run(client, msg);
+        expect(mockSendWarning).not.toHaveBeenCalled();
         expect(mockProcessPing).not.toHaveBeenCalled();
     });
 });

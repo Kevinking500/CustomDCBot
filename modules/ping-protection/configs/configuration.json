@@ -182,7 +182,7 @@
     {
       "name": "kickPunishmentMessage",
       "category": "messages",
-      "humanName": "Warning Message",
+      "humanName": "Kick punishment message",
       "description": "The message that gets sent to the user's DM's when they are kicked for meeting a moderation action's treshold.'",
       "type": "string",
       "allowEmbed": true,

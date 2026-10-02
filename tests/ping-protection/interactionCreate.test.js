@@ -17,15 +17,29 @@ const mockG = {
     generateHistoryResponse: jest.fn().mockResolvedValue({embeds: ['h']}),
     generateActionsResponse: jest.fn().mockResolvedValue({embeds: ['a']}),
     generateUserPanel: jest.fn().mockResolvedValue({embeds: ['panel']}),
-    generatePanelHistory: jest.fn().mockResolvedValue({embeds: ['ph']}),
-    generatePanelActions: jest.fn().mockResolvedValue({embeds: ['pa']}),
     generatePanelDeletion: jest.fn().mockResolvedValue({embeds: ['pd']}),
     executeDataDeletion: jest.fn().mockResolvedValue(),
     getDeletionCooldown: jest.fn().mockResolvedValue(null),
     setDeletionCooldown: jest.fn().mockResolvedValue(new Date(Date.now() + 1000)),
-    getDeletionTypeLocaleKey: jest.fn(() => 'del-type-pings')
+    getDeletionTypeLocaleKey: jest.fn(() => 'del-type-pings'),
+    parseTimeframeToMs: jest.fn(() => 86400000)
 };
-jest.mock('../../modules/ping-protection/ping-protection', () => mockG);
+
+jest.mock('../../modules/ping-protection/core/localHelpers', () => ({
+    getDeletionTypeLocaleKey: (...a) => mockG.getDeletionTypeLocaleKey(...a),
+    parseTimeframeToMs: (...a) => mockG.parseTimeframeToMs(...a)
+}));
+jest.mock('../../modules/ping-protection/core/records', () => ({
+    executeDataDeletion: (...a) => mockG.executeDataDeletion(...a),
+    getDeletionCooldown: (...a) => mockG.getDeletionCooldown(...a),
+    setDeletionCooldown: (...a) => mockG.setDeletionCooldown(...a)
+}));
+jest.mock('../../modules/ping-protection/core/panels', () => ({
+    generateUserPanel: (...a) => mockG.generateUserPanel(...a),
+    generatePanelDeletion: (...a) => mockG.generatePanelDeletion(...a),
+    generateHistoryResponse: (...a) => mockG.generateHistoryResponse(...a),
+    generateActionsResponse: (...a) => mockG.generateActionsResponse(...a)
+}));
 
 const handler = require('../../modules/ping-protection/events/interactionCreate');
 const {localize} = require('../../src/functions/localize');
@@ -106,13 +120,25 @@ describe('panel-menu select', () => {
 
     test.each([
         ['overview', 'generateUserPanel'],
-        ['history', 'generatePanelHistory'],
-        ['actions', 'generatePanelActions'],
         ['deletion', 'generatePanelDeletion']
     ])('routes %s to %s and updates', async (selection, fnName) => {
         const interaction = menuInteraction(selection);
         await handler.run(makeClient(), interaction);
         expect(mockG[fnName]).toHaveBeenCalled();
+        expect(interaction.update).toHaveBeenCalled();
+    });
+
+    test('routes history to generateHistoryResponse with isPanel=true', async () => {
+        const interaction = menuInteraction('history');
+        await handler.run(makeClient(), interaction);
+        expect(mockG.generateHistoryResponse).toHaveBeenCalledWith(expect.anything(), expect.anything(), 1, true);
+        expect(interaction.update).toHaveBeenCalled();
+    });
+
+    test('routes actions to generateActionsResponse with isPanel=true', async () => {
+        const interaction = menuInteraction('actions');
+        await handler.run(makeClient(), interaction);
+        expect(mockG.generateActionsResponse).toHaveBeenCalledWith(expect.anything(), expect.anything(), 1, true);
         expect(interaction.update).toHaveBeenCalled();
     });
 });
@@ -201,13 +227,13 @@ describe('button pagination', () => {
         expect(mockG.generateActionsResponse).toHaveBeenCalledWith(expect.anything(), 'target', 2);
     });
 
-    test('panel-hist routes to generatePanelHistory', async () => {
+    test('panel-hist routes to generateHistoryResponse with isPanel=true', async () => {
         const interaction = baseInteraction({
             isButton: () => true,
             customId: 'ping-protection_panel-hist_target_2'
         });
         await handler.run(makeClient(), interaction);
-        expect(mockG.generatePanelHistory).toHaveBeenCalled();
+        expect(mockG.generateHistoryResponse).toHaveBeenCalledWith(expect.anything(), expect.anything(), 2, true);
         expect(interaction.update).toHaveBeenCalled();
     });
 });

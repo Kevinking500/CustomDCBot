@@ -18,7 +18,7 @@ const mockPanel = jest.fn().mockResolvedValue({
     embeds: ['p'],
     components: []
 });
-jest.mock('../../modules/ping-protection/ping-protection', () => ({
+jest.mock('../../modules/ping-protection/core/panels', () => ({
     generateHistoryResponse: (...a) => mockHistory(...a),
     generateActionsResponse: (...a) => mockActions(...a),
     generateUserPanel: (...a) => mockPanel(...a)
